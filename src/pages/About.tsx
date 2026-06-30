@@ -82,7 +82,7 @@ export default function About() {
               <p className="text-sm font-semibold text-gray-700 mb-4">SWP at a Glance</p>
               <ul className="space-y-3">
                 {[
-                  'Launched at SWP Conference 2025',
+                  'Launched at NParks Staff Conference 2026',
                   'Covers all NParks divisions',
                   '3-year horizon planning',
                   'Officer-led, leadership-supported',

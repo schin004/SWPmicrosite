@@ -61,7 +61,7 @@ export default function Imagine() {
         >
           {/* Category pills */}
           <div className="mb-6">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Choose a category (optional)</p>
+            <p className="text-sm font-semibold text-gray-700 mb-3">Choose a category</p>
             <div className="flex flex-wrap gap-2.5" role="group" aria-label="Idea categories">
               {CATEGORIES.map(cat => {
                 const isActive = selectedCategory === cat.id;
@@ -96,7 +96,7 @@ export default function Imagine() {
               onChange={e => {
                 if (e.target.value.length <= MAX_CHARS) setIdeaText(e.target.value);
               }}
-              placeholder="Share your thoughts freely — no idea is too big or too small..."
+              placeholder="What would you improve, rethink, or reset about the future of work at NParks?"
               className="w-full min-h-44 p-5 rounded-2xl border border-gray-200 bg-gray-50/50 text-gray-800 text-base resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-gray-400 leading-relaxed"
               aria-label="Share your idea"
               aria-describedby="char-count"

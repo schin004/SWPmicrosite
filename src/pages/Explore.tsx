@@ -395,7 +395,7 @@ export default function Explore() {
             Explore ideas developed by different NParks workgroups during the Strategic Workforce Planning workshops.
             Click on any idea to learn more, share your perspective, or contribute your own thoughts.
           </p>
-          <p className="text-sm text-gray-400 mt-3">All interactions are optional — feel free to explore at your own pace.</p>
+          <p className="text-sm text-gray-400 mt-3">Click on any idea to learn more and share your perspective.</p>
         </motion.div>
 
         {/* Workgroup cards — 3 columns */}

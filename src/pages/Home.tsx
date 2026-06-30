@@ -38,7 +38,7 @@ export default function Home() {
         <motion.div {...fadeUp(0.1)} className="inline-flex items-center gap-2 mb-8">
           <span className="inline-flex items-center gap-2 bg-white border border-blue-100 text-blue-600 text-sm font-medium px-4 py-2 rounded-full shadow-sm">
             <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            NParks Strategic Workforce Planning Conference 2025
+            NParks Staff Conference 2026
           </span>
         </motion.div>
 
@@ -125,9 +125,9 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
               { step: 1, label: 'Learn', desc: 'Discover how SWP benefits you and your team', color: 'from-blue-400 to-blue-600', light: 'bg-blue-50', text: 'text-blue-600' },
-              { step: 2, label: 'Imagine', desc: 'Share your ideas about the future of work', color: 'from-purple-400 to-purple-600', light: 'bg-purple-50', text: 'text-purple-600' },
-              { step: 3, label: 'Submit', desc: 'Send your idea and make your mark', color: 'from-teal-400 to-teal-600', light: 'bg-teal-50', text: 'text-teal-600' },
-              { step: 4, label: 'Ready', desc: 'Make your pledge for the future', color: 'from-orange-400 to-orange-600', light: 'bg-orange-50', text: 'text-orange-600' },
+              { step: 2, label: 'Explore', desc: 'Explore ideas from NParks workgroups and share your perspective', color: 'from-purple-400 to-purple-600', light: 'bg-purple-50', text: 'text-purple-600' },
+              { step: 3, label: 'Imagine', desc: 'Share one idea that could improve the future of work at NParks', color: 'from-teal-400 to-teal-600', light: 'bg-teal-50', text: 'text-teal-600' },
+              { step: 4, label: 'Pledge', desc: 'Visit the Future of Work Booth and make your commitment', color: 'from-orange-400 to-orange-600', light: 'bg-orange-50', text: 'text-orange-600' },
             ].map(item => (
               <div key={item.step} className="flex flex-col items-center text-center gap-3">
                 <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-white font-bold text-lg shadow-md`}>

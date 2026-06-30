@@ -124,7 +124,7 @@ export default function Pulse() {
             <span className="gradient-text">Pulse</span>
           </h1>
           <p className="text-gray-500 text-lg">
-            Live insights from NParks SWP Conference 2025 participants
+            Live insights from NParks Staff Conference 2026 participants
           </p>
         </motion.div>
 
