@@ -4,6 +4,7 @@ import Learn from './Learn';
 import Explore from './Explore';
 import Imagine from './Imagine';
 import Ready from './Ready';
+import Congrats from './Congrats';
 import { useJourney } from '../context/JourneyContext';
 
 const pageVariants = {
@@ -13,31 +14,46 @@ const pageVariants = {
 };
 
 export default function Journey() {
-  const { currentStep } = useJourney();
+  const { currentStep, showCongrats } = useJourney();
 
   return (
     <div>
-      {/* Progress bar — sticky below nav */}
-      <div className="sticky top-16 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-3">
-          <ProgressIndicator />
+      {/* Progress bar — hide on congrats screen */}
+      {!showCongrats && (
+        <div className="sticky top-16 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-3">
+            <ProgressIndicator />
+          </div>
         </div>
-      </div>
+      )}
 
       <AnimatePresence mode="wait">
-        <motion.div
-          key={currentStep}
-          variants={pageVariants}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-        >
-          {currentStep === 1 && <Learn />}
-          {currentStep === 2 && <Explore />}
-          {currentStep === 3 && <Imagine />}
-          {currentStep === 4 && <Ready />}
-        </motion.div>
+        {showCongrats ? (
+          <motion.div
+            key="congrats"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+          >
+            <Congrats />
+          </motion.div>
+        ) : (
+          <motion.div
+            key={currentStep}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+          >
+            {currentStep === 1 && <Learn />}
+            {currentStep === 2 && <Explore />}
+            {currentStep === 3 && <Imagine />}
+            {currentStep === 4 && <Ready />}
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

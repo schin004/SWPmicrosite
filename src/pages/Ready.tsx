@@ -1,14 +1,13 @@
 import { motion } from 'framer-motion';
-import { Sparkles, Star, Home } from 'lucide-react';
+import { Camera, MapPin, Star, Home } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
 
 export default function Ready() {
-  const { completeStep, setCurrentPage, setJourneyActive, setCurrentStep } = useJourney();
+  const { completeStep, setCurrentPage, setJourneyActive, setCurrentStep, setShowCongrats } = useJourney();
 
-  const handleReady = () => {
+  const handlePledge = () => {
     completeStep(4);
-    setCurrentPage('pulse');
-    setJourneyActive(false);
+    setShowCongrats(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -30,10 +29,9 @@ export default function Ready() {
           transition={{ duration: 0.6, type: 'spring', damping: 12, stiffness: 100 }}
           className="relative inline-block mb-10"
         >
-          {/* Outer glow ring */}
           <div className="w-40 h-40 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center mx-auto shadow-xl">
             <div className="w-28 h-28 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center shadow-lg">
-              <Star className="w-14 h-14 text-white" fill="white" />
+              <Camera className="w-14 h-14 text-white" />
             </div>
           </div>
 
@@ -51,7 +49,7 @@ export default function Ready() {
               animate={{ scale: 1, opacity: [0, 1, 0.7] }}
               transition={{ delay: 0.4 + i * 0.08, duration: 0.5 }}
             >
-              <Sparkles
+              <Star
                 className={`w-4 h-4 ${['text-blue-400', 'text-purple-400', 'text-teal-400', 'text-orange-400', 'text-pink-400', 'text-indigo-400'][i]}`}
               />
             </motion.div>
@@ -66,7 +64,7 @@ export default function Ready() {
           className="inline-flex items-center gap-2 bg-orange-50 text-orange-500 text-sm font-medium px-4 py-2 rounded-full mb-6 border border-orange-100"
         >
           <Star className="w-4 h-4" />
-          Step 4 of 4
+          Step 4 of 4 — Pledge
         </motion.div>
 
         {/* Title */}
@@ -83,19 +81,38 @@ export default function Ready() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
-          className="text-gray-500 text-xl max-w-lg mx-auto leading-relaxed mb-4"
+          className="text-gray-600 text-xl max-w-lg mx-auto leading-relaxed mb-8"
         >
-          You've shared your vision for the future of work. Now make your commitment.
+          Head over to the <span className="font-semibold text-gray-900">Future of Work Booth</span> and take a photo of your pledge.
         </motion.p>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="text-gray-400 text-base max-w-md mx-auto leading-relaxed mb-10"
+        {/* Booth instruction card */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="bg-white rounded-3xl p-7 shadow-card border border-gray-100 mb-8 text-left"
         >
-          Every pledge from every NParks officer brings us one step closer to building a workforce that's ready for what's next. Your commitment matters.
-        </motion.p>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <MapPin className="w-5 h-5 text-blue-500" />
+            </div>
+            <p className="font-semibold text-gray-900">How to make your pledge</p>
+          </div>
+          <ol className="space-y-4">
+            {[
+              { emoji: '📍', text: 'Find the Future of Work Booth at the conference venue.' },
+              { emoji: '✍️', text: 'Write your personal pledge for the future of work at NParks on the pledge card provided.' },
+              { emoji: '📸', text: 'Take a photo of yourself holding your pledge card at the booth.' },
+              { emoji: '✅', text: 'Come back here and click the button below once you\'ve made your pledge.' },
+            ].map((step, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="text-xl flex-shrink-0 mt-0.5">{step.emoji}</span>
+                <span className="text-gray-600 text-sm leading-relaxed">{step.text}</span>
+              </li>
+            ))}
+          </ol>
+        </motion.div>
 
         {/* CTA */}
         <motion.div
@@ -105,11 +122,11 @@ export default function Ready() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           <button
-            onClick={handleReady}
+            onClick={handlePledge}
             className="group inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold px-10 py-4 rounded-2xl shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 text-lg"
           >
-            <Star className="w-5 h-5" />
-            I'm Ready
+            <Camera className="w-5 h-5" />
+            I've made my pledge
           </button>
           <button
             onClick={goHome}
@@ -118,25 +135,6 @@ export default function Ready() {
             <Home className="w-4 h-4" />
             Back to Home
           </button>
-        </motion.div>
-
-        {/* Confetti-style decoration */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-14 flex items-center justify-center gap-6"
-        >
-          {['🎉', '✨', '🌟', '💡', '🚀'].map((emoji, i) => (
-            <motion.span
-              key={i}
-              className="text-2xl"
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 2, delay: i * 0.2, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              {emoji}
-            </motion.span>
-          ))}
         </motion.div>
       </div>
     </main>

@@ -12,6 +12,8 @@ interface JourneyContextType {
   setCurrentStep: (s: Step) => void;
   completedSteps: Set<Step>;
   completeStep: (s: Step) => void;
+  showCongrats: boolean;
+  setShowCongrats: (v: boolean) => void;
   ideaText: string;
   setIdeaText: (t: string) => void;
   selectedCategory: string;
@@ -25,6 +27,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
   const [journeyActive, setJourneyActive] = useState(false);
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [completedSteps, setCompletedSteps] = useState<Set<Step>>(new Set());
+  const [showCongrats, setShowCongrats] = useState(false);
   const [ideaText, setIdeaText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
@@ -38,6 +41,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
       journeyActive, setJourneyActive,
       currentStep, setCurrentStep,
       completedSteps, completeStep,
+      showCongrats, setShowCongrats,
       ideaText, setIdeaText,
       selectedCategory, setSelectedCategory,
     }}>
