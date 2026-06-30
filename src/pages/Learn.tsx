@@ -68,7 +68,7 @@ export default function Learn() {
   }, []);
 
   const goNext = () => {
-    setCurrentStep(2);
+    setCurrentStep(2); // → Explore
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -160,7 +160,7 @@ export default function Learn() {
             onClick={goNext}
             className="group inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold px-8 py-4 rounded-2xl shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
-            Continue to Imagine
+            Continue to Explore
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
         </motion.div>

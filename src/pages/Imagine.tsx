@@ -25,8 +25,8 @@ export default function Imagine() {
 
   const handleNext = () => {
     if (!canSubmit) return;
-    completeStep(2);
-    setCurrentStep(3);
+    completeStep(3); // step 3 = Imagine
+    setCurrentStep(4); // → Ready
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -42,7 +42,7 @@ export default function Imagine() {
         >
           <div className="inline-flex items-center gap-2 bg-purple-50 text-purple-600 text-sm font-medium px-4 py-2 rounded-full mb-6 border border-purple-100">
             <Sparkles className="w-4 h-4" />
-            Step 2 of 4
+            Step 3 of 4
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">
             <span className="gradient-text">Imagine</span>
@@ -131,7 +131,7 @@ export default function Imagine() {
             `}
             aria-disabled={!canSubmit}
           >
-            Continue to Submit
+            Submit My Idea
             <ArrowRight className={`w-5 h-5 ${canSubmit ? 'group-hover:translate-x-1 transition-transform' : ''}`} />
           </button>
         </motion.div>

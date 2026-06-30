@@ -3,8 +3,8 @@ import { useJourney, type Step } from '../context/JourneyContext';
 
 const STEPS: { num: Step; label: string }[] = [
   { num: 1, label: 'Learn' },
-  { num: 2, label: 'Imagine' },
-  { num: 3, label: 'Submit' },
+  { num: 2, label: 'Explore' },
+  { num: 3, label: 'Imagine' },
   { num: 4, label: 'Ready' },
 ];
 

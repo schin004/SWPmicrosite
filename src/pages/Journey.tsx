@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import ProgressIndicator from '../components/ProgressIndicator';
 import Learn from './Learn';
+import Explore from './Explore';
 import Imagine from './Imagine';
-import Submit from './Submit';
 import Ready from './Ready';
 import { useJourney } from '../context/JourneyContext';
 
@@ -34,8 +34,8 @@ export default function Journey() {
           transition={{ duration: 0.35, ease: 'easeOut' }}
         >
           {currentStep === 1 && <Learn />}
-          {currentStep === 2 && <Imagine />}
-          {currentStep === 3 && <Submit />}
+          {currentStep === 2 && <Explore />}
+          {currentStep === 3 && <Imagine />}
           {currentStep === 4 && <Ready />}
         </motion.div>
       </AnimatePresence>
