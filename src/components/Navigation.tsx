@@ -10,10 +10,11 @@ const NAV_ITEMS: { label: string; page: Page }[] = [
 ];
 
 export default function Navigation() {
-  const { currentPage, setCurrentPage, setJourneyActive, setCurrentStep } = useJourney();
+  const { currentPage, setCurrentPage, setJourneyActive, setCurrentStep, setShowCongrats } = useJourney();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navigate = (page: Page) => {
+    setShowCongrats(false);
     setCurrentPage(page);
     if (page === 'journey') {
       setJourneyActive(true);
