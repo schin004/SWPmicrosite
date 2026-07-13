@@ -118,6 +118,39 @@ export async function recordPledge(sessionId: string) {
   );
 }
 
+// ─── Home page stats (lightweight query) ─────────────────────────────────────
+export interface HomeStats {
+  ideasCount: number;
+  pledgesCount: number;
+  visitorsToday: number;
+  journeysCompleted: number;
+}
+
+export async function fetchHomeStats(): Promise<HomeStats | null> {
+  if (!supabase) return null;
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const [
+    { count: ideasCount },
+    { count: pledgesCount },
+    { data: todayRows },
+  ] = await Promise.all([
+    supabase.from('idea_submissions').select('*', { count: 'exact', head: true }),
+    supabase.from('pledges').select('*', { count: 'exact', head: true }),
+    supabase.from('idea_submissions').select('session_id').gte('created_at', `${today}T00:00:00`),
+  ]);
+
+  const visitorsToday = new Set((todayRows ?? []).map(r => r.session_id)).size;
+
+  return {
+    ideasCount: ideasCount ?? 0,
+    pledgesCount: pledgesCount ?? 0,
+    visitorsToday,
+    journeysCompleted: pledgesCount ?? 0,
+  };
+}
+
 // ─── Pulse page data ──────────────────────────────────────────────────────────
 export interface PulseData {
   ideasCount: number;

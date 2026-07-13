@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, BarChart2, Sparkles, Users, Zap } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
+import { fetchHomeStats } from '../lib/db';
+import type { HomeStats } from '../lib/db';
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 24 },
@@ -8,15 +11,26 @@ const fadeUp = (delay = 0) => ({
   transition: { duration: 0.6, delay, ease: 'easeOut' as const },
 });
 
-const STATS = [
-  { icon: Users, label: 'Participants', value: '2,400+', color: 'text-blue-500', bg: 'bg-blue-50' },
-  { icon: Sparkles, label: 'Ideas Shared', value: '860+', color: 'text-purple-500', bg: 'bg-purple-50' },
-  { icon: Zap, label: 'Pledges Made', value: '1,200+', color: 'text-teal-500', bg: 'bg-teal-50' },
-  { icon: BarChart2, label: 'Journeys Done', value: '980+', color: 'text-orange-500', bg: 'bg-orange-50' },
-];
+function fmt(n: number): string {
+  if (n === 0) return '0';
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
+}
 
 export default function Home() {
   const { setCurrentPage, setJourneyActive, setCurrentStep } = useJourney();
+  const [stats, setStats] = useState<HomeStats | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      const data = await fetchHomeStats();
+      if (alive) setStats(data);
+    }
+    load();
+    const interval = setInterval(load, 30_000);
+    return () => { alive = false; clearInterval(interval); };
+  }, []);
 
   const startJourney = () => {
     setCurrentPage('journey');
@@ -29,6 +43,37 @@ export default function Home() {
     setCurrentPage('pulse');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const STATS = [
+    {
+      icon: Users,
+      label: 'Visitors Today',
+      value: stats ? fmt(stats.visitorsToday) : '—',
+      color: 'text-blue-500',
+      bg: 'bg-blue-50',
+    },
+    {
+      icon: Sparkles,
+      label: 'Ideas Shared',
+      value: stats ? fmt(stats.ideasCount) : '—',
+      color: 'text-purple-500',
+      bg: 'bg-purple-50',
+    },
+    {
+      icon: Zap,
+      label: 'Pledges Made',
+      value: stats ? fmt(stats.pledgesCount) : '—',
+      color: 'text-teal-500',
+      bg: 'bg-teal-50',
+    },
+    {
+      icon: BarChart2,
+      label: 'Journeys Done',
+      value: stats ? fmt(stats.journeysCompleted) : '—',
+      color: 'text-orange-500',
+      bg: 'bg-orange-50',
+    },
+  ];
 
   return (
     <main className="relative z-10 min-h-screen">
@@ -86,7 +131,7 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Stats row */}
+      {/* Live stats row */}
       <section className="max-w-7xl mx-auto px-6 lg:px-8 pb-24">
         <motion.div
           initial={{ opacity: 0, y: 32 }}
@@ -102,7 +147,7 @@ export default function Home() {
               <div className={`w-11 h-11 rounded-xl ${stat.bg} flex items-center justify-center`}>
                 <stat.icon className={`w-5 h-5 ${stat.color}`} />
               </div>
-              <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+              <div className="text-2xl font-bold text-gray-900 tabular-nums">{stat.value}</div>
               <div className="text-sm text-gray-500 font-medium">{stat.label}</div>
             </div>
           ))}
@@ -124,10 +169,10 @@ export default function Home() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { step: 1, label: 'Learn', desc: 'Discover how SWP benefits you and your team', color: 'from-blue-400 to-blue-600', light: 'bg-blue-50', text: 'text-blue-600' },
-              { step: 2, label: 'Explore', desc: 'Explore ideas from NParks workgroups and share your perspective', color: 'from-purple-400 to-purple-600', light: 'bg-purple-50', text: 'text-purple-600' },
-              { step: 3, label: 'Imagine', desc: 'Share one idea that could improve the future of work at NParks', color: 'from-teal-400 to-teal-600', light: 'bg-teal-50', text: 'text-teal-600' },
-              { step: 4, label: 'Pledge', desc: 'Visit the Future of Work Booth and make your commitment', color: 'from-orange-400 to-orange-600', light: 'bg-orange-50', text: 'text-orange-600' },
+              { step: 1, label: 'Learn', desc: 'Discover how SWP benefits you and your team', color: 'from-blue-400 to-blue-600' },
+              { step: 2, label: 'Explore', desc: 'Explore ideas from NParks workgroups and share your perspective', color: 'from-purple-400 to-purple-600' },
+              { step: 3, label: 'Imagine', desc: 'Share one idea that could improve the future of work at NParks', color: 'from-teal-400 to-teal-600' },
+              { step: 4, label: 'Pledge', desc: 'Visit the Future of Work Booth and make your commitment', color: 'from-orange-400 to-orange-600' },
             ].map(item => (
               <div key={item.step} className="flex flex-col items-center text-center gap-3">
                 <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-white font-bold text-lg shadow-md`}>
