@@ -1,5 +1,13 @@
 import { supabase } from './supabase';
 
+// Emit a write result to the on-screen DebugBadge (console is invisible under
+// browser-isolation, so we surface results in the rendered UI instead).
+function emit(fn: string, ok: boolean, detail = '') {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('sb-debug', { detail: { fn, ok, detail } }));
+  }
+}
+
 // ─── User progress (load on mount) ───────────────────────────────────────────
 
 export interface UserProgress {
@@ -70,7 +78,7 @@ export async function submitIdea(params: {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'session_id' });
   if (error) console.error('[submitIdea] Supabase write failed:', error.message, error);
-  else console.log('[submitIdea] ✓ saved to Supabase');
+  emit('submitIdea', !error, error?.message || '');
 }
 
 // ─── Save idea reaction + comment (Explore modal) ────────────────────────────
@@ -93,6 +101,7 @@ export async function saveIdeaReaction(params: {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'session_id,idea_id' });
   if (error) console.error('[saveIdeaReaction] Supabase write failed:', error.message, error);
+  emit('saveIdeaReaction', !error, error?.message || '');
 }
 
 // ─── Save workgroup contribution (Explore card text area) ────────────────────
@@ -111,6 +120,7 @@ export async function saveWorkgroupContribution(params: {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'session_id,workgroup_id' });
   if (error) console.error('[saveWorkgroupContribution] Supabase write failed:', error.message, error);
+  emit('saveWorkgroupContribution', !error, error?.message || '');
 }
 
 // ─── Record pledge (Pledge step) ─────────────────────────────────────────────
@@ -121,7 +131,7 @@ export async function recordPledge(sessionId: string) {
     { onConflict: 'session_id' }
   );
   if (error) console.error('[recordPledge] Supabase write failed:', error.message, error);
-  else console.log('[recordPledge] ✓ saved to Supabase');
+  emit('recordPledge', !error, error?.message || '');
 }
 
 // ─── Home page stats (lightweight query) ─────────────────────────────────────
