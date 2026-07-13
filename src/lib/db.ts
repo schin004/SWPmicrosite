@@ -63,12 +63,13 @@ export async function submitIdea(params: {
   category: string;
 }) {
   if (!supabase) return;
-  await supabase.from('idea_submissions').upsert({
+  const { error } = await supabase.from('idea_submissions').upsert({
     session_id: params.sessionId,
     idea_text: params.ideaText,
     category: params.category || null,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'session_id' });
+  if (error) console.error('[submitIdea] Supabase write failed:', error.message, error);
 }
 
 // ─── Save idea reaction + comment (Explore modal) ────────────────────────────
@@ -81,7 +82,7 @@ export async function saveIdeaReaction(params: {
   comment: string;
 }) {
   if (!supabase) return;
-  await supabase.from('explore_reactions').upsert({
+  const { error } = await supabase.from('explore_reactions').upsert({
     session_id: params.sessionId,
     workgroup_id: params.workgroupId,
     idea_id: params.ideaId,
@@ -90,6 +91,7 @@ export async function saveIdeaReaction(params: {
     comment: params.comment || null,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'session_id,idea_id' });
+  if (error) console.error('[saveIdeaReaction] Supabase write failed:', error.message, error);
 }
 
 // ─── Save workgroup contribution (Explore card text area) ────────────────────
@@ -100,22 +102,24 @@ export async function saveWorkgroupContribution(params: {
   contribution: string;
 }) {
   if (!supabase || !params.contribution.trim()) return;
-  await supabase.from('workgroup_contributions').upsert({
+  const { error } = await supabase.from('workgroup_contributions').upsert({
     session_id: params.sessionId,
     workgroup_id: params.workgroupId,
     workgroup_title: params.workgroupTitle,
     contribution: params.contribution,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'session_id,workgroup_id' });
+  if (error) console.error('[saveWorkgroupContribution] Supabase write failed:', error.message, error);
 }
 
 // ─── Record pledge (Pledge step) ─────────────────────────────────────────────
 export async function recordPledge(sessionId: string) {
   if (!supabase) return;
-  await supabase.from('pledges').upsert(
+  const { error } = await supabase.from('pledges').upsert(
     { session_id: sessionId, updated_at: new Date().toISOString() },
     { onConflict: 'session_id' }
   );
+  if (error) console.error('[recordPledge] Supabase write failed:', error.message, error);
 }
 
 // ─── Home page stats (lightweight query) ─────────────────────────────────────
