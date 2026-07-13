@@ -9,3 +9,10 @@ export const supabase = supabaseUrl && supabaseAnonKey
   : null;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+// Startup diagnostic — remove once data flow is confirmed
+console.log(
+  '[Supabase] configured:', isSupabaseConfigured,
+  '| url:', supabaseUrl ? supabaseUrl.slice(0, 32) + '…' : '(missing)',
+  '| key:', supabaseAnonKey ? supabaseAnonKey.slice(0, 12) + '…' : '(missing)'
+);

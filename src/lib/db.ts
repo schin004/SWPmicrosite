@@ -70,6 +70,7 @@ export async function submitIdea(params: {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'session_id' });
   if (error) console.error('[submitIdea] Supabase write failed:', error.message, error);
+  else console.log('[submitIdea] ✓ saved to Supabase');
 }
 
 // ─── Save idea reaction + comment (Explore modal) ────────────────────────────
@@ -120,6 +121,7 @@ export async function recordPledge(sessionId: string) {
     { onConflict: 'session_id' }
   );
   if (error) console.error('[recordPledge] Supabase write failed:', error.message, error);
+  else console.log('[recordPledge] ✓ saved to Supabase');
 }
 
 // ─── Home page stats (lightweight query) ─────────────────────────────────────
