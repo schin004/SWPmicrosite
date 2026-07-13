@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { isSupabaseConfigured } from '../lib/supabase';
 
+// Bump this string each deploy so we can visually confirm the fresh build loaded.
+export const BUILD_TAG = 'BUILD-9';
+
 interface WriteLog {
   fn: string;
   ok: boolean;
@@ -11,55 +14,40 @@ interface WriteLog {
 // db.ts dispatches window CustomEvent('sb-debug', { detail: {...} }) on every write.
 export default function DebugBadge() {
   const [logs, setLogs] = useState<WriteLog[]>([]);
-  const [open, setOpen] = useState(true);
 
   useEffect(() => {
     function onWrite(e: Event) {
       const d = (e as CustomEvent).detail as WriteLog;
-      setLogs(prev => [{ ...d, at: new Date().toLocaleTimeString() }, ...prev].slice(0, 6));
+      setLogs(prev => [{ ...d, at: new Date().toLocaleTimeString() }, ...prev].slice(0, 4));
     }
     window.addEventListener('sb-debug', onWrite);
     return () => window.removeEventListener('sb-debug', onWrite);
   }, []);
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-3 left-3 z-[9999] bg-gray-900 text-white text-xs px-3 py-1.5 rounded-full shadow-lg opacity-80"
-      >
-        🐛 debug
-      </button>
-    );
-  }
+  const last = logs[0];
 
   return (
-    <div className="fixed bottom-3 left-3 z-[9999] w-80 max-w-[90vw] bg-gray-900 text-white text-xs rounded-2xl shadow-2xl p-4 font-mono leading-relaxed">
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-bold">Supabase debug</span>
-        <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white">✕</button>
-      </div>
-      <div className="mb-2">
-        client configured:{' '}
+    <div className="fixed top-0 left-0 right-0 z-[99999] bg-gray-900 text-white text-xs md:text-sm font-mono px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 shadow-lg">
+      <span className="font-bold text-yellow-300">{BUILD_TAG}</span>
+      <span>
+        client:{' '}
         <span className={isSupabaseConfigured ? 'text-green-400' : 'text-red-400'}>
-          {String(isSupabaseConfigured)}
+          {isSupabaseConfigured ? 'configured ✓' : 'NOT configured ✗'}
         </span>
-      </div>
-      <div className="border-t border-gray-700 pt-2">
-        {logs.length === 0 ? (
-          <span className="text-gray-500">No writes yet. Submit an idea / pledge to test.</span>
-        ) : (
-          logs.map((l, i) => (
-            <div key={i} className="mb-1.5">
-              <span className={l.ok ? 'text-green-400' : 'text-red-400'}>
-                {l.ok ? '✓' : '✗'} {l.fn}
-              </span>{' '}
-              <span className="text-gray-400">{l.at}</span>
-              {!l.ok && <div className="text-red-300 break-words">{l.detail}</div>}
-            </div>
-          ))
-        )}
-      </div>
+      </span>
+      {last ? (
+        <span>
+          last write:{' '}
+          <span className={last.ok ? 'text-green-400' : 'text-red-400'}>
+            {last.ok ? '✓' : '✗'} {last.fn} {last.at}
+          </span>
+          {!last.ok && last.detail && (
+            <span className="text-red-300"> — {last.detail}</span>
+          )}
+        </span>
+      ) : (
+        <span className="text-gray-400">no writes yet — submit an idea or pledge to test</span>
+      )}
     </div>
   );
 }
