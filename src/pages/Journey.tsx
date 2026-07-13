@@ -14,7 +14,18 @@ const pageVariants = {
 };
 
 export default function Journey() {
-  const { currentStep, showCongrats } = useJourney();
+  const { currentStep, showCongrats, userLoaded } = useJourney();
+
+  if (!userLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-gray-400">
+          <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+          <span className="text-sm font-medium">Loading your progress…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

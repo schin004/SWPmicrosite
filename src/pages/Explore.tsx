@@ -266,12 +266,13 @@ interface WorkgroupCardProps {
   wgComment: string;
   onIdeaClick: (idea: Idea, wgId: string) => void;
   onWgCommentChange: (wgId: string, text: string) => void;
+  onWgBlur: (wg: Workgroup) => void;
   ideaReactions: Record<string, string>;
 }
 
 const MAX_WG = 300;
 
-function WorkgroupCard({ wg, wgComment, onIdeaClick, onWgCommentChange, ideaReactions }: WorkgroupCardProps) {
+function WorkgroupCard({ wg, wgComment, onIdeaClick, onWgCommentChange, onWgBlur, ideaReactions }: WorkgroupCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -331,6 +332,7 @@ function WorkgroupCard({ wg, wgComment, onIdeaClick, onWgCommentChange, ideaReac
         <textarea
           value={wgComment}
           onChange={e => e.target.value.length <= MAX_WG && onWgCommentChange(wg.id, e.target.value)}
+              onBlur={() => onWgBlur(wg)}
           placeholder="Share your thoughts here..."
           rows={3}
           className="w-full p-4 rounded-2xl border border-gray-200 bg-white/70 text-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-gray-400 leading-relaxed"
@@ -349,11 +351,13 @@ function WorkgroupCard({ wg, wgComment, onIdeaClick, onWgCommentChange, ideaReac
 // ─── Explore Page ─────────────────────────────────────────────────────────────
 
 export default function Explore() {
-  const { sessionId, completeStep, setCurrentStep } = useJourney();
+  const {
+    sessionId, completeStep, setCurrentStep,
+    ideaReactions, setIdeaReactions,
+    ideaComments, setIdeaComments,
+    wgComments, setWgComments,
+  } = useJourney();
   const [openModal, setOpenModal] = useState<ModalState | null>(null);
-  const [ideaReactions, setIdeaReactions] = useState<Record<string, string>>({});
-  const [ideaComments, setIdeaComments] = useState<Record<string, string>>({});
-  const [wgComments, setWgComments] = useState<Record<string, string>>({});
 
   const handleReact = (ideaId: string, reactionId: string) => {
     setIdeaReactions(prev => ({ ...prev, [ideaId]: reactionId }));
@@ -367,10 +371,20 @@ export default function Explore() {
     setWgComments(prev => ({ ...prev, [wgId]: text }));
   };
 
+  const handleWgBlur = (wg: Workgroup) => {
+    if (wgComments[wg.id]?.trim()) {
+      saveWorkgroupContribution({
+        sessionId,
+        workgroupId: wg.id,
+        workgroupTitle: wg.title,
+        contribution: wgComments[wg.id],
+      });
+    }
+  };
+
   const handleModalSave = () => {
     if (!openModal) return;
     const { idea, workgroupId } = openModal;
-    const wg = WORKGROUPS.find(w => w.id === workgroupId);
     saveIdeaReaction({
       sessionId,
       workgroupId,
@@ -379,29 +393,10 @@ export default function Explore() {
       reaction: ideaReactions[idea.id] || '',
       comment: ideaComments[idea.id] || '',
     });
-    if (wgComments[workgroupId]?.trim() && wg) {
-      saveWorkgroupContribution({
-        sessionId,
-        workgroupId,
-        workgroupTitle: wg.title,
-        contribution: wgComments[workgroupId],
-      });
-    }
     setOpenModal(null);
   };
 
   const handleContinue = () => {
-    // Save any unsaved workgroup contributions
-    WORKGROUPS.forEach(wg => {
-      if (wgComments[wg.id]?.trim()) {
-        saveWorkgroupContribution({
-          sessionId,
-          workgroupId: wg.id,
-          workgroupTitle: wg.title,
-          contribution: wgComments[wg.id],
-        });
-      }
-    });
     completeStep(2);
     setCurrentStep(3);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -447,6 +442,7 @@ export default function Explore() {
                 wgComment={wgComments[wg.id] || ''}
                 onIdeaClick={(idea, wgId) => setOpenModal({ idea, workgroupId: wgId })}
                 onWgCommentChange={handleWgComment}
+                onWgBlur={handleWgBlur}
                 ideaReactions={ideaReactions}
               />
             </motion.div>

@@ -1,17 +1,74 @@
 import { supabase } from './supabase';
 
-// ─── Submit idea (Imagine step) ───────────────────────────────────────────────
+// ─── User progress (load on mount) ───────────────────────────────────────────
+
+export interface UserProgress {
+  idea: { idea_text: string; category: string | null } | null;
+  reactions: Record<string, { reaction: string; comment: string }>;
+  contributions: Record<string, string>;
+  hasPledge: boolean;
+}
+
+export async function loadUserProgress(sessionId: string): Promise<UserProgress> {
+  if (!supabase) return { idea: null, reactions: {}, contributions: {}, hasPledge: false };
+
+  const [
+    { data: idea },
+    { data: reactions },
+    { data: contributions },
+    { data: pledge },
+  ] = await Promise.all([
+    supabase
+      .from('idea_submissions')
+      .select('idea_text, category')
+      .eq('session_id', sessionId)
+      .maybeSingle(),
+    supabase
+      .from('explore_reactions')
+      .select('idea_id, reaction, comment')
+      .eq('session_id', sessionId),
+    supabase
+      .from('workgroup_contributions')
+      .select('workgroup_id, contribution')
+      .eq('session_id', sessionId),
+    supabase
+      .from('pledges')
+      .select('id')
+      .eq('session_id', sessionId)
+      .maybeSingle(),
+  ]);
+
+  const reactionMap: Record<string, { reaction: string; comment: string }> = {};
+  (reactions ?? []).forEach(r => {
+    reactionMap[r.idea_id] = { reaction: r.reaction ?? '', comment: r.comment ?? '' };
+  });
+
+  const contribMap: Record<string, string> = {};
+  (contributions ?? []).forEach(c => {
+    contribMap[c.workgroup_id] = c.contribution ?? '';
+  });
+
+  return {
+    idea: idea ?? null,
+    reactions: reactionMap,
+    contributions: contribMap,
+    hasPledge: Boolean(pledge),
+  };
+}
+
+// ─── Submit idea (Imagine step) — one per session ─────────────────────────────
 export async function submitIdea(params: {
   sessionId: string;
   ideaText: string;
   category: string;
 }) {
   if (!supabase) return;
-  await supabase.from('idea_submissions').insert({
+  await supabase.from('idea_submissions').upsert({
     session_id: params.sessionId,
     idea_text: params.ideaText,
     category: params.category || null,
-  });
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'session_id' });
 }
 
 // ─── Save idea reaction + comment (Explore modal) ────────────────────────────
@@ -31,6 +88,7 @@ export async function saveIdeaReaction(params: {
     idea_label: params.ideaLabel,
     reaction: params.reaction || null,
     comment: params.comment || null,
+    updated_at: new Date().toISOString(),
   }, { onConflict: 'session_id,idea_id' });
 }
 
@@ -47,6 +105,7 @@ export async function saveWorkgroupContribution(params: {
     workgroup_id: params.workgroupId,
     workgroup_title: params.workgroupTitle,
     contribution: params.contribution,
+    updated_at: new Date().toISOString(),
   }, { onConflict: 'session_id,workgroup_id' });
 }
 
@@ -54,7 +113,7 @@ export async function saveWorkgroupContribution(params: {
 export async function recordPledge(sessionId: string) {
   if (!supabase) return;
   await supabase.from('pledges').upsert(
-    { session_id: sessionId },
+    { session_id: sessionId, updated_at: new Date().toISOString() },
     { onConflict: 'session_id' }
   );
 }
@@ -122,7 +181,6 @@ export async function fetchPulseData(): Promise<PulseData | null> {
   const visitorsToday = new Set((todayRows ?? []).map(r => r.session_id)).size;
   const topWords = extractWords((allIdeas ?? []).map(r => r.idea_text));
 
-  // Category breakdown
   const catFreq: Record<string, number> = {};
   (allIdeas ?? []).forEach(r => {
     const cat = r.category || 'Uncategorised';
@@ -132,7 +190,6 @@ export async function fetchPulseData(): Promise<PulseData | null> {
     .sort((a, b) => b[1] - a[1])
     .map(([category, count]) => ({ category, count }));
 
-  // Reaction breakdown
   const rxFreq: Record<string, number> = {};
   (reactions ?? []).forEach(r => {
     if (r.reaction) rxFreq[r.reaction] = (rxFreq[r.reaction] || 0) + 1;
