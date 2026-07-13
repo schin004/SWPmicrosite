@@ -1,11 +1,13 @@
 import { motion } from 'framer-motion';
 import { Camera, MapPin, Star, Home } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
+import { recordPledge } from '../lib/db';
 
 export default function Ready() {
-  const { completeStep, setCurrentPage, setJourneyActive, setCurrentStep, setShowCongrats } = useJourney();
+  const { sessionId, completeStep, setCurrentPage, setJourneyActive, setCurrentStep, setShowCongrats } = useJourney();
 
   const handlePledge = () => {
+    recordPledge(sessionId);
     completeStep(4);
     setShowCongrats(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });

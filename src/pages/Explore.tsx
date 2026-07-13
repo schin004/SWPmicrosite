@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, X, Trees, PawPrint, Bird, Telescope } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
+import { saveIdeaReaction, saveWorkgroupContribution } from '../lib/db';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -348,7 +349,7 @@ function WorkgroupCard({ wg, wgComment, onIdeaClick, onWgCommentChange, ideaReac
 // ─── Explore Page ─────────────────────────────────────────────────────────────
 
 export default function Explore() {
-  const { completeStep, setCurrentStep } = useJourney();
+  const { sessionId, completeStep, setCurrentStep } = useJourney();
   const [openModal, setOpenModal] = useState<ModalState | null>(null);
   const [ideaReactions, setIdeaReactions] = useState<Record<string, string>>({});
   const [ideaComments, setIdeaComments] = useState<Record<string, string>>({});
@@ -366,9 +367,43 @@ export default function Explore() {
     setWgComments(prev => ({ ...prev, [wgId]: text }));
   };
 
+  const handleModalSave = () => {
+    if (!openModal) return;
+    const { idea, workgroupId } = openModal;
+    const wg = WORKGROUPS.find(w => w.id === workgroupId);
+    saveIdeaReaction({
+      sessionId,
+      workgroupId,
+      ideaId: idea.id,
+      ideaLabel: idea.label,
+      reaction: ideaReactions[idea.id] || '',
+      comment: ideaComments[idea.id] || '',
+    });
+    if (wgComments[workgroupId]?.trim() && wg) {
+      saveWorkgroupContribution({
+        sessionId,
+        workgroupId,
+        workgroupTitle: wg.title,
+        contribution: wgComments[workgroupId],
+      });
+    }
+    setOpenModal(null);
+  };
+
   const handleContinue = () => {
-    completeStep(2); // Explore = step 2
-    setCurrentStep(3); // → Imagine
+    // Save any unsaved workgroup contributions
+    WORKGROUPS.forEach(wg => {
+      if (wgComments[wg.id]?.trim()) {
+        saveWorkgroupContribution({
+          sessionId,
+          workgroupId: wg.id,
+          workgroupTitle: wg.title,
+          contribution: wgComments[wg.id],
+        });
+      }
+    });
+    completeStep(2);
+    setCurrentStep(3);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -444,7 +479,7 @@ export default function Explore() {
             comments={ideaComments}
             onReact={handleReact}
             onComment={handleIdeaComment}
-            onSave={() => setOpenModal(null)}
+            onSave={handleModalSave}
             onClose={() => setOpenModal(null)}
           />
         )}

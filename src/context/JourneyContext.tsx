@@ -3,7 +3,19 @@ import React, { createContext, useContext, useState } from 'react';
 export type Step = 1 | 2 | 3 | 4;
 export type Page = 'home' | 'journey' | 'pulse' | 'about';
 
+// Stable session ID for the browser tab — persists across React re-renders
+function getSessionId() {
+  const key = 'swp_session_id';
+  let id = sessionStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(key, id);
+  }
+  return id;
+}
+
 interface JourneyContextType {
+  sessionId: string;
   currentPage: Page;
   setCurrentPage: (p: Page) => void;
   journeyActive: boolean;
@@ -23,6 +35,7 @@ interface JourneyContextType {
 const JourneyContext = createContext<JourneyContextType | null>(null);
 
 export function JourneyProvider({ children }: { children: React.ReactNode }) {
+  const [sessionId] = useState(getSessionId);
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [journeyActive, setJourneyActive] = useState(false);
   const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -37,6 +50,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <JourneyContext.Provider value={{
+      sessionId,
       currentPage, setCurrentPage,
       journeyActive, setJourneyActive,
       currentStep, setCurrentStep,

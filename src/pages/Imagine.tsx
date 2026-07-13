@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, Briefcase, Cpu, GitBranch, Heart } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
+import { submitIdea } from '../lib/db';
 
 const CATEGORIES = [
   { id: 'skills', label: 'Skills', icon: Briefcase, color: 'blue' },
@@ -19,14 +20,15 @@ const COLOR_MAP: Record<string, { pill: string; active: string }> = {
 const MAX_CHARS = 500;
 
 export default function Imagine() {
-  const { ideaText, setIdeaText, selectedCategory, setSelectedCategory, setCurrentStep, completeStep } = useJourney();
+  const { sessionId, ideaText, setIdeaText, selectedCategory, setSelectedCategory, setCurrentStep, completeStep } = useJourney();
   const remaining = MAX_CHARS - ideaText.length;
   const canSubmit = ideaText.trim().length > 0;
 
   const handleNext = () => {
     if (!canSubmit) return;
-    completeStep(3); // step 3 = Imagine
-    setCurrentStep(4); // → Ready
+    submitIdea({ sessionId, ideaText, category: selectedCategory });
+    completeStep(3);
+    setCurrentStep(4);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
