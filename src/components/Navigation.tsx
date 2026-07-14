@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Menu, X, Leaf } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import Logo from './Logo';
 import { useJourney, type Page } from '../context/JourneyContext';
 
 const NAV_ITEMS: { label: string; page: Page }[] = [
@@ -37,15 +38,14 @@ export default function Navigation() {
           {/* Logo */}
           <button
             onClick={() => navigate('home')}
-            className="flex items-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg"
-            aria-label="NParks Home"
+            className="flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy rounded-lg py-1"
+            aria-label="Ctrl Alt Del — NParks Future of Work, Home"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
-              <Leaf className="w-4 h-4 text-white" />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-sm font-700 text-gray-900" style={{ fontWeight: 700 }}>NParks</span>
-              <span className="text-[10px] text-gray-500 font-500">Future of Work</span>
+            <Logo variant="mark" className="h-7 w-auto" title="Ctrl Alt Del" />
+            <span className="hidden sm:block w-px h-7 bg-gray-200" aria-hidden="true" />
+            <div className="hidden sm:flex flex-col leading-none text-left">
+              <span className="text-sm font-bold text-gray-900">NParks</span>
+              <span className="text-[10px] text-gray-500 font-medium tracking-wide">Future of Work</span>
             </div>
           </button>
 

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Leaf, Target, RefreshCw, Zap, Workflow, Users, Cpu, Network, ArrowRight, Sparkles } from 'lucide-react';
+import { Target, RefreshCw, Zap, Workflow, Users, Cpu, Network, ArrowRight, Sparkles } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
 
 // Why Ctrl • Alt • Del — the three keyboard-inspired ideas
@@ -85,8 +85,14 @@ export default function About() {
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-6 shadow-lg">
-            <Leaf className="w-8 h-8 text-white" />
+          {/* Logo showcase — the uploaded Ctrl • Alt • Del mark in a dark frame that suits its background */}
+          <div className="inline-block rounded-3xl overflow-hidden shadow-xl ring-1 ring-brand-navy/10 mb-8 max-w-xl w-full">
+            <img
+              src={`${import.meta.env.BASE_URL}brand/ctrl-alt-del.png`}
+              alt="Ctrl • Alt • Del — the Future of Work theme logo showing CTRL, ALT and DEL keycaps"
+              className="w-full h-auto block"
+              loading="lazy"
+            />
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-5 tracking-tight">
             <span className="gradient-text">Ctrl • Alt • Del</span>

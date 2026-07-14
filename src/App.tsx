@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { JourneyProvider, useJourney } from './context/JourneyContext';
 import Navigation from './components/Navigation';
 import BackgroundDecor from './components/BackgroundDecor';
+import Footer from './components/Footer';
 import Home from './pages/Home';
 import Journey from './pages/Journey';
 import Pulse from './pages/Pulse';
@@ -36,6 +37,8 @@ function AppInner() {
           {currentPage === 'about' && <About />}
         </motion.div>
       </AnimatePresence>
+
+      <Footer />
     </div>
   );
 }

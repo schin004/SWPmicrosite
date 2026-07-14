@@ -14,6 +14,13 @@ export default {
           orange: '#F59E0B',
           green: '#22C55E',
           red: '#EF4444',
+          // Ctrl • Alt • Del logo-derived tokens
+          navy: '#1E2A44',      // primary ink / strategic anchor
+          ink: '#16213E',       // deeper navy
+          ctrl: '#A7D3F3',      // CTRL keycap (blue)
+          alt: '#F0726E',       // ALT keycap (coral)
+          del: '#B7DE8F',       // DEL keycap (green)
+          accent: '#F59418',    // orange accent from the icons
         },
       },
       boxShadow: {
