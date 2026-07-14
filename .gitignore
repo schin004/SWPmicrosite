@@ -26,3 +26,4 @@ dist-rabbit
 *.zip
 dist-single
 swpmicrosite.html
+rabbit-deploy/
