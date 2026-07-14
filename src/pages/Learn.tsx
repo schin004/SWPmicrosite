@@ -8,9 +8,9 @@ const CARDS = [
   {
     icon: TrendingUp,
     category: 'Growth',
-    title: 'Career Development',
-    summary: 'SWP creates clear career pathways tailored to your strengths and aspirations.',
-    detail: 'Through Strategic Workforce Planning, NParks maps out individual career trajectories. You\'ll gain access to structured upskilling programmes, mentorship opportunities, and cross-functional projects that prepare you for roles of the future — all personalised to your unique profile.',
+    title: 'Grow with the Future',
+    summary: 'Discover future career opportunities and access learning aligned to NParks\' future needs.',
+    detail: 'Discover future career opportunities, build critical capabilities and access learning aligned to NParks\' future needs.',
     accent: 'blue' as const,
     bg: 'from-blue-50 to-blue-100/50',
     border: 'border-b-blue-300',
@@ -19,11 +19,11 @@ const CARDS = [
     backBg: 'from-blue-500 to-blue-700',
   },
   {
-    icon: Users,
-    category: 'Collaboration',
-    title: 'Team Excellence',
-    summary: 'Build stronger teams through better understanding of collective capabilities.',
-    detail: 'SWP enables leaders to visualise team competencies in real-time, identify gaps, and proactively build skills before they\'re urgently needed. This means better collaboration, more agile project delivery, and teams that thrive under any challenge.',
+    icon: Compass,
+    category: 'Readiness',
+    title: 'Stay Ahead of Change',
+    summary: 'Build confidence to adapt to AI, technology and changing job requirements.',
+    detail: 'Build confidence to adapt to AI, technology and changing job requirements through continuous learning.',
     accent: 'purple' as const,
     bg: 'from-purple-50 to-purple-100/50',
     border: 'border-b-purple-300',
@@ -32,11 +32,11 @@ const CARDS = [
     backBg: 'from-purple-500 to-purple-700',
   },
   {
-    icon: Compass,
-    category: 'Direction',
-    title: 'Organisational Clarity',
-    summary: 'Align individual roles with NParks\' long-term strategic direction.',
-    detail: 'SWP ensures every role at NParks is purposefully connected to our mission. You\'ll have clarity on how your work contributes to NParks\' vision, making your day-to-day more meaningful and helping leadership make informed resourcing decisions.',
+    icon: Lightbulb,
+    category: 'Focus',
+    title: 'Spend More Time on What Matters',
+    summary: 'Simplify work through better processes, automation and AI.',
+    detail: 'Simplify work through better processes, automation and AI so you can focus on meaningful, impactful work.',
     accent: 'teal' as const,
     bg: 'from-teal-50 to-teal-100/50',
     border: 'border-b-teal-300',
@@ -45,11 +45,11 @@ const CARDS = [
     backBg: 'from-teal-500 to-teal-700',
   },
   {
-    icon: Lightbulb,
-    category: 'Innovation',
-    title: 'Future Readiness',
-    summary: 'Stay ahead of industry shifts with proactive workforce intelligence.',
-    detail: 'SWP uses data and foresight tools to anticipate how technology, policy, and global trends will reshape our workforce needs. Being part of this means you\'re always prepared — not just reacting to change, but leading it with confidence.',
+    icon: Users,
+    category: 'Co-creation',
+    title: 'Help Shape the Future',
+    summary: 'Your ideas matter. SWP is co-created with officers.',
+    detail: 'Your ideas matter. SWP is co-created with officers to develop practical solutions that improve the way we work.',
     accent: 'orange' as const,
     bg: 'from-orange-50 to-orange-100/50',
     border: 'border-b-orange-300',
@@ -87,8 +87,8 @@ export default function Learn() {
             Step 1 of 4
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">
-            How Will SWP{' '}
-            <span className="gradient-text">Benefit Me?</span>
+            What's In It{' '}
+            <span className="gradient-text">For Me?</span>
           </h1>
           <p className="text-gray-500 text-lg max-w-xl mx-auto leading-relaxed">
             Tap any card to explore how Strategic Workforce Planning shapes your future at NParks.

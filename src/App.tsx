@@ -2,7 +2,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { JourneyProvider, useJourney } from './context/JourneyContext';
 import Navigation from './components/Navigation';
 import BackgroundDecor from './components/BackgroundDecor';
-import DebugBadge from './components/DebugBadge';
 import Home from './pages/Home';
 import Journey from './pages/Journey';
 import Pulse from './pages/Pulse';
@@ -45,7 +44,6 @@ export default function App() {
   return (
     <JourneyProvider>
       <AppInner />
-      <DebugBadge />
     </JourneyProvider>
   );
 }
