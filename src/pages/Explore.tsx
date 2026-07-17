@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, X, Trees, PawPrint, Bird, Telescope } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
@@ -116,6 +117,14 @@ function IdeaModal({ modal, reactions, comments, onReact, onComment, onSave, onC
   const [saved, setSaved] = useState(false);
   const MAX = 300;
 
+  // Lock background scroll while the modal is open so the page behind
+  // doesn't interfere with modal scrolling.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const handleSave = () => {
     setSaved(true);
     setTimeout(() => {
@@ -124,32 +133,32 @@ function IdeaModal({ modal, reactions, comments, onReact, onComment, onSave, onC
     }, 900);
   };
 
-  return (
+  return createPortal(
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[9999] overflow-y-auto flex items-start justify-center p-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {/* Backdrop */}
+      {/* Backdrop — fixed so it always covers the viewport, even while the overlay scrolls */}
       <motion.div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       />
 
-      {/* Modal panel */}
+      {/* Modal panel — sits at top with breathing room; whole overlay scrolls if tall */}
       <motion.div
-        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg my-auto"
         initial={{ scale: 0.92, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 22, stiffness: 280 }}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur-sm rounded-t-3xl px-7 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between gap-3 z-10">
+        <div className="bg-white/95 backdrop-blur-sm rounded-t-3xl px-7 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Idea</p>
             <h2 className="text-xl font-bold text-gray-900 leading-tight">{idea.label}</h2>
@@ -251,7 +260,8 @@ function IdeaModal({ modal, reactions, comments, onReact, onComment, onSave, onC
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
@@ -300,7 +310,7 @@ function WorkgroupCard({ wg, wgComment, onIdeaClick, onWgCommentChange, onWgBlur
                 key={idea.id}
                 onClick={() => onIdeaClick(idea, wg.id)}
                 className={`
-                  group flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium border transition-all duration-200
+                  group flex items-start gap-1.5 px-3.5 py-2 rounded-2xl text-sm font-medium border text-left leading-snug transition-all duration-200
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
                   ${hasReaction
                     ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 text-blue-700'
@@ -309,8 +319,8 @@ function WorkgroupCard({ wg, wgComment, onIdeaClick, onWgCommentChange, onWgBlur
                 `}
                 aria-label={`Explore idea: ${idea.label}`}
               >
-                {hasReaction && <span className="text-xs">✓</span>}
-                {idea.label}
+                {hasReaction && <span className="text-xs mt-0.5 flex-shrink-0">✓</span>}
+                <span>{idea.label}</span>
               </button>
             );
           })}
