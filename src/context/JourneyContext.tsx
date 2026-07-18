@@ -72,7 +72,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
     setCompletedSteps(prev => new Set([...prev, s]));
   };
 
-  // Hydrate from Supabase on first load
+  // Hydrate saved progress from the backend (Neon) on first load
   useEffect(() => {
     loadUserProgress(sessionId).then(progress => {
       // Restore Explore state
