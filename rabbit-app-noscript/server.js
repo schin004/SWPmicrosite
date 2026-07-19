@@ -77,7 +77,7 @@ const REACTIONS = [
   { id: 'needs-thought', emoji: '🤔', label: 'Needs more thought' },
   { id: 'interesting', emoji: '💡', label: 'Interesting' },
 ];
-const CATEGORIES = ['Skills', 'Technology', 'Ways of Working', 'Workplace Culture'];
+const CATEGORIES = ['Work Priorities & Processes', 'Technology & AI', 'Skills & Careers', 'Collaboration & Culture', 'Leadership & Support', 'Others'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -199,9 +199,9 @@ app.get('/about', (req, res) => {
       <h1 style="color:#fff"><span class="accent">Ctrl • Alt • Del</span></h1>
       <p style="font-size:18px;color:#cbd5e1">Shaping the Future of Work Together</p></div>
     <div class="card">
-      <p>The way we work is changing. Technology is advancing rapidly, our operating environment is becoming more complex, expectations continue to evolve, and manpower will remain tight.</p>
-      <p>To continue delivering our mission, we need to work differently—not simply work harder.</p>
-      <p>Strategic Workforce Planning (SWP) is how NParks is preparing for this future—not by simply adding more people, but by redesigning work, strengthening capabilities and making better use of technology so we can continue delivering our mission.</p>
+      <p>The way we work is changing. Technology is advancing rapidly, our operating environment is becoming more complex, expectations continue to evolve, and resources will remain tight.</p>
+      <p>To continue delivering our mission, we need to work differently.</p>
+      <p>Strategic Workforce Planning (SWP) is how NParks is preparing for the future by redesigning work, building capabilities, improving how we organise ourselves and using technology better, so we can continue delivering our mission.</p>
       <p>Through SWP, officers across NParks are working together to rethink how work is done, identify better ways of working, and build a future-ready workforce where everyone can contribute at their best.</p>
     </div>
     <div class="card"><h2>Why Ctrl • Alt • Del?</h2>
@@ -212,7 +212,7 @@ app.get('/about', (req, res) => {
         <div class="stat"><div class="n" style="color:#14b8a6">DEL</div>Free up capacity for higher-impact work</div>
       </div></div>
     <div class="card"><h2>SWP in One Minute</h2><ul>
-      <li>Redesign work before redesigning jobs.</li><li>Bring people, processes and technology together.</li>
+      <li>Redesign how work gets done for better outcomes before redefining roles.</li><li>Bring people, processes and technology together.</li>
       <li>Build future-ready skills and careers.</li><li>Solve real operational challenges with the business.</li>
       <li>Shape the future of NParks together.</li></ul></div>
     <div class="card" style="text-align:center;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff">
@@ -221,18 +221,29 @@ app.get('/about', (req, res) => {
       <a class="btn alt" href="/explore">Explore the Ideas →</a></div>` }));
 });
 
+const LICON = {
+  target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  compass: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+  sprout: '<path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/>',
+  messages: '<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>',
+};
+function iconBox(paths, color, tint) {
+  return `<span aria-hidden="true" style="display:inline-flex;width:44px;height:44px;border-radius:12px;background:${tint};color:${color};align-items:center;justify-content:center;margin-bottom:12px">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg></span>`;
+}
+
 app.get('/learn', async (req, res) => {
   getSession(req, res);
   const cards = [
-    ['Grow with the Future', 'Discover future career opportunities, build critical capabilities and access learning aligned to NParks\' future needs.'],
-    ['Stay Ahead of Change', 'Build confidence to adapt to AI, technology and changing job requirements through continuous learning.'],
-    ['Spend More Time on What Matters', 'Simplify work through better processes, automation and AI so you can focus on meaningful, impactful work.'],
-    ['Help Shape the Future', 'Your ideas matter. SWP is co-created with officers to develop practical solutions that improve the way we work.'],
+    ['Spend More Time on What Matters', 'Identify what matters most, review and simplify work, and use better processes, automation and AI to free up time for meaningful, impactful work.', LICON.target, '#0d9488', '#ccfbf1'],
+    ['Stay Ahead of Change', 'Build confidence to adapt as work, technology and roles evolve — by learning continuously and using tools, data and AI to work better.', LICON.compass, '#2563eb', '#dbeafe'],
+    ['Grow with the Future', 'See future career pathways more clearly, build critical capabilities, and access learning that helps you grow with NParks’ evolving needs.', LICON.sprout, '#16a34a', '#dcfce7'],
+    ['Help Shape the Future', 'Your ideas matter. SWP is co-created with officers to develop practical solutions that improve the way we work.', LICON.messages, '#d97706', '#fef3c7'],
   ];
   res.send(layout({ title: 'Learn', active: '/learn', body: stepbar('learn') + `
     <h1>What's In It <span class="accent">For Me?</span></h1>
     <p class="muted">How Strategic Workforce Planning shapes your future at NParks.</p>
-    <div class="grid two">${cards.map(([t, d]) => `<div class="card"><h3>${t}</h3><p class="muted">${d}</p></div>`).join('')}</div>
+    <div class="grid two">${cards.map(([t, d, ic, col, tint]) => `<div class="card">${iconBox(ic, col, tint)}<h3>${t}</h3><p class="muted">${d}</p></div>`).join('')}</div>
     <p><a class="btn" href="/explore">Continue to Explore →</a></p>` }));
 });
 
@@ -267,7 +278,7 @@ app.get('/explore', async (req, res) => {
       <form method="post" action="/explore-contribution" style="margin-top:16px;border-top:1px solid #eef2f7;padding-top:14px">
         <input type="hidden" name="workgroupId" value="${wg.id}">
         <label>How would you Ctrl. Alt. Delete. the way this workgroup works?</label>
-        <p class="muted" style="font-size:13px;margin:2px 0">Share one suggestion that could help this workgroup prepare for the future.</p>
+        <p class="muted" style="font-size:13px;margin:2px 0">Share one suggestion for this workgroup</p>
         <textarea name="contribution" maxlength="300" rows="3" placeholder="Share your thoughts here...">${esc(wgc)}</textarea>
         <p style="margin-top:10px"><button class="btn" type="submit">Save contribution</button>
         ${savedId===('wg-'+wg.id)?'<span class="saved" style="margin-left:10px">✓ Saved!</span>':''}</p>
@@ -313,7 +324,7 @@ app.get('/imagine', async (req, res) => {
   const sid = getSession(req, res);
   const prog = await loadProgress(sid);
   const cur = prog.idea || { idea_text: '', category: '' };
-  const opts = CATEGORIES.map(c => `<label class="rx"><input type="radio" name="category" value="${c}" ${cur.category===c?'checked':''}> ${c}</label>`).join('');
+  const opts = CATEGORIES.map(c => `<label class="rx"><input type="radio" name="category" value="${esc(c)}" ${cur.category===c?'checked':''}> ${esc(c)}</label>`).join('');
   res.send(layout({ title: 'Imagine', active: '/learn', body: stepbar('imagine', ['learn','explore']) + `
     <h1><span class="accent">Imagine</span></h1>
     <p class="muted">If you could improve one thing about the future of work at NParks, what would it be?</p>

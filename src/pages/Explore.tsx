@@ -339,7 +339,7 @@ function WorkgroupCard({ wg, wgComment, onIdeaClick, onWgCommentChange, onWgBlur
           How would you Ctrl. Alt. Delete. the way this workgroup works?
         </p>
         <p className="text-xs text-gray-400 mb-3">
-          Share one suggestion that could help this workgroup prepare for the future.
+          Share one suggestion for this workgroup
         </p>
         <textarea
           value={wgComment}

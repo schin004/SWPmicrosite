@@ -1,13 +1,16 @@
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, Briefcase, Cpu, GitBranch, Heart } from 'lucide-react';
+import { Sparkles, ArrowRight, Briefcase, Cpu, GitBranch, Heart, Compass } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
 import { submitIdea } from '../lib/db';
 
+// id = label so the saved category value matches the visible label.
 const CATEGORIES = [
-  { id: 'skills', label: 'Skills', icon: Briefcase, color: 'blue' },
-  { id: 'technology', label: 'Technology', icon: Cpu, color: 'purple' },
-  { id: 'ways-of-working', label: 'Ways of Working', icon: GitBranch, color: 'teal' },
-  { id: 'workplace-culture', label: 'Workplace Culture', icon: Heart, color: 'orange' },
+  { id: 'Work Priorities & Processes', label: 'Work Priorities & Processes', icon: Briefcase, color: 'blue' },
+  { id: 'Technology & AI', label: 'Technology & AI', icon: Cpu, color: 'purple' },
+  { id: 'Skills & Careers', label: 'Skills & Careers', icon: GitBranch, color: 'teal' },
+  { id: 'Collaboration & Culture', label: 'Collaboration & Culture', icon: Heart, color: 'orange' },
+  { id: 'Leadership & Support', label: 'Leadership & Support', icon: Compass, color: 'green' },
+  { id: 'Others', label: 'Others', icon: Sparkles, color: 'red' },
 ];
 
 const COLOR_MAP: Record<string, { pill: string; active: string }> = {
@@ -15,6 +18,8 @@ const COLOR_MAP: Record<string, { pill: string; active: string }> = {
   purple: { pill: 'border-purple-200 text-purple-600 hover:bg-purple-50', active: 'bg-purple-500 text-white border-purple-500' },
   teal: { pill: 'border-teal-200 text-teal-600 hover:bg-teal-50', active: 'bg-teal-500 text-white border-teal-500' },
   orange: { pill: 'border-orange-200 text-orange-500 hover:bg-orange-50', active: 'bg-orange-400 text-white border-orange-400' },
+  green: { pill: 'border-green-200 text-green-600 hover:bg-green-50', active: 'bg-green-500 text-white border-green-500' },
+  red: { pill: 'border-red-200 text-red-500 hover:bg-red-50', active: 'bg-red-400 text-white border-red-400' },
 };
 
 const MAX_CHARS = 500;

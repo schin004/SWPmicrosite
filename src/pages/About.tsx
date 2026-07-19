@@ -58,7 +58,7 @@ const AREAS = [
 ];
 
 const ONE_MINUTE = [
-  'Redesign work before redesigning jobs.',
+  'Redesign how work gets done for better outcomes before redefining roles.',
   'Bring people, processes and technology together.',
   'Build future-ready skills and careers.',
   'Solve real operational challenges with the business.',
@@ -104,13 +104,13 @@ export default function About() {
         >
           <div className="max-w-3xl mx-auto space-y-4 text-gray-600 leading-relaxed text-lg">
             <p>
-              The way we work is changing. Technology is advancing rapidly, our operating environment is becoming more complex, expectations continue to evolve, and manpower will remain tight.
+              The way we work is changing. Technology is advancing rapidly, our operating environment is becoming more complex, expectations continue to evolve, and resources will remain tight.
             </p>
             <p>
-              To continue delivering our mission, we need to work differently—not simply work harder.
+              To continue delivering our mission, we need to work differently.
             </p>
             <p>
-              Strategic Workforce Planning (SWP) is how NParks is preparing for this future—not by simply adding more people, but by redesigning work, strengthening capabilities and making better use of technology so we can continue delivering our mission.
+              Strategic Workforce Planning (SWP) is how NParks is preparing for the future by redesigning work, building capabilities, improving how we organise ourselves and using technology better, so we can continue delivering our mission.
             </p>
             <p>
               Through SWP, officers across NParks are working together to rethink how work is done, identify better ways of working, and build a future-ready workforce where everyone can contribute at their best.
