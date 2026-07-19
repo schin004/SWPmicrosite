@@ -22,10 +22,13 @@ export default defineConfig({
         // (e.g. government CSP) block inline scripts, so external same-origin
         // scripts are required.
         assetsInlineLimit: 0,
+        // Emit a single classic (IIFE) script — NOT an ES module — so it loads
+        // without CORS mode, which restrictive proxies/browser-isolation break.
         rollupOptions: {
           output: {
+            format: 'iife',
+            inlineDynamicImports: true,
             entryFileNames: 'app.js',
-            chunkFileNames: 'app-[name].js',
             assetFileNames: 'app.[ext]',
           },
         },
