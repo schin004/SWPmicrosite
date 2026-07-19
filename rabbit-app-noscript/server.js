@@ -24,6 +24,22 @@ const pool = DATABASE_URL
 
 if (!pool) console.warn('[server] DATABASE_URL not set — data will not persist.');
 
+// ─── Access gate (shared passcode + captured NParks email) ──────────────────────
+// One shared code for the whole conference. Set ACCESS_CODE (and optionally
+// ALLOWED_EMAIL_DOMAIN) in the Rabbit service env. Passing the gate sets a
+// cookie; the email is recorded server-side (never shown on the public Pulse).
+const ACCESS_CODE = (process.env.ACCESS_CODE || 'NPARKS2026').trim();
+const EMAIL_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || 'gov.sg').trim().toLowerCase();
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const hasGate = req => /(?:^|;\s*)swp_gate=1(?:;|$)/.test(req.headers.cookie || '');
+
+// Require sign-in before anything else (health check + the gate itself are open).
+app.use((req, res, next) => {
+  if (req.path === '/gate' || req.path === '/api/health') return next();
+  if (hasGate(req)) return next();
+  return res.redirect('/gate');
+});
+
 // Record every unique visitor (anyone who opens any page), once per session.
 app.use((req, res, next) => {
   const sid = getSession(req, res);
@@ -57,6 +73,9 @@ async function ensureSchema() {
     -- Every unique visitor (anyone who opens any page), recorded once.
     create table if not exists visitors (
       session_id text primary key, first_seen timestamptz default now());
+    -- Staff who signed in through the access gate (email captured once per session).
+    create table if not exists gate_entries (
+      session_id text primary key, email text, entered_at timestamptz default now());
   `);
   console.log('[server] schema ready');
 }
@@ -118,8 +137,8 @@ const LOGO = `<span style="display:inline-flex;gap:3px;vertical-align:middle">
 
 const STEPS = [ ['learn','Learn'], ['explore','Explore'], ['imagine','Imagine'], ['pledge','Pledge'] ];
 
-function layout({ title, body, active = '' }) {
-  const nav = [['/', 'Home'], ['/learn', 'Journey'], ['/pulse', 'Pulse'], ['/about', 'About SWP']]
+function layout({ title, body, active = '', hideNav = false }) {
+  const nav = hideNav ? '' : [['/', 'Home'], ['/learn', 'Journey'], ['/pulse', 'Pulse'], ['/about', 'About SWP']]
     .map(([href, label]) => `<a href="${href}" class="${active === href ? 'on' : ''}">${label}</a>`).join('');
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -191,6 +210,47 @@ async function loadProgress(sid) {
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ ok: true, db: Boolean(pool) }));
+
+function gatePage({ error = '', email = '' } = {}) {
+  return layout({ title: 'Staff Sign In', hideNav: true, body: `
+    <div class="card" style="max-width:440px;margin:30px auto">
+      <div style="text-align:center;transform:scale(1.3);margin:6px 0 18px">${LOGO}</div>
+      <h1 style="font-size:24px;text-align:center;margin-top:0">Staff Access</h1>
+      <p class="muted" style="text-align:center">This site is for NParks staff. Enter your NParks email and the access code shared at the conference to continue.</p>
+      ${error ? `<p style="color:#dc2626;font-weight:700;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px">${esc(error)}</p>` : ''}
+      <form method="post" action="/gate">
+        <label>NParks email</label>
+        <input type="text" name="email" value="${esc(email)}" placeholder="you@nparks.gov.sg" autocomplete="email" required>
+        <label style="display:block;margin-top:14px">Access code</label>
+        <input type="text" name="code" placeholder="Enter the conference access code" required>
+        <p style="margin-top:18px"><button class="btn" type="submit" style="width:100%">Enter →</button></p>
+      </form>
+    </div>` });
+}
+
+app.get('/gate', (req, res) => {
+  if (hasGate(req)) return res.redirect('/');
+  res.send(gatePage());
+});
+
+app.post('/gate', (req, res) => {
+  const email = (req.body.email || '').trim();
+  const code = (req.body.code || '').trim();
+  if (code !== ACCESS_CODE) {
+    return res.send(gatePage({ error: 'Incorrect access code. Please check the code shared at the conference.', email }));
+  }
+  const domain = (email.split('@')[1] || '').toLowerCase();
+  const okDomain = domain === EMAIL_DOMAIN || domain.endsWith('.' + EMAIL_DOMAIN);
+  if (!EMAIL_RE.test(email) || !okDomain) {
+    return res.send(gatePage({ error: `Please enter a valid NParks email address (ending in @${EMAIL_DOMAIN}).`, email }));
+  }
+  const sid = getSession(req, res);
+  res.append('Set-Cookie', 'swp_gate=1; Path=/; Max-Age=2592000; SameSite=Lax');
+  if (pool) pool.query(
+    'insert into gate_entries (session_id, email) values ($1,$2) on conflict (session_id) do update set email=excluded.email',
+    [sid, email.slice(0, 200)]).catch(() => {});
+  res.redirect('/');
+});
 
 app.get('/', (req, res) => {
   getSession(req, res);
