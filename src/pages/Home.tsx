@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, BarChart2, Sparkles, Users, Zap } from 'lucide-react';
+import { ArrowRight, BarChart2, Sparkles, Users, Zap, BookOpen, Compass, Lightbulb, Flag } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
 import { fetchHomeStats } from '../lib/db';
 import type { HomeStats } from '../lib/db';
@@ -169,16 +169,16 @@ export default function Home() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { step: 1, label: 'Learn', desc: 'Discover how SWP benefits you and your team', color: 'from-blue-400 to-blue-600' },
-              { step: 2, label: 'Explore', desc: 'Explore ideas from NParks workgroups and share your perspective', color: 'from-purple-400 to-purple-600' },
-              { step: 3, label: 'Imagine', desc: 'Share one idea that could improve the future of work at NParks', color: 'from-teal-400 to-teal-600' },
-              { step: 4, label: 'Pledge', desc: 'Visit the Future of Work Booth and make your commitment', color: 'from-orange-400 to-orange-600' },
+              { step: 1, label: 'Learn', desc: 'Discover how SWP benefits you and your team', color: 'from-blue-400 to-blue-600', Icon: BookOpen },
+              { step: 2, label: 'Explore', desc: 'Explore ideas from NParks workgroups and share your perspective', color: 'from-purple-400 to-purple-600', Icon: Compass },
+              { step: 3, label: 'Imagine', desc: 'Share your ideas to improve the future of work at NParks', color: 'from-teal-400 to-teal-600', Icon: Lightbulb },
+              { step: 4, label: 'Pledge', desc: 'Visit the Future of Work Booth and make your commitment', color: 'from-orange-400 to-orange-600', Icon: Flag },
             ].map(item => (
               <div key={item.step} className="flex flex-col items-center text-center gap-3">
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-white font-bold text-lg shadow-md`}>
-                  {item.step}
+                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-white shadow-md`}>
+                  <item.Icon className="w-6 h-6" aria-hidden="true" />
                 </div>
-                <div className="font-semibold text-gray-900">{item.label}</div>
+                <div className="font-semibold text-gray-900">{item.step} · {item.label}</div>
                 <div className="text-sm text-gray-500 leading-relaxed">{item.desc}</div>
               </div>
             ))}

@@ -31,7 +31,9 @@ async function ensureSchema() {
     create extension if not exists pgcrypto;
     create table if not exists idea_submissions (
       id uuid primary key default gen_random_uuid(), created_at timestamptz default now(),
-      updated_at timestamptz default now(), session_id text unique not null, idea_text text, category text);
+      updated_at timestamptz default now(), session_id text not null, idea_text text, category text);
+    -- Allow multiple ideas per user: drop the old one-idea-per-session constraint if present.
+    alter table idea_submissions drop constraint if exists idea_submissions_session_id_key;
     create table if not exists explore_reactions (
       id uuid primary key default gen_random_uuid(), created_at timestamptz default now(),
       updated_at timestamptz default now(), session_id text not null, workgroup_id text, idea_id text not null,
@@ -183,12 +185,15 @@ app.get('/', (req, res) => {
       <a class="btn" href="/learn">Start My Journey →</a>
       <a class="btn alt" href="/pulse" style="margin-left:8px">View Live Pulse</a>
     </div>
-    <div class="card"><h2>Your Journey</h2><div class="grid two">
-      <div><h3>1 · Learn</h3><p class="muted">Discover how SWP benefits you and your team.</p></div>
-      <div><h3>2 · Explore</h3><p class="muted">Explore ideas from NParks workgroups and share your perspective.</p></div>
-      <div><h3>3 · Imagine</h3><p class="muted">Share one idea to improve the future of work at NParks.</p></div>
-      <div><h3>4 · Pledge</h3><p class="muted">Visit the Future of Work Booth and make your commitment.</p></div>
-    </div><p style="margin-top:18px"><a class="btn" href="/learn">Begin Now →</a></p></div>` }));
+    <h2 style="margin-top:8px">Your Journey</h2>
+    <p class="muted">Four simple steps to shape the future of NParks.</p>
+    <div class="grid two">
+      <div class="card">${iconBox(JICON.book, '#2563eb', '#dbeafe')}<h3>1 · Learn</h3><p class="muted">Discover how SWP benefits you and your team.</p></div>
+      <div class="card">${iconBox(JICON.compass, '#7c3aed', '#ede9fe')}<h3>2 · Explore</h3><p class="muted">Explore ideas from NParks workgroups and share your perspective.</p></div>
+      <div class="card">${iconBox(JICON.bulb, '#0d9488', '#ccfbf1')}<h3>3 · Imagine</h3><p class="muted">Share your ideas to improve the future of work at NParks.</p></div>
+      <div class="card">${iconBox(JICON.flag, '#d97706', '#fef3c7')}<h3>4 · Pledge</h3><p class="muted">Visit the Future of Work Booth and make your commitment.</p></div>
+    </div>
+    <p style="text-align:center;margin-top:8px"><a class="btn" href="/learn">Begin Now →</a></p>` }));
 });
 
 app.get('/about', (req, res) => {
@@ -226,6 +231,13 @@ const LICON = {
   compass: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
   sprout: '<path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/>',
   messages: '<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>',
+};
+// Home journey-step icons (line style, inline SVG — no external assets)
+const JICON = {
+  book: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>',
+  compass: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+  bulb: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+  flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
 };
 function iconBox(paths, color, tint) {
   return `<span aria-hidden="true" style="display:inline-flex;width:44px;height:44px;border-radius:12px;background:${tint};color:${color};align-items:center;justify-content:center;margin-bottom:12px">
@@ -322,30 +334,41 @@ app.post('/explore-contribution', async (req, res) => {
 
 app.get('/imagine', async (req, res) => {
   const sid = getSession(req, res);
-  const prog = await loadProgress(sid);
-  const cur = prog.idea || { idea_text: '', category: '' };
-  const opts = CATEGORIES.map(c => `<label class="rx"><input type="radio" name="category" value="${esc(c)}" ${cur.category===c?'checked':''}> ${esc(c)}</label>`).join('');
+  let myCount = 0;
+  if (pool) {
+    const c = await pool.query('select count(*)::int n from idea_submissions where session_id=$1', [sid]);
+    myCount = c.rows[0].n;
+  }
+  const submitted = req.query.submitted === '1';
+  // Blank form every time — each submission adds a new idea.
+  const opts = CATEGORIES.map(c => `<label class="rx"><input type="radio" name="category" value="${esc(c)}"> ${esc(c)}</label>`).join('');
+  const banner = submitted
+    ? `<div class="card" style="background:#dcfce7;border-color:#bbf7d0"><b class="saved">✓ Idea submitted!</b> Add another idea below, or continue to your pledge.</div>` : '';
+  const countLine = myCount > 0
+    ? `<p class="muted">You've shared <b>${myCount}</b> idea${myCount===1?'':'s'} so far. You can submit as many as you like.</p>` : '';
   res.send(layout({ title: 'Imagine', active: '/learn', body: stepbar('imagine', ['learn','explore']) + `
     <h1><span class="accent">Imagine</span></h1>
     <p class="muted">If you could improve one thing about the future of work at NParks, what would it be?</p>
+    ${banner}${countLine}
     <div class="card"><form method="post" action="/imagine">
       <label>Choose a category</label><div style="margin:6px 0 14px">${opts}</div>
       <label>Your idea</label>
-      <textarea name="ideaText" rows="5" maxlength="500" required placeholder="What would you improve, rethink, or reset about the future of work at NParks?">${esc(cur.idea_text)}</textarea>
+      <textarea name="ideaText" rows="5" maxlength="500" required placeholder="What would you improve, rethink, or reset about the future of work at NParks?"></textarea>
       <p style="margin-top:14px"><button class="btn" type="submit">Submit My Idea →</button></p>
-    </form></div>` }));
+    </form></div>
+    <p style="text-align:center"><a class="btn alt" href="/pledge">Continue to Pledge →</a></p>` }));
 });
 
 app.post('/imagine', async (req, res) => {
   const sid = getSession(req, res);
   const { ideaText, category } = req.body;
   if (pool && (ideaText || '').trim()) {
+    // Plain insert — a user can submit multiple ideas, each a separate row.
     await pool.query(
-      `insert into idea_submissions (session_id, idea_text, category, updated_at) values ($1,$2,$3,now())
-       on conflict (session_id) do update set idea_text=excluded.idea_text, category=excluded.category, updated_at=now()`,
+      `insert into idea_submissions (session_id, idea_text, category) values ($1,$2,$3)`,
       [sid, ideaText.slice(0,500), category || null]);
   }
-  res.redirect('/pledge');
+  res.redirect('/imagine?submitted=1');
 });
 
 app.get('/pledge', async (req, res) => {
