@@ -43,7 +43,9 @@ const WORKGROUPS: Workgroup[] = [
       { id: 'ugpm_operator_to_orchestrator', label: 'From Operator to Orchestrator', description: `NParks will work more deliberately with industry, IHLs and community partners on clearly defined areas where they can contribute more effectively, redesigning how we partner so that their interests are genuinely aligned with the outcomes we want. NParks will continue to lead strategically, set standards and remain accountable for outcomes, public safety and public trust.` },
       { id: 'ugpm_neighbourhood_stewards', label: 'Empowering Communities as Neighbourhood Stewards', description: `NParks will explore how community groups can take on more meaningful stewardship of their neighbourhood green spaces, including real decision-making roles in how spaces are used and cared for. This will be tested through pilots like Bishan-Ang Mo Kio Park, with NParks remaining accountable for public safety and maintenance standards.` },
       { id: 'ugpm_organising_teams', label: 'Organising Teams Around the Work', description: `Some work is best done by area-based teams who know their patch deeply. Other work - like policy, standards and systems - is best done by project-based teams that cut across the organisation. The idea is to have both, so that each have the right people and the right focus. NParks will test these models through pilots or paper exercises before considering broader structural changes.` },
-      { id: 'ugpm_specialist_expertise', label: 'Deepening Specialist Expertise', description: `Staff are currently stretched across too many domains, with limited opportunity to go deep. NParks will clarify future competencies and career pathways so that officers can deepen expertise in areas such as arboriculture, horticulture, plant health, ecology and operations technology, building specialist depth alongside generalist breadth.` },
+      { id: 'ugpm_specialist_expertise', label: 'Deepening Specialist Expertise', description: `Greater complexity in our work calls for greater depth in our people.
+
+NParks will clarify future competencies and career pathways so that officers can deepen expertise in areas such as arboriculture, horticulture, plant health, ecology and operations technology, building specialist depth alongside generalist breadth.` },
     ],
   },
   {
@@ -173,8 +175,12 @@ function IdeaModal({ modal, reactions, comments, onReact, onComment, onSave, onC
         </div>
 
         <div className="px-7 py-5 space-y-6">
-          {/* Description */}
-          <p className="text-gray-600 text-sm leading-relaxed">{idea.description}</p>
+          {/* Description — supports multiple paragraphs split on blank lines */}
+          <div className="space-y-3">
+            {idea.description.split('\n\n').map((para, i) => (
+              <p key={i} className="text-gray-600 text-sm leading-relaxed">{para}</p>
+            ))}
+          </div>
 
           {/* Reactions */}
           <div>
