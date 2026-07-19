@@ -16,5 +16,18 @@ export default defineConfig({
   base: process.env.VITE_BASE || './',
   build: singleFile
     ? { assetsInlineLimit: 100_000_000 } // inline the logo (and all assets) as data URIs
-    : {},
+    : {
+        // Multi-file build: emit predictable, un-hashed, root-level filenames
+        // (app.js / app.css) as SEPARATE external files. Restrictive networks
+        // (e.g. government CSP) block inline scripts, so external same-origin
+        // scripts are required.
+        assetsInlineLimit: 0,
+        rollupOptions: {
+          output: {
+            entryFileNames: 'app.js',
+            chunkFileNames: 'app-[name].js',
+            assetFileNames: 'app.[ext]',
+          },
+        },
+      },
 })
