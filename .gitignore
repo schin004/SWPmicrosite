@@ -1,33 +1,34 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
+# Editor directories and files
+# Logs
+*.local
+*.log
 *.njsproj
+*.ntvs*
 *.sln
+*.suo
 *.sw?
-dist-rabbit
 *.zip
+.DS_Store
+.idea
+.vscode/*
+dist
+dist-rabbit
 dist-single
-swpmicrosite.html
+dist-ssr
+lerna-debug.log*
+logs
+node_modules
+npm-debug.log*
+pnpm-debug.log*
+rabbit-app-noscript/*.txt
+rabbit-app-noscript/node_modules/
+rabbit-app/
 rabbit-deploy/
+swp-source-b64.txt
 swp-source.zip
 swp-source.zip.txt
-swp-source-b64.txt
-rabbit-app/
+swpmicrosite.html
+yarn-debug.log*
+yarn-error.log*
