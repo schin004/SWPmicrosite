@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Route, Lightbulb, Heart, TrendingUp, Activity } from 'lucide-react';
+import { Users, ThumbsUp, Lightbulb, Heart, TrendingUp, Activity } from 'lucide-react';
 import { fetchPulseData } from '../lib/db';
 import type { PulseData } from '../lib/db';
 
@@ -50,9 +50,9 @@ export default function Pulse() {
       iconBg: 'bg-blue-100', iconColor: 'text-blue-600', changeColor: 'text-blue-600 bg-blue-50',
     },
     {
-      label: 'Journeys Completed',
-      value: data ? fmt(data.journeysCompleted) : '—',
-      icon: Route,
+      label: 'Reactions Shared',
+      value: data ? fmt(data.reactionBreakdown.reduce((s, r) => s + r.count, 0)) : '—',
+      icon: ThumbsUp,
       bg: 'from-purple-50 to-purple-100/40', border: 'border-b-purple-400',
       iconBg: 'bg-purple-100', iconColor: 'text-purple-600', changeColor: 'text-purple-600 bg-purple-50',
     },

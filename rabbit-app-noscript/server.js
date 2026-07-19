@@ -432,6 +432,7 @@ app.get('/pulse', async (req, res) => {
   const maxw = words[0]?.[1] || 1;
   const cat = {}; allIdeas.forEach(r=>{const c=r.category||'Uncategorised';cat[c]=(cat[c]||0)+1;});
   const rx = {}; reactions.forEach(r=>{if(r.reaction)rx[r.reaction]=(rx[r.reaction]||0)+1;});
+  const reactionsCount = reactions.filter(r=>r.reaction).length;
   const colors = ['#3b82f6','#8b5cf6','#14b8a6','#f59418','#ef4444','#22c55e'];
   res.send(layout({ title: 'Pulse', active: '/pulse', body: `
     <div class="pill" style="background:#dcfce7;color:#16a34a">● LIVE — refresh this page to update</div>
@@ -439,7 +440,7 @@ app.get('/pulse', async (req, res) => {
     <p class="muted">Live insights from NParks Staff Conference 2026 participants.</p>
     <div class="grid two" style="grid-template-columns:repeat(2,1fr)">
       <div class="stat"><div class="n">${visitors}</div>Visitors Today</div>
-      <div class="stat"><div class="n">${pledges}</div>Journeys Completed</div>
+      <div class="stat"><div class="n">${reactionsCount}</div>Reactions Shared</div>
       <div class="stat"><div class="n">${ideas}</div>Ideas Shared</div>
       <div class="stat"><div class="n">${pledges}</div>Pledges Made</div></div>
     <div class="card"><h2>Idea Word Cloud</h2>${words.length?words.map(([w,c],i)=>`<span class="word" style="font-size:${13+Math.round(c/maxw*22)}px;color:${colors[i%colors.length]}">${esc(w)}</span>`).join(''):'<p class="muted">Word cloud will appear once ideas are submitted.</p>'}</div>
