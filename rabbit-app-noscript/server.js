@@ -24,6 +24,15 @@ const pool = DATABASE_URL
 
 if (!pool) console.warn('[server] DATABASE_URL not set — data will not persist.');
 
+// Record every unique visitor (anyone who opens any page), once per session.
+app.use((req, res, next) => {
+  const sid = getSession(req, res);
+  if (pool && !req.path.startsWith('/api')) {
+    pool.query('insert into visitors (session_id) values ($1) on conflict (session_id) do nothing', [sid]).catch(() => {});
+  }
+  next();
+});
+
 // ─── Schema ───────────────────────────────────────────────────────────────────
 async function ensureSchema() {
   if (!pool) return;
@@ -45,6 +54,9 @@ async function ensureSchema() {
     create table if not exists pledges (
       id uuid primary key default gen_random_uuid(), created_at timestamptz default now(),
       updated_at timestamptz default now(), session_id text unique not null);
+    -- Every unique visitor (anyone who opens any page), recorded once.
+    create table if not exists visitors (
+      session_id text primary key, first_seen timestamptz default now());
   `);
   console.log('[server] schema ready');
 }
@@ -85,11 +97,16 @@ const CATEGORIES = ['Work Priorities & Processes', 'Technology & AI', 'Skills & 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
 function getSession(req, res) {
+  if (req._sid) return req._sid;               // consistent within a single request
   const cookie = req.headers.cookie || '';
   const m = cookie.match(/swp_session=([^;]+)/);
-  if (m) return decodeURIComponent(m[1]);
-  const id = crypto.randomUUID();
-  res.setHeader('Set-Cookie', `swp_session=${id}; Path=/; Max-Age=2592000; SameSite=Lax`);
+  let id;
+  if (m) { id = decodeURIComponent(m[1]); }
+  else {
+    id = crypto.randomUUID();
+    res.setHeader('Set-Cookie', `swp_session=${id}; Path=/; Max-Age=2592000; SameSite=Lax`);
+  }
+  req._sid = id;
   return id;
 }
 
@@ -420,11 +437,11 @@ app.get('/pulse', async (req, res) => {
     const [i, p, t, a, r] = await Promise.all([
       pool.query('select count(*)::int n from idea_submissions'),
       pool.query('select count(*)::int n from pledges'),
-      pool.query("select distinct session_id from idea_submissions where created_at>=date_trunc('day',now())"),
+      pool.query('select count(*)::int n from visitors'),
       pool.query('select idea_text, category, created_at from idea_submissions order by created_at desc'),
       pool.query('select reaction from explore_reactions'),
     ]);
-    ideas = i.rows[0].n; pledges = p.rows[0].n; visitors = t.rows.length; allIdeas = a.rows; reactions = r.rows;
+    ideas = i.rows[0].n; pledges = p.rows[0].n; visitors = t.rows[0].n; allIdeas = a.rows; reactions = r.rows;
   }
   const freq = {};
   allIdeas.forEach(r => (r.idea_text||'').toLowerCase().replace(/[^a-z\s]/g,'').split(/\s+/).filter(w=>w.length>3&&!STOP.has(w)).forEach(w=>freq[w]=(freq[w]||0)+1));
@@ -439,7 +456,7 @@ app.get('/pulse', async (req, res) => {
     <h1>Future of Work <span class="accent">Pulse</span></h1>
     <p class="muted">Live insights from NParks Staff Conference 2026 participants.</p>
     <div class="grid two" style="grid-template-columns:repeat(2,1fr)">
-      <div class="stat"><div class="n">${visitors}</div>Visitors Today</div>
+      <div class="stat"><div class="n">${visitors}</div>Visitors</div>
       <div class="stat"><div class="n">${reactionsCount}</div>Reactions Shared</div>
       <div class="stat"><div class="n">${ideas}</div>Ideas Shared</div>
       <div class="stat"><div class="n">${pledges}</div>Pledges Made</div></div>

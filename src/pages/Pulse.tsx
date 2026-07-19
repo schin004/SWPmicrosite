@@ -43,7 +43,7 @@ export default function Pulse() {
 
   const METRICS = [
     {
-      label: 'Visitors Today',
+      label: 'Visitors',
       value: data ? fmt(data.visitorsToday) : '—',
       icon: Users,
       bg: 'from-blue-50 to-blue-100/40', border: 'border-b-blue-400',
