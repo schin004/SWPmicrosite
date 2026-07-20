@@ -92,7 +92,7 @@ const REACTIONS = [
   { id: 'love', emoji: '❤️', label: 'Love it' },
   { id: 'useful', emoji: '👍', label: 'Useful' },
   { id: 'needs-thought', emoji: '🤔', label: 'Needs more thought' },
-  { id: 'interesting', emoji: '💡', label: 'Interesting' },
+  { id: 'interesting', emoji: '💡', label: 'Tell me more' },
 ];
 
 // ─── Idea Modal ───────────────────────────────────────────────────────────────
