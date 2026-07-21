@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, X, Trees, PawPrint, Bird, Telescope } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
-import { saveIdeaReaction, saveWorkgroupContribution } from '../lib/db';
+import { saveIdeaReaction } from '../lib/db';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -275,16 +275,11 @@ function IdeaModal({ modal, reactions, comments, onReact, onComment, onSave, onC
 
 interface WorkgroupCardProps {
   wg: Workgroup;
-  wgComment: string;
   onIdeaClick: (idea: Idea, wgId: string) => void;
-  onWgCommentChange: (wgId: string, text: string) => void;
-  onWgBlur: (wg: Workgroup) => void;
   ideaReactions: Record<string, string>;
 }
 
-const MAX_WG = 300;
-
-function WorkgroupCard({ wg, wgComment, onIdeaClick, onWgCommentChange, onWgBlur, ideaReactions }: WorkgroupCardProps) {
+function WorkgroupCard({ wg, onIdeaClick, ideaReactions }: WorkgroupCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -333,29 +328,6 @@ function WorkgroupCard({ wg, wgComment, onIdeaClick, onWgCommentChange, onWgBlur
         </div>
       </div>
 
-      {/* Optional workgroup contribution */}
-      <div className="pt-4 border-t border-gray-200/60">
-        <p className="text-sm font-semibold text-gray-800 mb-1">
-          How would you Ctrl. Alt. Delete. the way this workgroup works?
-        </p>
-        <p className="text-xs text-gray-400 mb-3">
-          Share one suggestion for this workgroup
-        </p>
-        <textarea
-          value={wgComment}
-          onChange={e => e.target.value.length <= MAX_WG && onWgCommentChange(wg.id, e.target.value)}
-              onBlur={() => onWgBlur(wg)}
-          placeholder="Share your thoughts here..."
-          rows={3}
-          className="w-full p-4 rounded-2xl border border-gray-200 bg-white/70 text-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-gray-400 leading-relaxed"
-          aria-label={`Contribution for ${wg.title}`}
-        />
-        <div className="flex justify-end mt-1.5">
-          <span className={`text-xs tabular-nums ${MAX_WG - wgComment.length < 50 ? 'text-orange-500' : 'text-gray-400'}`}>
-            {MAX_WG - wgComment.length} characters remaining
-          </span>
-        </div>
-      </div>
     </motion.div>
   );
 }
@@ -367,7 +339,6 @@ export default function Explore() {
     sessionId, completeStep, setCurrentStep,
     ideaReactions, setIdeaReactions,
     ideaComments, setIdeaComments,
-    wgComments, setWgComments,
   } = useJourney();
   const [openModal, setOpenModal] = useState<ModalState | null>(null);
 
@@ -377,21 +348,6 @@ export default function Explore() {
 
   const handleIdeaComment = (ideaId: string, text: string) => {
     setIdeaComments(prev => ({ ...prev, [ideaId]: text }));
-  };
-
-  const handleWgComment = (wgId: string, text: string) => {
-    setWgComments(prev => ({ ...prev, [wgId]: text }));
-  };
-
-  const handleWgBlur = (wg: Workgroup) => {
-    if (wgComments[wg.id]?.trim()) {
-      saveWorkgroupContribution({
-        sessionId,
-        workgroupId: wg.id,
-        workgroupTitle: wg.title,
-        contribution: wgComments[wg.id],
-      });
-    }
   };
 
   const handleModalSave = () => {
@@ -451,10 +407,7 @@ export default function Explore() {
             >
               <WorkgroupCard
                 wg={wg}
-                wgComment={wgComments[wg.id] || ''}
                 onIdeaClick={(idea, wgId) => setOpenModal({ idea, workgroupId: wgId })}
-                onWgCommentChange={handleWgComment}
-                onWgBlur={handleWgBlur}
                 ideaReactions={ideaReactions}
               />
             </motion.div>

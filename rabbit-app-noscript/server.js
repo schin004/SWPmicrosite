@@ -360,18 +360,9 @@ app.get('/explore', async (req, res) => {
           ${savedId===idea.id?'<span class="saved" style="margin-left:10px">✓ Saved!</span>':''}</p>
         </form></details>`;
     }).join('');
-    const wgc = prog.contributions[wg.id] || '';
     return `<div class="card"><h2 style="color:${wg.color}">${esc(wg.title)}</h2>
       <p class="muted" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Ideas from this workgroup — tap to open</p>
-      ${ideas}
-      <form method="post" action="/explore-contribution" style="margin-top:16px;border-top:1px solid #eef2f7;padding-top:14px">
-        <input type="hidden" name="workgroupId" value="${wg.id}">
-        <label>How would you Ctrl. Alt. Delete. the way this workgroup works?</label>
-        <p class="muted" style="font-size:13px;margin:2px 0">Share one suggestion for this workgroup</p>
-        <textarea name="contribution" maxlength="300" rows="3" placeholder="Share your thoughts here...">${esc(wgc)}</textarea>
-        <p style="margin-top:10px"><button class="btn" type="submit">Save contribution</button>
-        ${savedId===('wg-'+wg.id)?'<span class="saved" style="margin-left:10px">✓ Saved!</span>':''}</p>
-      </form></div>`;
+      ${ideas}</div>`;
   }).join('');
   const done = (Object.keys(prog.reactions).length || Object.keys(prog.contributions).length) ? ['learn'] : ['learn'];
   res.send(layout({ title: 'Explore', active: '/learn', body: stepbar('explore', done) + `
