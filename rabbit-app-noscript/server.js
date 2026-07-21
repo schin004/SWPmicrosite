@@ -376,7 +376,7 @@ app.get('/explore', async (req, res) => {
   const done = (Object.keys(prog.reactions).length || Object.keys(prog.contributions).length) ? ['learn'] : ['learn'];
   res.send(layout({ title: 'Explore', active: '/learn', body: stepbar('explore', done) + `
     <h1>Explore the <span class="accent">Ideas</span></h1>
-    <p class="muted">These are early-stage ideas being explored by different NParks workgroups — starting points for discussion, not final decisions. Open any idea to learn more and share your perspective.</p>
+    <p class="muted">These are early-stage ideas being explored by different NParks workgroups — starting points for discussion. Open any idea to learn more and share your perspective.</p>
     ${wgHtml}
     <p><a class="btn" href="/imagine">Continue to Imagine →</a></p>` }));
 });
