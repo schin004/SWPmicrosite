@@ -434,7 +434,7 @@ export default function Explore() {
             <span className="gradient-text">Ideas</span>
           </h1>
           <p className="text-gray-500 text-lg max-w-2xl mx-auto leading-relaxed">
-            Explore ideas developed by different NParks workgroups during the Strategic Workforce Planning workshops.
+            These are early-stage ideas being explored by different NParks workgroups during the Strategic Workforce Planning workshops — starting points for discussion, not final decisions.
             Click on any idea to learn more, share your perspective, or contribute your own thoughts.
           </p>
           <p className="text-sm text-gray-400 mt-3">Click on any idea to learn more and share your perspective.</p>
