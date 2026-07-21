@@ -80,6 +80,52 @@ export async function recordPledge(sessionId: string) {
   await apiPost('/api/pledge', { sessionId });
 }
 
+// ─── Demo data ────────────────────────────────────────────────────────────────
+// The static GitHub Pages build has no /api backend, so read calls return null.
+// In that case we fall back to illustrative dummy data so the prototype still
+// looks alive. The live Rabbit deployment runs server.js (real data) and never
+// uses this file, so it is unaffected.
+const DEMO_HOME_STATS: HomeStats = {
+  ideasCount: 128,
+  pledgesCount: 86,
+  visitorsToday: 342,
+  journeysCompleted: 74,
+};
+
+const DEMO_PULSE: PulseData = {
+  ideasCount: 128,
+  pledgesCount: 86,
+  visitorsToday: 342,
+  journeysCompleted: 74,
+  topWords: [
+    { word: 'automation', count: 18 }, { word: 'collaboration', count: 15 },
+    { word: 'training', count: 13 }, { word: 'data', count: 12 },
+    { word: 'wellbeing', count: 10 }, { word: 'flexibility', count: 9 },
+    { word: 'technology', count: 9 }, { word: 'careers', count: 8 },
+    { word: 'processes', count: 7 }, { word: 'mentorship', count: 6 },
+    { word: 'feedback', count: 5 }, { word: 'innovation', count: 5 },
+  ],
+  categoryBreakdown: [
+    { category: 'Technology & AI', count: 42 },
+    { category: 'Work Priorities & Processes', count: 31 },
+    { category: 'Skills & Careers', count: 24 },
+    { category: 'Collaboration & Culture', count: 19 },
+    { category: 'Leadership & Support', count: 12 },
+  ],
+  reactionBreakdown: [
+    { reaction: 'Love it', emoji: '❤️', count: 54 },
+    { reaction: 'Useful', emoji: '👍', count: 41 },
+    { reaction: 'Tell me more', emoji: '💡', count: 33 },
+    { reaction: 'Needs more thought', emoji: '🤔', count: 22 },
+  ],
+  recentIdeas: [
+    { idea_text: 'Use AI to draft routine reports so officers can focus on fieldwork.', category: 'Technology & AI', created_at: new Date().toISOString() },
+    { idea_text: 'Cross-team rotations to build broader capabilities.', category: 'Skills & Careers', created_at: new Date().toISOString() },
+    { idea_text: 'Shared dashboards so everyone sees the same live data.', category: 'Collaboration & Culture', created_at: new Date().toISOString() },
+    { idea_text: 'Simplify approval steps for low-risk decisions.', category: 'Work Priorities & Processes', created_at: new Date().toISOString() },
+  ],
+};
+
 // ─── Home page stats (lightweight) ────────────────────────────────────────────
 export interface HomeStats {
   ideasCount: number;
@@ -89,7 +135,7 @@ export interface HomeStats {
 }
 
 export async function fetchHomeStats(): Promise<HomeStats | null> {
-  return apiGet<HomeStats>('/api/home-stats');
+  return (await apiGet<HomeStats>('/api/home-stats')) ?? DEMO_HOME_STATS;
 }
 
 // ─── Pulse page data ──────────────────────────────────────────────────────────
@@ -105,5 +151,5 @@ export interface PulseData {
 }
 
 export async function fetchPulseData(): Promise<PulseData | null> {
-  return apiGet<PulseData>('/api/pulse');
+  return (await apiGet<PulseData>('/api/pulse')) ?? DEMO_PULSE;
 }
