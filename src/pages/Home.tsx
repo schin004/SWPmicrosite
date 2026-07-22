@@ -83,7 +83,7 @@ export default function Home() {
         <motion.div {...fadeUp(0.1)} className="inline-flex items-center gap-2 mb-8">
           <span className="inline-flex items-center gap-2 bg-white border border-blue-100 text-blue-600 text-sm font-medium px-4 py-2 rounded-full shadow-sm">
             <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            NParks Staff Conference 2026
+            Acme Staff Conference 2026
           </span>
         </motion.div>
 
@@ -95,7 +95,7 @@ export default function Home() {
         </motion.h1>
 
         <motion.p {...fadeUp(0.35)} className="text-xl md:text-2xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-          Reimagine the future of work at NParks.{' '}
+          Reimagine the future of work at Acme.{' '}
           <span className="text-gray-700 font-medium">Your voice shapes what comes next.</span>
         </motion.p>
 
@@ -164,14 +164,14 @@ export default function Home() {
         >
           <div className="text-center mb-10">
             <h2 className="text-3xl font-bold text-gray-900 mb-3">Your Journey Awaits</h2>
-            <p className="text-gray-500 text-lg">Four simple steps to shape the future of NParks</p>
+            <p className="text-gray-500 text-lg">Four simple steps to shape the future of Acme</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
               { step: 1, label: 'Learn', desc: 'Discover how SWP benefits you and your team', color: 'from-blue-400 to-blue-600', Icon: BookOpen },
-              { step: 2, label: 'Explore', desc: 'Explore ideas from NParks workgroups and share your perspective', color: 'from-purple-400 to-purple-600', Icon: Compass },
-              { step: 3, label: 'Imagine', desc: 'Share your ideas to improve the future of work at NParks', color: 'from-teal-400 to-teal-600', Icon: Lightbulb },
+              { step: 2, label: 'Explore', desc: 'Explore ideas from Acme workgroups and share your perspective', color: 'from-purple-400 to-purple-600', Icon: Compass },
+              { step: 3, label: 'Imagine', desc: 'Share your ideas to improve the future of work at Acme', color: 'from-teal-400 to-teal-600', Icon: Lightbulb },
               { step: 4, label: 'Pledge', desc: 'Visit the Future of Work Booth and make your commitment', color: 'from-orange-400 to-orange-600', Icon: Flag },
             ].map(item => (
               <div key={item.step} className="flex flex-col items-center text-center gap-3">

@@ -94,7 +94,7 @@ export default function Congrats() {
           transition={{ delay: 0.6 }}
           className="text-gray-500 text-base max-w-md mx-auto leading-relaxed mb-8"
         >
-          By sharing your views and ideas, you've made a real contribution to shaping the future of work in NParks. Every voice matters — and yours has been heard.
+          By sharing your views and ideas, you've made a real contribution to shaping the future of work in Acme. Every voice matters — and yours has been heard.
         </motion.p>
 
         {/* Freebie card */}

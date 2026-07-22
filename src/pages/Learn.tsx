@@ -35,8 +35,8 @@ const CARDS = [
     icon: Sprout,
     category: 'Growth',
     title: 'Grow with the Future',
-    summary: 'See future career pathways more clearly, build critical capabilities, and access learning that helps you grow with NParks’ evolving needs.',
-    detail: 'See future career pathways more clearly, build critical capabilities, and access learning that helps you grow with NParks’ evolving needs.',
+    summary: 'See future career pathways more clearly, build critical capabilities, and access learning that helps you grow with Acme evolving needs.',
+    detail: 'See future career pathways more clearly, build critical capabilities, and access learning that helps you grow with Acme evolving needs.',
     accent: 'green' as const,
     bg: 'from-green-50 to-green-100/50',
     border: 'border-b-green-300',
@@ -91,7 +91,7 @@ export default function Learn() {
             <span className="gradient-text">For Me?</span>
           </h1>
           <p className="text-gray-500 text-lg max-w-xl mx-auto leading-relaxed">
-            Tap any card to explore how Strategic Workforce Planning shapes your future at NParks.
+            Tap any card to explore how Strategic Workforce Planning shapes your future at Acme.
           </p>
           <p className="text-sm text-gray-400 mt-2 flex items-center justify-center gap-1.5">
             <RotateCcw className="w-3.5 h-3.5" />

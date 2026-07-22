@@ -37,7 +37,7 @@ export default function Submit() {
             <span className="gradient-text">Idea</span>
           </h1>
           <p className="text-gray-500 text-lg max-w-xl mx-auto leading-relaxed">
-            Review your submission before sending it to help shape NParks' future.
+            Review your submission before sending it to help shape Acme future.
           </p>
         </motion.div>
 
@@ -66,7 +66,7 @@ export default function Submit() {
               You
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-900">NParks Staff</div>
+              <div className="text-sm font-medium text-gray-900">Acme Staff</div>
               <div className="text-xs text-gray-400">SWP Conference 2025</div>
             </div>
           </div>
@@ -84,7 +84,7 @@ export default function Submit() {
             <div>
               <p className="font-semibold text-gray-900 mb-1">What happens to your idea?</p>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Your submission contributes to NParks' Future of Work Pulse — a live dashboard showing collective insights from all participants. Your idea helps leadership understand workforce priorities.
+                Your submission contributes to Acme Future of Work Pulse — a live dashboard showing collective insights from all participants. Your idea helps leadership understand workforce priorities.
               </p>
             </div>
           </div>

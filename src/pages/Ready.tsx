@@ -104,7 +104,7 @@ export default function Ready() {
           <ol className="space-y-4">
             {[
               { emoji: '📍', text: 'Find the Future of Work Booth at the conference venue.' },
-              { emoji: '✍️', text: 'Write your personal pledge for the future of work at NParks on the pledge card provided.' },
+              { emoji: '✍️', text: 'Write your personal pledge for the future of work at Acme on the pledge card provided.' },
               { emoji: '📸', text: 'Take a photo of yourself holding your pledge card at the booth.' },
               { emoji: '✅', text: 'Come back here and click the button below once you\'ve made your pledge.' },
             ].map((step, i) => (

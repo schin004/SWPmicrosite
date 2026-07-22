@@ -39,12 +39,12 @@ export default function Navigation() {
           <button
             onClick={() => navigate('home')}
             className="flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy rounded-lg py-1"
-            aria-label="Ctrl Alt Del — NParks Future of Work, Home"
+            aria-label="Ctrl Alt Del — Acme Future of Work, Home"
           >
             <Logo variant="mark" className="h-7 w-auto" title="Ctrl Alt Del" />
             <span className="hidden sm:block w-px h-7 bg-gray-200" aria-hidden="true" />
             <div className="hidden sm:flex flex-col leading-none text-left">
-              <span className="text-sm font-bold text-gray-900">NParks</span>
+              <span className="text-sm font-bold text-gray-900">Acme</span>
               <span className="text-[10px] text-gray-500 font-medium tracking-wide">Future of Work</span>
             </div>
           </button>

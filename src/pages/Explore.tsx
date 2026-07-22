@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, X, Trees, PawPrint, Bird, Telescope } from 'lucide-react';
+import { ArrowRight, X, Boxes, Cpu, Rocket, Telescope } from 'lucide-react';
 import { useJourney } from '../context/JourneyContext';
 import { saveIdeaReaction } from '../lib/db';
 
@@ -29,10 +29,10 @@ interface Workgroup {
 
 const WORKGROUPS: Workgroup[] = [
   {
-    id: 'urban-greenery',
-    icon: Trees,
-    emoji: '🌳',
-    title: 'Urban Greenery and Parks Management',
+    id: 'team-alpha',
+    icon: Boxes,
+    emoji: '📦',
+    title: 'Team Alpha — Operations & Delivery',
     accent: 'teal',
     bg: 'from-teal-50 to-teal-100/40',
     border: 'border-b-teal-400',
@@ -40,19 +40,17 @@ const WORKGROUPS: Workgroup[] = [
     iconColor: 'text-teal-600',
     badgeBg: 'bg-teal-50 text-teal-600 border-teal-200',
     ideas: [
-      { id: 'ugpm_operator_to_orchestrator', label: 'From Operator to Orchestrator', description: `NParks could work more deliberately with industry, IHLs and community partners on clearly defined areas where they can contribute more effectively, redesigning how we partner so that their interests are genuinely aligned with the outcomes we want. NParks will continue to lead strategically, set standards and remain accountable for outcomes, public safety and public trust.` },
-      { id: 'ugpm_neighbourhood_stewards', label: 'Empowering Communities as Neighbourhood Stewards', description: `NParks will explore how community groups can take on more meaningful stewardship of their neighbourhood green spaces, including making decisions about how spaces are used and cared for. This could be tested through pilots like Bishan-Ang Mo Kio Park, with NParks remaining accountable for public safety and maintenance standards.` },
-      { id: 'ugpm_organising_teams', label: 'Organising Teams Around the Work', description: `Some work may be best done by area-based teams who know their patch deeply. Other work - like policy, standards and systems - may be best done by project-based teams that cut across the organisation. We could consider how to re-organise ourselves so that we have the right people and the right focus for each team, and test these models through pilots or paper exercises before considering broader structural changes.` },
-      { id: 'ugpm_specialist_expertise', label: 'Deepening Specialist Expertise', description: `Greater complexity in our work calls for greater depth in our people.
-
-NParks will clarify future competencies and career pathways so that officers can deepen expertise in areas such as arboriculture, horticulture, plant health, ecology and operations technology, building specialist depth alongside generalist breadth.` },
+      { id: 'a_streamline', label: 'Streamlining Everyday Tasks', description: `This is sample placeholder text for a demo idea. A team could review routine tasks and use simple automation to free up time for more meaningful work. All content on this page is dummy data for demonstration only.` },
+      { id: 'a_frontline', label: 'Empowering Frontline Teams', description: `Sample demo idea. Frontline teams could be given clearer ownership of day-to-day decisions, with support from the wider organisation. This text is placeholder content only.` },
+      { id: 'a_outcomes', label: 'Organising Around Outcomes', description: `Placeholder idea for the demo. Teams could be organised around outcomes rather than functions, and new models tested through small pilots before any wider change. Dummy content only.` },
+      { id: 'a_expertise', label: 'Building Deeper Expertise', description: `Demo placeholder. The organisation could map future skills and career pathways so that people can build deeper expertise over time. This is sample data.` },
     ],
   },
   {
-    id: 'animal-health',
-    icon: PawPrint,
-    emoji: '🐾',
-    title: 'Animal Health and Management',
+    id: 'team-beta',
+    icon: Cpu,
+    emoji: '💻',
+    title: 'Team Beta — Data & Technology',
     accent: 'purple',
     bg: 'from-purple-50 to-purple-100/40',
     border: 'border-b-purple-400',
@@ -60,17 +58,17 @@ NParks will clarify future competencies and career pathways so that officers can
     iconColor: 'text-purple-600',
     badgeBg: 'bg-purple-50 text-purple-600 border-purple-200',
     ideas: [
-      { id: 'ahm_data_decisions', label: 'Strengthening Data for Better Decisions', description: `NParks will start by reviewing the data we collect and use today, then identify 2 to 3 priority use cases where better-integrated data can improve day-to-day decisions. This will also inform how cross-functional teams, bringing together domain officers, data analysts, engagement staff and IT support, can work together more effectively on biosurveillance priorities.` },
-      { id: 'ahm_ai_disease_detection', label: 'Use AI to Detect Disease Threats Earlier', description: `We could build an AI-enabled early warning system that monitors multiple data streams (outbreak databases, environmental signals, animal movement patterns) and generates risk alerts before threats escalate. We could start with 2 to 3 priority disease scenarios as proof of concept, then expand to a broader predictive biosurveillance system over time. This will include building staff capability to work effectively with AI tools and interpret outputs.` },
-      { id: 'ahm_data_ai_specialists', label: 'Develop Animal Health Specialists with Data and AI Skills', description: `We envision that the future animal health officer is not just trained in biosecurity and risk assessment, but also equipped to work with data, use AI tools and communicate findings to the public. We could build these horizontal capabilities into the specialist role, so officers can act on intelligence directly rather than waiting for IT or data teams to interpret it for them.` },
-      { id: 'ahm_high_value_work', label: 'Freeing Specialists to Focus on High-Value Work', description: `NParks officers currently spend significant time on administrative tasks that take them away from core scientific and operational work. We will review which of these tasks can be automated, reassigned or shared with dedicated support functions—including understanding how functions like inspections and permit processing will continue to be handled—so specialists can focus on high-value work.` },
+      { id: 'b_data', label: 'Better Data for Decisions', description: `Sample demo idea about bringing data together to support better day-to-day decisions. All figures and text here are placeholder content for demonstration purposes.` },
+      { id: 'b_earlywarning', label: 'Smart Early-Warning Tools', description: `Placeholder idea describing an early-warning tool that watches several data streams and flags risks early. This is dummy content for the demo only.` },
+      { id: 'b_upskill', label: 'Upskilling for a Digital Future', description: `Demo placeholder text. People could build data and digital skills so they can work confidently with new tools. Sample data only.` },
+      { id: 'b_highvalue', label: 'Freeing Time for High-Value Work', description: `Sample idea about reducing admin so specialists can focus on higher-value work. Placeholder content for demonstration.` },
     ],
   },
   {
-    id: 'wildlife-forensics',
-    icon: Bird,
-    emoji: '🦅',
-    title: 'Wildlife Management and Forensics',
+    id: 'team-gamma',
+    icon: Rocket,
+    emoji: '🚀',
+    title: 'Team Gamma — Innovation & Partnerships',
     accent: 'orange',
     bg: 'from-orange-50 to-orange-100/40',
     border: 'border-b-orange-400',
@@ -78,12 +76,10 @@ NParks will clarify future competencies and career pathways so that officers can
     iconColor: 'text-orange-500',
     badgeBg: 'bg-orange-50 text-orange-500 border-orange-200',
     ideas: [
-      { id: 'wmf_conservation_outcomes', label: 'Strengthening Conservation Outcomes', description: `We envision a shift reflecting a stronger focus on conservation outcomes while continuing to manage public safety, feedback and operational realities. This includes strengthening ecological literacy and public coexistence through schools, communities and public education partners, and exploring how land owners can play a clearer role in mitigating wildlife-related issues on their premises. This reframing will have to be supported by practical changes to roles, processes and ways of working.` },
-      { id: 'wmf_proactive_wildlife_management', label: 'Using Data and Research for Proactive Wildlife Management', description: `We will use data, dashboards and long-term population research to support proactive, evidence-based wildlife management. This includes better triaging of cases so that officers can focus on complex, high-judgement situations while routine cases are supported by trained partners under NParks' guidance.` },
-      { id: 'wmf_wildlife_veterinary_capability', label: 'Exploring a Stronger Wildlife Veterinary Capability', description: `We will study the feasibility of strengthening CWR's specialist wildlife veterinary capability, including the manpower, funding, training, research and public trust benefits required to support a stronger long-term model for wildlife care.` },
-      { id: 'wmf_regional_wildlife_forensics', label: 'Building Singapore as a Trusted Regional Partner for Wildlife Forensics', description: `The long-term ambition is for Singapore to be a trusted regional partner for wildlife forensics, intelligence-sharing and scientific collaboration. To achieve this, we will work with IHL partners, regional counterparts and international networks to strengthen capability, share research direction and build the partnerships that underpin Singapore's role as a trade and travel hub committed to tackling wildlife trafficking.` },
-      { id: 'wmf_intelligence_led_enforcement', label: 'Moving Toward Intelligence-Led Enforcement', description: `We could identify AI-enabled horizon scanning use cases to understand emerging wildlife trade signals, high-risk routes and trafficking networks. This will have to be supported by digitising the chain of custody end-to-end, and building a well-curated reference database and sample archive so that test development and species identification can be done faster and with greater confidence. This includes clarifying how NParks connects to transboundary crime intelligence networks and regional enforcement partners.` },
-      { id: 'wmf_science_technology_bridges', label: 'Develop Staff as Operational Bridges Between Science and Technology', description: `As AI and digital tools become central to forensic work, we envision that the role of the wildlife trade specialist evolves from manual monitoring and report-reading to validating AI outputs, contextualising data for criminal intelligence and translating insights into policy. Building this capability requires deliberate investment in how staff understand and work with technology, not just technical training.` },
+      { id: 'c_partners', label: 'Stronger Community Partnerships', description: `Placeholder demo idea about partnering more effectively with the community and external partners. Dummy content only.` },
+      { id: 'c_evidence', label: 'Evidence-Based Planning', description: `Sample idea about using data and research to guide planning decisions. This text is placeholder content for the demo.` },
+      { id: 'c_specialist', label: 'Investing in Specialist Skills', description: `Demo placeholder describing investment in specialist capability over the long term. All content here is sample data.` },
+      { id: 'c_regional', label: 'Regional Collaboration', description: `Placeholder idea about collaborating with regional partners to share knowledge and build capability. Dummy demo content only.` },
     ],
   },
 ];
@@ -390,7 +386,7 @@ export default function Explore() {
             <span className="gradient-text">Ideas</span>
           </h1>
           <p className="text-gray-500 text-lg max-w-2xl mx-auto leading-relaxed">
-            These are early-stage ideas being explored by different NParks workgroups during the Strategic Workforce Planning workshops — starting points for discussion.
+            These are early-stage ideas being explored by different Acme workgroups during the Strategic Workforce Planning workshops — starting points for discussion.
             Click on any idea to learn more, share your perspective, or contribute your own thoughts.
           </p>
           <p className="text-sm text-gray-400 mt-3">Click on any idea to learn more and share your perspective.</p>

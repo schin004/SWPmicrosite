@@ -28,13 +28,13 @@ export default function Footer() {
             <div className="flex items-center gap-3 mb-4">
               <Logo variant="mark" className="h-8 w-auto" title="Ctrl Alt Del" />
               <div className="leading-none">
-                <div className="text-base font-bold">NParks</div>
+                <div className="text-base font-bold">Acme</div>
                 <div className="text-xs text-white/60 tracking-wide">Future of Work</div>
               </div>
             </div>
             <p className="text-sm text-white/70 leading-relaxed">
               <span className="font-semibold text-white">Ctrl • Alt • Del</span> — rethinking how work
-              gets done at NParks. Focus on what matters, redesign the way we work, and free up
+              gets done at Acme. Focus on what matters, redesign the way we work, and free up
               capacity for higher-impact work.
             </p>
           </div>

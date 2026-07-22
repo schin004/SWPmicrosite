@@ -38,7 +38,7 @@ const AREAS = [
     icon: Users,
     title: 'Workforce',
     subtitle: 'Build the workforce of the future',
-    desc: 'Identify the roles, skills and capabilities NParks will need while supporting officers to learn, grow and remain future-ready.',
+    desc: 'Identify the roles, skills and capabilities Acme will need while supporting officers to learn, grow and remain future-ready.',
     color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-b-purple-300',
   },
   {
@@ -62,7 +62,7 @@ const ONE_MINUTE = [
   'Bring people, processes and technology together.',
   'Build future-ready skills and careers.',
   'Solve real operational challenges with the business.',
-  'Shape the future of NParks together.',
+  'Shape the future of Acme together.',
 ];
 
 export default function About() {
@@ -110,10 +110,10 @@ export default function About() {
               To continue delivering our mission, we need to work differently.
             </p>
             <p>
-              Strategic Workforce Planning (SWP) is how NParks is preparing for the future by redesigning work, building capabilities, improving how we organise ourselves and using technology better, so we can continue delivering our mission.
+              Strategic Workforce Planning (SWP) is how Acme is preparing for the future by redesigning work, building capabilities, improving how we organise ourselves and using technology better, so we can continue delivering our mission.
             </p>
             <p>
-              Through SWP, officers across NParks are working together to rethink how work is done, identify better ways of working, and build a future-ready workforce where everyone can contribute at their best.
+              Through SWP, officers across Acme are working together to rethink how work is done, identify better ways of working, and build a future-ready workforce where everyone can contribute at their best.
             </p>
           </div>
 
@@ -123,7 +123,7 @@ export default function About() {
               <Sparkles className="w-5 h-5 text-purple-500" />
             </div>
             <p className="text-gray-700 leading-relaxed">
-              <span className="font-bold text-gray-900">Your ideas matter.</span> This Future of Work Hub lets you explore ideas, share your perspectives, and help shape how we work at NParks.
+              <span className="font-bold text-gray-900">Your ideas matter.</span> This Future of Work Hub lets you explore ideas, share your perspectives, and help shape how we work at Acme.
             </p>
           </div>
         </motion.div>
@@ -137,7 +137,7 @@ export default function About() {
         >
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 text-center">Why Ctrl • Alt • Del?</h2>
           <p className="text-gray-500 text-center max-w-2xl mx-auto mb-8 leading-relaxed">
-            The familiar keyboard shortcut inspired our Staff Conference theme—but instead of restarting a computer, we're using it to rethink how work gets done at NParks.
+            The familiar keyboard shortcut inspired our Staff Conference theme—but instead of restarting a computer, we're using it to rethink how work gets done at Acme.
           </p>
 
           <div className="grid sm:grid-cols-3 gap-5 mb-8">
@@ -161,7 +161,7 @@ export default function About() {
           <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100/60 text-center max-w-2xl mx-auto">
             <p className="font-semibold text-gray-900 mb-1">Every officer has a role in shaping the future of work.</p>
             <p className="text-gray-600 text-sm leading-relaxed">
-              Visit our Staff Conference booth or submit your ideas through this Future of Work Hub. Every idea helps shape the future of work at NParks.
+              Visit our Staff Conference booth or submit your ideas through this Future of Work Hub. Every idea helps shape the future of work at Acme.
             </p>
           </div>
         </motion.div>
@@ -223,7 +223,7 @@ export default function About() {
         >
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Every officer has a role in shaping the future of work.</h2>
           <p className="text-white/80 text-lg mb-7 max-w-xl mx-auto">
-            Explore the ideas developed by our workgroups, share your own ideas, and help shape how we work at NParks.
+            Explore the ideas developed by our workgroups, share your own ideas, and help shape how we work at Acme.
           </p>
           <button
             onClick={exploreIdeas}

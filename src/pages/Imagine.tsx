@@ -55,7 +55,7 @@ export default function Imagine() {
             <span className="gradient-text">Imagine</span>
           </h1>
           <p className="text-gray-500 text-lg max-w-xl mx-auto leading-relaxed">
-            If you could improve one thing about the future of work at NParks, what would it be?
+            If you could improve one thing about the future of work at Acme, what would it be?
           </p>
         </motion.div>
 
@@ -103,7 +103,7 @@ export default function Imagine() {
               onChange={e => {
                 if (e.target.value.length <= MAX_CHARS) setIdeaText(e.target.value);
               }}
-              placeholder="What would you improve, rethink, or reset about the future of work at NParks?"
+              placeholder="What would you improve, rethink, or reset about the future of work at Acme?"
               className="w-full min-h-44 p-5 rounded-2xl border border-gray-200 bg-gray-50/50 text-gray-800 text-base resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-gray-400 leading-relaxed"
               aria-label="Share your idea"
               aria-describedby="char-count"
