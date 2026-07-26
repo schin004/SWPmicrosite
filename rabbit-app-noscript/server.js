@@ -313,7 +313,23 @@ app.get('/admin/export', async (req, res) => {
       + rows.map(r => '<tr>' + cols.map(c => `<td>${cell(r[c])}</td>`).join('') + '</tr>').join('')
       + '</tbody></table></div>';
   }
+  out += `<hr style="margin:40px 0 20px;border:0;border-top:1px solid #e2e8f0">
+  <h2 style="color:#dc2626">Danger zone — reset all data</h2>
+  <p class="muted" style="max-width:640px">Permanently clears <b>every</b> table (ideas, pledges, reactions, contributions, visitors and sign-in emails) so the Pulse starts from zero. Use this once, just before the conference begins. This cannot be undone — download the CSVs above first if you want to keep any test data.</p>
+  <form method="post" action="/admin/reset" style="margin-top:10px">
+    <input name="confirm" placeholder="Type RESET to confirm" autocomplete="off">
+    <button class="btn" type="submit" style="background:#dc2626">Reset all data</button>
+  </form>`;
   res.send(adminLayout(out));
+});
+
+app.post('/admin/reset', async (req, res) => {
+  if (!hasAdmin(req)) return res.status(403).send('Forbidden');
+  if ((req.body.confirm || '').trim().toUpperCase() !== 'RESET') {
+    return res.send(adminLayout('<h1>Reset cancelled</h1><p class="muted">You must type <b>RESET</b> to confirm. Nothing was changed.</p><p><a class="btn" href="/admin/export">Back to export</a></p>'));
+  }
+  if (pool) await pool.query(`truncate table ${EXPORT_TABLES.join(', ')} restart identity`);
+  res.send(adminLayout('<h1>✓ Data reset</h1><p class="muted">All data has been cleared. The Pulse now starts fresh from zero.</p><p><a class="btn" href="/admin/export">Back to export</a></p>'));
 });
 
 app.get('/admin/export.csv', async (req, res) => {
