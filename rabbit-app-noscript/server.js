@@ -33,9 +33,14 @@ const EMAIL_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || 'gov.sg').trim().toLow
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const hasGate = req => /(?:^|;\s*)swp_gate=1(?:;|$)/.test(req.headers.cookie || '');
 
-// Require sign-in before anything else (health check + the gate itself are open).
+// Separate admin code for the data-export page. Set ADMIN_CODE in the Rabbit env.
+const ADMIN_CODE = (process.env.ADMIN_CODE || 'change-me-admin').trim();
+const hasAdmin = req => /(?:^|;\s*)swp_admin=1(?:;|$)/.test(req.headers.cookie || '');
+
+// Require sign-in before anything else. Open: health check, the gate itself, and
+// the admin export area (which has its own separate password).
 app.use((req, res, next) => {
-  if (req.path === '/gate' || req.path === '/api/health') return next();
+  if (req.path === '/gate' || req.path === '/api/health' || req.path.startsWith('/admin')) return next();
   if (hasGate(req)) return next();
   return res.redirect('/gate');
 });
@@ -250,6 +255,82 @@ app.post('/gate', (req, res) => {
     'insert into gate_entries (session_id, email) values ($1,$2) on conflict (session_id) do update set email=excluded.email',
     [sid, email.slice(0, 200)]).catch(() => {});
   res.redirect('/');
+});
+
+// ─── Admin data export (separate ADMIN_CODE) ────────────────────────────────
+// Password-protected on-screen view + CSV of every table, so data can be
+// retrieved through the browser without any database tools. Table names come
+// from a fixed whitelist, so they are safe to interpolate into SQL.
+const EXPORT_TABLES = ['idea_submissions', 'pledges', 'explore_reactions', 'workgroup_contributions', 'visitors', 'gate_entries'];
+
+function adminLayout(body) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Data Export</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;margin:0;background:#f8f9fc;color:#1e293b}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px 18px 80px}
+  h1{font-size:24px}h2{font-size:17px;margin:26px 0 6px}
+  table{border-collapse:collapse;width:100%;background:#fff;font-size:13px}
+  th,td{border:1px solid #e2e8f0;padding:6px 9px;text-align:left;vertical-align:top;white-space:pre-wrap}
+  th{background:#f1f5f9;position:sticky;top:0}
+  .tablewrap{overflow:auto;border:1px solid #e2e8f0;border-radius:8px;max-height:440px}
+  a.btn,button.btn{display:inline-block;background:#3b82f6;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;border:0;cursor:pointer}
+  input{padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:15px;margin-right:8px}
+  .muted{color:#64748b;font-size:13px}
+</style></head><body><div class="wrap">${body}</div></body></html>`;
+}
+
+function adminLogin(error = '') {
+  return adminLayout(`<h1>Data Export — Admin</h1>
+  <p class="muted">Enter the admin code to view and export the data collected by the site.</p>
+  ${error ? `<p style="color:#dc2626;font-weight:700">${esc(error)}</p>` : ''}
+  <form method="post" action="/admin/login">
+    <input type="password" name="code" placeholder="Admin code" autofocus>
+    <button class="btn" type="submit">Enter</button>
+  </form>`);
+}
+
+app.get('/admin', (req, res) => res.redirect('/admin/export'));
+
+app.post('/admin/login', (req, res) => {
+  if ((req.body.code || '').trim() !== ADMIN_CODE) return res.send(adminLogin('Incorrect admin code.'));
+  res.append('Set-Cookie', 'swp_admin=1; Path=/admin; Max-Age=86400; SameSite=Lax');
+  res.redirect('/admin/export');
+});
+
+app.get('/admin/export', async (req, res) => {
+  if (!hasAdmin(req)) return res.send(adminLogin());
+  if (!pool) return res.send(adminLayout('<h1>Data Export</h1><p>No database connected.</p>'));
+  let out = `<h1>Data Export</h1>
+  <p class="muted">Live data from the site. Select the rows in any table and copy into Excel, or use the CSV button. Data refreshes each time you reload this page.</p>`;
+  for (const t of EXPORT_TABLES) {
+    const { rows } = await pool.query(`select * from ${t} limit 5000`);
+    out += `<h2>${t} <span class="muted">(${rows.length} rows)</span> &nbsp; <a class="btn" href="/admin/export.csv?table=${t}">Download CSV</a></h2>`;
+    if (!rows.length) { out += '<p class="muted">No rows yet.</p>'; continue; }
+    const cols = Object.keys(rows[0]);
+    const cell = v => esc(v === null || v === undefined ? '' : (v instanceof Date ? v.toISOString() : String(v)));
+    out += '<div class="tablewrap"><table><thead><tr>' + cols.map(c => `<th>${esc(c)}</th>`).join('') + '</tr></thead><tbody>'
+      + rows.map(r => '<tr>' + cols.map(c => `<td>${cell(r[c])}</td>`).join('') + '</tr>').join('')
+      + '</tbody></table></div>';
+  }
+  res.send(adminLayout(out));
+});
+
+app.get('/admin/export.csv', async (req, res) => {
+  if (!hasAdmin(req)) return res.status(403).send('Forbidden');
+  const t = req.query.table;
+  if (!EXPORT_TABLES.includes(t) || !pool) return res.status(400).send('Bad table');
+  const { rows } = await pool.query(`select * from ${t} limit 100000`);
+  const cols = rows.length ? Object.keys(rows[0]) : [];
+  const csvCell = v => {
+    if (v === null || v === undefined) return '';
+    const s = v instanceof Date ? v.toISOString() : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const csv = [cols.join(',')].concat(rows.map(r => cols.map(c => csvCell(r[c])).join(','))).join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${t}.csv"`);
+  res.send('﻿' + csv); // BOM so Excel opens UTF-8 correctly
 });
 
 app.get('/', (req, res) => {
