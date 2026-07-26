@@ -577,6 +577,8 @@ app.get('/congrats', (req, res) => {
 
 const STOP = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','have','has','had','do','does','did','will','would','could','should','may','might','that','this','these','those','i','we','you','they','it','my','our','your','their','its','more','can','how','what','when','where','who','also','just','very','so','if','as','up','out','not','all','about','into','than','then','there','which','after','before','between']);
 const RX_EMOJI = { love:'❤️', useful:'👍', 'needs-thought':'🤔', interesting:'💡' };
+// Map stored reaction ids to their friendly labels for display on the Pulse.
+const RX_LABEL = Object.fromEntries(REACTIONS.map(r => [r.id, r.label]));
 
 app.get('/pulse', async (req, res) => {
   getSession(req, res);
@@ -609,7 +611,7 @@ app.get('/pulse', async (req, res) => {
       <div class="stat"><div class="n">${ideas}</div>Ideas Shared</div>
       <div class="stat"><div class="n">${pledges}</div>Pledges Made</div></div>
     <div class="card"><h2>Idea Word Cloud</h2>${words.length?words.map(([w,c],i)=>`<span class="word" style="font-size:${13+Math.round(c/maxw*22)}px;color:${colors[i%colors.length]}">${esc(w)}</span>`).join(''):'<p class="muted">Word cloud will appear once ideas are submitted.</p>'}</div>
-    <div class="card"><h2>Reactions to Ideas</h2>${Object.keys(rx).length?Object.entries(rx).sort((a,b)=>b[1]-a[1]).map(([k,c])=>`<span class="pill">${RX_EMOJI[k]||'💬'} ${c} ${esc(k)}</span>`).join(''):'<p class="muted">No reactions yet.</p>'}</div>
+    <div class="card"><h2>Reactions to Ideas</h2>${Object.keys(rx).length?Object.entries(rx).sort((a,b)=>b[1]-a[1]).map(([k,c])=>`<span class="pill">${RX_EMOJI[k]||'💬'} ${c} ${esc(RX_LABEL[k]||k)}</span>`).join(''):'<p class="muted">No reactions yet.</p>'}</div>
     <div class="card"><h2>Ideas by Category</h2>${Object.keys(cat).length?Object.entries(cat).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`<div style="margin:6px 0"><b>${esc(c)}</b> — ${n}</div>`).join(''):'<p class="muted">No ideas yet.</p>'}</div>
     <div class="card"><h2>Recent Ideas</h2>${allIdeas.length?allIdeas.slice(0,6).map(r=>`<div style="padding:8px 0;border-bottom:1px solid #eef2f7">"${esc(r.idea_text)}"${r.category?` <span class="pill">${esc(r.category)}</span>`:''}</div>`).join(''):'<p class="muted">No ideas submitted yet — be the first!</p>'}</div>` }));
 });
