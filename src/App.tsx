@@ -1,52 +1,52 @@
-import { AnimatePresence, motion } from 'framer-motion';
-import { JourneyProvider, useJourney } from './context/JourneyContext';
-import Navigation from './components/Navigation';
-import BackgroundDecor from './components/BackgroundDecor';
-import Footer from './components/Footer';
-import Home from './pages/Home';
-import Journey from './pages/Journey';
-import Pulse from './pages/Pulse';
-import About from './pages/About';
+import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { BackgroundLeaves, Leaf } from './components/Botanical';
+import { Header } from './components/Header';
+import Submit from './pages/Submit';
+import Admin from './pages/Admin';
 
-const pageVariants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-};
-
-function AppInner() {
-  const { currentPage } = useJourney();
-
+function Landing() {
   return (
     <div className="relative min-h-screen">
-      <BackgroundDecor />
-      <Navigation />
-
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentPage}
-          variants={pageVariants}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          transition={{ duration: 0.3 }}
-        >
-          {currentPage === 'home' && <Home />}
-          {currentPage === 'journey' && <Journey />}
-          {currentPage === 'pulse' && <Pulse />}
-          {currentPage === 'about' && <About />}
-        </motion.div>
-      </AnimatePresence>
-
-      <Footer />
+      <BackgroundLeaves />
+      <Header
+        eyebrow="National Parks Board · Singapore"
+        title={<>Welcome to <span className="text-sage">GreenPass</span> 🌿</>}
+        subtitle="Our warm welcome for every new member of the NParks family — growing together, one green space at a time."
+      />
+      <main className="mx-auto grid max-w-5xl gap-6 px-5 py-12 sm:grid-cols-2">
+        <Link to="/submit" className="gp-card group flex flex-col p-7 transition hover:-translate-y-1 hover:shadow-card">
+          <Leaf className="h-10 w-10 text-forest transition group-hover:rotate-12" />
+          <h2 className="mt-4 text-2xl font-extrabold text-forest">I'm a new joiner</h2>
+          <p className="mt-2 flex-1 text-forest-dark/70">
+            Share a little about yourself so we can introduce you to your new colleagues. It only takes a couple of minutes.
+          </p>
+          <span className="mt-4 font-bold text-forest group-hover:underline">Start my introduction →</span>
+        </Link>
+        <Link to="/admin" className="gp-card group flex flex-col p-7 transition hover:-translate-y-1 hover:shadow-card">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-forest text-cream">HR</div>
+          <h2 className="mt-4 text-2xl font-extrabold text-forest">HR admin dashboard</h2>
+          <p className="mt-2 flex-1 text-forest-dark/70">
+            Review submissions, verify content with AI assistance, add job details, and generate the welcome eDM.
+          </p>
+          <span className="mt-4 font-bold text-forest group-hover:underline">Open dashboard →</span>
+        </Link>
+      </main>
+      <footer className="pb-10 text-center text-sm text-forest/50">
+        GreenPass · A friendlier welcome for the NParks family 🌳
+      </footer>
     </div>
   );
 }
 
 export default function App() {
   return (
-    <JourneyProvider>
-      <AppInner />
-    </JourneyProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/submit" element={<Submit />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }

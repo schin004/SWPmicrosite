@@ -1,5 +1,11 @@
 
 !.vscode/extensions.json
+# GreenPass — local data & secrets (never commit these)
+.env
+greenpass.db
+greenpass.db-journal
+uploads/*
+!uploads/.gitkeep
 # Editor directories and files
 # Logs
 *.local

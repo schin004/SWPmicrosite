@@ -3,43 +3,38 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'system-ui', 'sans-serif'],
-      },
       colors: {
-        brand: {
-          blue: '#3B82F6',
-          purple: '#8B5CF6',
-          teal: '#14B8A6',
-          orange: '#F59E0B',
-          green: '#22C55E',
-          red: '#EF4444',
-          // Ctrl • Alt • Del logo-derived tokens
-          navy: '#1E2A44',      // primary ink / strategic anchor
-          ink: '#16213E',       // deeper navy
-          ctrl: '#A7D3F3',      // CTRL keycap (blue)
-          alt: '#F0726E',       // ALT keycap (coral)
-          del: '#B7DE8F',       // DEL keycap (green)
-          accent: '#F59418',    // orange accent from the icons
-        },
+        // GreenPass — green & nature palette
+        forest: '#2D6A4F',
+        'forest-dark': '#1B4332',
+        sage: '#95D5B2',
+        'sage-light': '#E8F5E9',
+        cream: '#F8F4E3',
+        earth: '#6B4226',
+        'earth-light': '#8A5A38',
+      },
+      fontFamily: {
+        sans: ['Nunito', 'Lato', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        card: '0 4px 24px 0 rgba(0,0,0,0.07)',
-        'card-hover': '0 8px 40px 0 rgba(0,0,0,0.13)',
-        nav: '0 2px 16px 0 rgba(0,0,0,0.06)',
+        card: '0 4px 20px -4px rgba(45, 106, 79, 0.18)',
+        soft: '0 2px 10px -2px rgba(45, 106, 79, 0.12)',
       },
       keyframes: {
-        fadeIn: { '0%': { opacity: '0', transform: 'translateY(16px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-        float: { '0%,100%': { transform: 'translateY(0px)' }, '50%': { transform: 'translateY(-20px)' } },
-        shimmer: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
+        'fade-up': {
+          '0%': { opacity: '0', transform: 'translateY(12px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        sway: {
+          '0%, 100%': { transform: 'rotate(-3deg)' },
+          '50%': { transform: 'rotate(3deg)' },
+        },
       },
       animation: {
-        fadeIn: 'fadeIn 0.6s ease both',
-        float: 'float 6s ease-in-out infinite',
-        'float-slow': 'float 9s ease-in-out infinite',
-        shimmer: 'shimmer 3s linear infinite',
+        'fade-up': 'fade-up 0.5s ease-out both',
+        sway: 'sway 6s ease-in-out infinite',
       },
     },
   },
   plugins: [],
-};
+}

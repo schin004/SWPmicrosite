@@ -1,110 +1,238 @@
-import { motion } from 'framer-motion';
-import { Send, CheckCircle, ArrowRight, Quote } from 'lucide-react';
-import { useJourney } from '../context/JourneyContext';
+import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BackgroundLeaves, Leaf } from '../components/Botanical';
+import { Header } from '../components/Header';
+import { submitEntry } from '../api';
+
+const WORD_LIMIT = 300;
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+function countWords(text: string) {
+  const t = text.trim();
+  return t ? t.split(/\s+/).length : 0;
+}
 
 export default function Submit() {
-  const { ideaText, selectedCategory, setCurrentStep, completeStep } = useJourney();
+  const [fullName, setFullName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [intro, setIntro] = useState('');
+  const [funFact, setFunFact] = useState('');
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = () => {
-    completeStep(3);
-    setCurrentStep(4);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  const words = countWords(intro);
+  const overLimit = words > WORD_LIMIT;
 
-  const categoryLabel: Record<string, string> = {
-    skills: 'Skills',
-    technology: 'Technology',
-    'ways-of-working': 'Ways of Working',
-    'workplace-culture': 'Workplace Culture',
-  };
+  function handlePhoto(file: File | undefined) {
+    setPhotoError(null);
+    if (!file) return;
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setPhotoError('Please choose a JPG or PNG image.');
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError('That photo is larger than 5MB. Please choose a smaller file.');
+      return;
+    }
+    // Validate dimensions client-side (at least 100x100px).
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      if (img.width < 100 || img.height < 100) {
+        setPhotoError(`This image is only ${img.width}×${img.height}px. Please use one at least 100×100px.`);
+        URL.revokeObjectURL(url);
+        return;
+      }
+      setPhoto(file);
+      setPreview(url);
+    };
+    img.onerror = () => {
+      setPhotoError("We couldn't read that image. Please try another file.");
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!fullName.trim() || !startDate || !intro.trim() || !photo) {
+      setError('Please fill in your name, start date, introduction and upload a photo.');
+      return;
+    }
+    const form = new FormData();
+    form.append('full_name', fullName.trim());
+    form.append('start_date', startDate);
+    form.append('intro', intro.trim());
+    form.append('fun_fact', funFact.trim());
+    form.append('photo', photo);
+
+    setSubmitting(true);
+    try {
+      const res = await submitEntry(form);
+      setDone(res.name);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (done) return <Confirmation name={done} />;
 
   return (
-    <main className="relative z-10 min-h-screen">
-      <div className="max-w-3xl mx-auto px-6 lg:px-8 pt-28 pb-24">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10"
-        >
-          <div className="inline-flex items-center gap-2 bg-teal-50 text-teal-600 text-sm font-medium px-4 py-2 rounded-full mb-6 border border-teal-100">
-            <Send className="w-4 h-4" />
-            Step 3 of 4
-          </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">
-            Share Your{' '}
-            <span className="gradient-text">Idea</span>
-          </h1>
-          <p className="text-gray-500 text-lg max-w-xl mx-auto leading-relaxed">
-            Review your submission before sending it to help shape Acme future.
-          </p>
-        </motion.div>
+    <div className="relative min-h-screen">
+      <BackgroundLeaves />
+      <Header
+        eyebrow="New Joiner Portal"
+        title="We're so glad you're here 🌱"
+        subtitle="Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look."
+        right={
+          <Link to="/" className="gp-btn-secondary bg-white/10 text-cream hover:bg-white/20">
+            ← Home
+          </Link>
+        }
+      />
 
-        {/* Preview card */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
-          className="bg-white rounded-3xl p-8 shadow-card border border-gray-50 mb-6"
-        >
-          {selectedCategory && (
-            <span className="inline-block bg-blue-50 text-blue-600 text-xs font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border border-blue-100 mb-5">
-              {categoryLabel[selectedCategory] || selectedCategory}
-            </span>
+      <main className="mx-auto max-w-2xl px-5 py-10">
+        <form onSubmit={handleSubmit} className="gp-card animate-fade-up space-y-6 p-6 sm:p-8">
+          {error && (
+            <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+              {error}
+            </div>
           )}
 
-          <div className="flex gap-3">
-            <Quote className="w-5 h-5 text-purple-300 mt-1 flex-shrink-0" />
-            <p className="text-gray-700 text-base leading-relaxed italic">
-              {ideaText || 'No idea text entered.'}
-            </p>
+          <div>
+            <label className="gp-label" htmlFor="fullName">
+              <Leaf className="h-4 w-4 text-forest" /> Full name <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="fullName"
+              className="gp-input"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="e.g. Amara Tan"
+              required
+            />
           </div>
 
-          <div className="mt-6 pt-5 border-t border-gray-100 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
-              You
+          <div>
+            <label className="gp-label" htmlFor="startDate">
+              <Leaf className="h-4 w-4 text-forest" /> Start date <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="startDate"
+              type="date"
+              className="gp-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="gp-label">
+              <Leaf className="h-4 w-4 text-forest" /> Profile photo <span className="text-red-500">*</span>
+            </label>
+            <div className="flex items-center gap-4">
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-sage bg-sage-light">
+                {preview ? (
+                  <img src={preview} alt="Preview" className="h-full w-full object-cover" />
+                ) : (
+                  <Leaf className="h-9 w-9 text-forest/40" />
+                )}
+              </div>
+              <div>
+                <button type="button" className="gp-btn-secondary" onClick={() => fileRef.current?.click()}>
+                  {preview ? 'Change photo' : 'Upload photo'}
+                </button>
+                <p className="mt-1.5 text-xs text-forest/60">JPG or PNG, up to 5MB. A clear headshot works best.</p>
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                className="hidden"
+                onChange={(e) => handlePhoto(e.target.files?.[0])}
+              />
             </div>
-            <div>
-              <div className="text-sm font-medium text-gray-900">Acme Staff</div>
-              <div className="text-xs text-gray-400">SWP Conference 2025</div>
+            {photoError && <p className="mt-2 text-sm font-semibold text-red-700">{photoError}</p>}
+          </div>
+
+          <div>
+            <label className="gp-label" htmlFor="intro">
+              <Leaf className="h-4 w-4 text-forest" /> Personal introduction <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              id="intro"
+              className="gp-input min-h-[140px] resize-y"
+              value={intro}
+              onChange={(e) => setIntro(e.target.value)}
+              placeholder="Share a short paragraph introducing yourself to your NParks colleagues — your background, what you're excited about, anything you'd love people to know."
+              required
+            />
+            <div className="mt-1.5 flex items-center justify-between text-xs">
+              <span className={overLimit ? 'font-bold text-amber-700' : 'text-forest/60'}>
+                {words} / {WORD_LIMIT} words · {intro.length} characters
+              </span>
+              {overLimit && (
+                <span className="font-bold text-amber-700">
+                  ⚠️ That's a little long — please try to keep it under {WORD_LIMIT} words.
+                </span>
+              )}
             </div>
           </div>
-        </motion.div>
 
-        {/* What happens next */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.25 }}
-          className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100/50 mb-8"
-        >
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-gray-900 mb-1">What happens to your idea?</p>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Your submission contributes to Acme Future of Work Pulse — a live dashboard showing collective insights from all participants. Your idea helps leadership understand workforce priorities.
-              </p>
-            </div>
+          <div>
+            <label className="gp-label" htmlFor="funFact">
+              <Leaf className="h-4 w-4 text-forest" /> Fun fact <span className="text-forest/40">(optional)</span>
+            </label>
+            <input
+              id="funFact"
+              className="gp-input"
+              value={funFact}
+              onChange={(e) => setFunFact(e.target.value)}
+              placeholder="One fun fact about yourself 🌼"
+            />
           </div>
-        </motion.div>
 
-        {/* Submit button */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.35 }}
-        >
-          <button
-            onClick={handleSubmit}
-            className="group w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold px-8 py-4 rounded-2xl shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-          >
-            Submit My Idea
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          <div className="rounded-xl bg-sage-light/70 px-4 py-3 text-xs text-forest-dark/70">
+            Job title and division are added by HR — you don't need to fill those in here.
+          </div>
+
+          <button type="submit" className="gp-btn-primary w-full text-lg" disabled={submitting}>
+            {submitting ? 'Sending your introduction…' : 'Send my introduction 🌿'}
           </button>
-        </motion.div>
+        </form>
+      </main>
+    </div>
+  );
+}
+
+function Confirmation({ name }: { name: string }) {
+  return (
+    <div className="relative flex min-h-screen items-center justify-center">
+      <BackgroundLeaves />
+      <div className="gp-card animate-fade-up mx-5 max-w-lg p-8 text-center sm:p-12">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-forest">
+          <Leaf className="h-10 w-10 text-cream animate-sway" />
+        </div>
+        <h1 className="mt-6 text-3xl font-extrabold text-forest">Thanks for sharing, {name}! 🌱</h1>
+        <p className="mt-3 text-forest-dark/80">
+          Your introduction has been sent to the team. Welcome to NParks — we're so glad you're here.
+          Keep an eye on your inbox for a warm welcome from your new colleagues.
+        </p>
+        <p className="mt-4 text-sm font-semibold text-forest/70">Growing together, one green space at a time. 🌳</p>
+        <Link to="/" className="gp-btn-primary mt-8">
+          Back to home
+        </Link>
       </div>
-    </main>
+    </div>
   );
 }

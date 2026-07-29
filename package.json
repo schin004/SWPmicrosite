@@ -1,23 +1,28 @@
 {
-  "name": "swpmicrosite",
+  "name": "greenpass",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "start": "node server.js",
+    "server": "node server.js",
+    "seed": "node seed.js",
+    "build": "vite build",
+    "start": "node seed.js && concurrently -k -n API,WEB -c green,cyan \"node server.js\" \"vite --host\"",
+    "serve": "npm run build && node server.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource/inter": "^5.2.8",
+    "concurrently": "^9.2.4",
+    "dotenv": "^16.6.1",
     "express": "^4.22.2",
     "framer-motion": "^12.42.0",
     "lucide-react": "^1.22.0",
-    "pg": "^8.22.0",
+    "multer": "^1.4.5-lts.1",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^6.30.4"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
@@ -30,7 +35,6 @@
     "postcss": "^8.5.16",
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.2",
-    "vite": "^8.1.0",
-    "vite-plugin-singlefile": "^2.3.3"
+    "vite": "^8.1.0"
   }
 }
