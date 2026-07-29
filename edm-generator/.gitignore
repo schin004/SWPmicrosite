@@ -1,0 +1,18 @@
+# Python
+backend/.venv/
+**/__pycache__/
+*.pyc
+backend/.env
+backend/*.db
+backend/edm.db
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Editor / OS
+.DS_Store
+
+# TS build info
+frontend/*.tsbuildinfo
