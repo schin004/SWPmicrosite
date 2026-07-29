@@ -372,64 +372,92 @@ function photoDataUri(row) {
 }
 
 function buildEdmHtml(hires, occasion, sendDate) {
+  return renderEdm(hires, occasion, sendDate, escapeHtml, photoDataUri);
+}
+
+// Engaging, park-noticeboard-style eDM: two-tone header with a nature emoji
+// band, a warm intro callout, and each new hire as a "spotlight" card with a
+// cycling accent colour (accent top bar + photo ring + role pill), a
+// highlighted fun-fact callout, leafy dividers, and a playful footer.
+// Still 100% table-based with all-inline CSS for Outlook compatibility.
+function renderEdm(hires, occasion, sendDate, esc, photoUri) {
   const GREEN = '#2D6A4F';
+  const DARK = '#1B4332';
+  const SAGE = '#95D5B2';
   const SAGE_BG = '#E8F5E9';
   const CREAM = '#F8F4E3';
-  const BROWN = '#6B4226';
+  const ACCENTS = ['#2D6A4F', '#6B4226', '#40916C', '#1B4332'];
+  const FONT = "Arial,Helvetica,sans-serif";
 
-  const rows = hires.map((h, i) => {
-    const bg = i % 2 === 0 ? '#FFFFFF' : SAGE_BG;
-    const img = photoDataUri(h);
+  const cards = hires.map((h, i) => {
+    const accent = ACCENTS[i % ACCENTS.length];
+    const bg = i % 2 === 0 ? '#FFFFFF' : '#F3FAF4';
+    const img = photoUri(h);
     const photoCell = img
-      ? `<img src="${img}" width="100" height="100" alt="${escapeHtml(h.full_name)}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;display:block;border:3px solid ${GREEN};" />`
-      : `<div style="width:100px;height:100px;border-radius:50%;background-color:${GREEN};"></div>`;
+      ? `<img src="${img}" width="96" height="96" alt="${esc(h.full_name)}" style="width:96px;height:96px;border-radius:50%;object-fit:cover;display:block;border:4px solid ${accent};" />`
+      : `<div style="width:96px;height:96px;border-radius:50%;background-color:${accent};"></div>`;
     const funFact = h.fun_fact
-      ? `<p style="margin:10px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${BROWN};font-style:italic;">🌱 Fun fact: ${escapeHtml(h.fun_fact)}</p>`
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 0 0;background-color:${SAGE_BG};border-radius:10px;">
+           <tr><td width="6" style="background-color:${accent};font-size:0;line-height:0;border-radius:10px 0 0 10px;">&nbsp;</td>
+           <td style="padding:9px 13px;font-family:${FONT};font-size:13px;font-style:italic;color:#33553f;">🌟 <b>Fun fact:</b> ${esc(h.fun_fact)}</td></tr>
+         </table>`
       : '';
-    return `
-      <tr style="background-color:${bg};">
-        <td valign="top" width="130" style="padding:20px 16px 20px 24px;">${photoCell}</td>
-        <td valign="top" style="padding:20px 24px 20px 0;">
-          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:bold;color:${GREEN};">${escapeHtml(h.full_name)}</p>
-          <p style="margin:4px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:${BROWN};">${escapeHtml(h.job_title)} &middot; ${escapeHtml(h.division)}</p>
-          <p style="margin:4px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6c757d;">Started ${escapeHtml(h.start_date)}</p>
-          <p style="margin:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#333333;">${escapeHtml(h.intro)}</p>
-          ${funFact}
-        </td>
-      </tr>`;
+    const card = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};border:1px solid #dcece2;border-radius:16px;">
+        <tr><td colspan="2" style="background-color:${accent};height:8px;line-height:8px;font-size:0;border-radius:16px 16px 0 0;">&nbsp;</td></tr>
+        <tr>
+          <td valign="top" width="118" style="padding:18px 6px 18px 18px;">${photoCell}</td>
+          <td valign="top" style="padding:18px 18px 18px 6px;">
+            <p style="margin:0;font-family:${FONT};font-size:20px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:7px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:4px 13px;border-radius:14px;font-family:${FONT};font-size:13px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
+            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;&nbsp;·&nbsp;&nbsp;📅 Started ${esc(h.start_date)}</p>
+            <p style="margin:11px 0 0 0;font-family:${FONT};font-size:14px;line-height:1.55;color:#333333;">${esc(h.intro)}</p>
+            ${funFact}
+          </td>
+        </tr>
+      </table>`;
+    const divider = i < hires.length - 1
+      ? `<tr><td style="padding:4px 0;text-align:center;font-size:14px;letter-spacing:8px;color:${SAGE};">🍃 🍃 🍃</td></tr>`
+      : '';
+    return `<tr><td style="padding:8px 22px;">${card}</td></tr>${divider}`;
   }).join('\n');
 
-  const dateLine = sendDate ? `<p style="margin:6px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#d8f3dc;">${escapeHtml(sendDate)}</p>` : '';
+  const dateLine = sendDate ? `<p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#d8f3dc;">📅 ${esc(sendDate)}</p>` : '';
 
   return `<!-- GreenPass eDM -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};padding:24px 0;">
   <tr>
     <td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
+        <tr><td style="background-color:${DARK};padding:10px 24px;text-align:center;font-size:17px;letter-spacing:7px;">🌿🌸🦋🌳☀️🍃</td></tr>
         <tr>
-          <td style="background-color:${GREEN};padding:32px 24px;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:2px;color:#95d5b2;text-transform:uppercase;">National Parks Board</p>
-            <h1 style="margin:8px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:28px;color:#ffffff;">Welcome to the NParks Family 🌿</h1>
-            <p style="margin:10px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#d8f3dc;">${escapeHtml(occasion)}</p>
+          <td style="background-color:${GREEN};padding:28px 24px 30px 24px;text-align:center;">
+            <p style="margin:0;font-family:${FONT};font-size:13px;letter-spacing:2px;color:#95d5b2;text-transform:uppercase;">National Parks Board</p>
+            <h1 style="margin:8px 0 0 0;font-family:${FONT};font-size:30px;color:#ffffff;">Welcome to the NParks Family 🌿</h1>
+            <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:14px auto 0 auto;"><tr><td style="background-color:${SAGE};color:${DARK};padding:7px 20px;border-radius:20px;font-family:${FONT};font-size:15px;font-weight:bold;">🌱 ${esc(occasion)}</td></tr></table>
             ${dateLine}
           </td>
         </tr>
+        <tr><td style="background-color:${SAGE};height:10px;line-height:10px;font-size:0;">&nbsp;</td></tr>
         <tr>
-          <td style="padding:24px;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#333333;">We're delighted to welcome our newest colleagues to the NParks family! Please take a moment to get to know them below — we hope you'll give them a warm welcome as we keep growing together.</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:0 24px 8px 24px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;border-radius:10px;overflow:hidden;border:1px solid #e0e0e0;">
-              ${rows}
+          <td style="padding:24px 22px 4px 22px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};border:1px solid #ece3c3;border-radius:14px;">
+              <tr>
+                <td valign="middle" width="58" style="padding:14px 0 14px 16px;font-size:30px;">🌳</td>
+                <td style="padding:14px 18px;font-family:${FONT};font-size:15px;line-height:1.6;color:#3a4a40;">We're delighted to welcome our newest colleagues to the NParks family! Take a moment to say hello and get to know them below — let's give them a warm, leafy welcome. 🌿</td>
+              </tr>
             </table>
           </td>
         </tr>
+        <tr><td style="padding:18px 24px 2px 24px;text-align:center;"><p style="margin:0;font-family:${FONT};font-size:21px;font-weight:bold;color:${GREEN};">🌱 Meet our newest colleagues 🌱</p></td></tr>
+        ${cards}
+        <tr><td style="height:12px;line-height:12px;font-size:0;">&nbsp;</td></tr>
+        <tr><td style="background-color:${SAGE};height:10px;line-height:10px;font-size:0;">&nbsp;</td></tr>
         <tr>
-          <td style="background-color:${GREEN};padding:24px;text-align:center;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-style:italic;color:#ffffff;">Growing together, one green space at a time. 🌳</p>
-            <p style="margin:10px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#95d5b2;">National Parks Board (NParks), Singapore &middot; Making Singapore our City in Nature</p>
+          <td style="background-color:${GREEN};padding:26px 24px;text-align:center;">
+            <p style="margin:0 0 12px 0;font-size:18px;letter-spacing:5px;">🌻🌿🦋🌳🍃🌷</p>
+            <p style="margin:0;font-family:${FONT};font-size:16px;font-style:italic;color:#ffffff;">Growing together, one green space at a time. 🌳</p>
+            <p style="margin:10px 0 0 0;font-family:${FONT};font-size:12px;color:#95d5b2;">National Parks Board (NParks), Singapore &middot; Making Singapore our City in Nature</p>
           </td>
         </tr>
       </table>
