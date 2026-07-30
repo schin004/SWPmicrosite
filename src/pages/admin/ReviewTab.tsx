@@ -101,10 +101,10 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
           <img
             src={sub.photo_path}
             alt={sub.full_name}
-            className="h-16 w-16 shrink-0 rounded-full border-2 border-sage object-cover"
+            className="w-24 shrink-0 rounded-lg border-2 border-sage bg-sage-light"
           />
         ) : (
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-sage-light">
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg bg-sage-light">
             <Leaf className="h-6 w-6 text-forest/40" />
           </div>
         )}

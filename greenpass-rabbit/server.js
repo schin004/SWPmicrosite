@@ -183,6 +183,7 @@ function layout({ title, body, adminNav = false }) {
   .tag.review{background:#fff4d6;color:#8a6d1a;border:1px solid #e7cf86}
   .tag.flagged{background:#fbe0e0;color:#a02020;border:1px solid #eab3b3}
   .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid ${C.sage};background:${C.sageLight}}
+  .thumb{width:100px;height:auto;border-radius:8px;border:2px solid ${C.sage};background:${C.sageLight};display:block}
   .banner{display:flex;gap:10px;align-items:flex-start;background:#fff8e1;border:1px solid #ecd58a;border-radius:14px;padding:12px 14px;color:#7a5c12;font-size:14px;margin-bottom:20px}
   .section-h{display:flex;align-items:center;gap:10px;margin:26px 0 10px}
   .section-h h2{margin:0;color:${C.green};font-size:22px}
@@ -227,12 +228,13 @@ function submitPage({ error = '', values = {} } = {}) {
     ${error ? `<div class="err">${esc(error)}</div>` : ''}
     <div class="card">
       <p class="muted">Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look. <b>Job title, division and start date are added by HR</b> — you don't need to fill those in.</p>
+      <p class="muted" style="background:${C.sageLight};border-radius:10px;padding:10px 12px"><b>Already submitted before?</b> You can send this form again to update your entry — as long as HR hasn't approved it yet, your new submission replaces the old one. Just enter your <b>full name exactly the same way</b> so we can match it.</p>
       <form method="post" action="/submit" enctype="multipart/form-data">
         <div class="field"><label>Full name <span class="req">*</span></label><input type="text" name="full_name" required value="${esc(values.full_name)}" placeholder="e.g. Amara Tan"></div>
         <div class="field"><label>Profile photo (JPG/PNG, max 5MB) <span class="req">*</span></label>
-          <div class="row"><img id="pv" class="avatar" alt="" style="display:none">
+          <div class="row"><img id="pv" alt="" style="display:none;width:120px;height:auto;border-radius:8px;border:2px solid ${C.sage}">
           <input type="file" name="photo" accept="image/jpeg,image/png" required onchange="var f=this.files[0];if(f){var i=document.getElementById('pv');i.src=URL.createObjectURL(f);i.style.display='block'}"></div>
-          <p class="muted">A clear headshot works best.</p></div>
+          <p class="muted">Your whole photo is shown as a rectangle — a clear, upright photo works best.</p></div>
         <div class="field"><label>Personal introduction <span class="req">*</span></label>
           <textarea name="intro" required oninput="var w=this.value.trim()?this.value.trim().split(/\\s+/).length:0;var c=document.getElementById('wc');c.textContent=w+' / 300 words';c.style.color=w>300?'#b45309':'';" placeholder="Share a short paragraph introducing yourself to your NParks colleagues.">${esc(values.intro)}</textarea>
           <p class="muted" id="wc">0 / 300 words</p></div>
@@ -250,12 +252,32 @@ app.post('/submit', (req, res) => {
     const { full_name, intro, fun_fact } = req.body;
     if (!full_name || !intro || !req.file) return res.status(400).send(submitPage({ error: 'Full name, introduction and a profile photo are all required.', values: req.body }));
     try {
+      const name = full_name.trim();
       const ai = await moderateText(intro);
       const photo = checkPhoto(req.file.buffer);
+
+      // Resubmission: if this person already has an entry that HR has NOT yet
+      // approved, overwrite it (their new submission replaces the old one and
+      // goes back to the front of the review queue). Approved entries are left
+      // untouched — a fresh submission is created instead. Matched by full name.
+      const existing = await pool.query(
+        `select id from submissions where lower(full_name) = lower($1) and status <> 'approved'
+         order by created_at desc limit 1`, [name]);
+      if (existing.rows.length) {
+        await pool.query(
+          `update submissions set intro=$1, fun_fact=$2, status='awaiting-hr-review',
+             ai_status=$3, ai_confidence=$4, ai_reason=$5, photo_status=$6, photo_reason=$7,
+             photo_mime=$8, photo_data=$9, updated_at=now() where id=$10`,
+          [intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
+           photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
+        );
+        return res.redirect(`/submit/thanks?name=${encodeURIComponent(name)}&updated=1`);
+      }
+
       const { rows } = await pool.query(
         `insert into submissions (full_name,intro,fun_fact,status,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,photo_mime,photo_data)
          values ($1,$2,$3,'awaiting-hr-review',$4,$5,$6,$7,$8,$9,$10) returning full_name`,
-        [full_name.trim(), intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, photo.status, photo.reason, req.file.mimetype, req.file.buffer],
+        [name, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, photo.status, photo.reason, req.file.mimetype, req.file.buffer],
       );
       res.redirect(`/submit/thanks?name=${encodeURIComponent(rows[0].full_name)}`);
     } catch (e) {
@@ -267,11 +289,12 @@ app.post('/submit', (req, res) => {
 
 app.get('/submit/thanks', (req, res) => {
   const name = esc(req.query.name || 'friend');
+  const updated = req.query.updated === '1';
   res.send(layout({ title: `Thanks for sharing, ${name}! 🌱`, body: `
     <div class="card" style="text-align:center;max-width:560px;margin:20px auto">
       <div style="font-size:44px">🌿</div>
       <h2 style="color:${C.green}">Welcome to NParks — we're so glad you're here.</h2>
-      <p class="muted">Your introduction has been sent to the team. Keep an eye on your inbox for a warm welcome from your new colleagues.</p>
+      <p class="muted">${updated ? 'Your entry has been updated and sent back to the team for review.' : 'Your introduction has been sent to the team.'} Keep an eye on your inbox for a warm welcome from your new colleagues.</p>
       <p style="color:${C.green};font-weight:800">Growing together, one green space at a time. 🌳</p>
       <a class="btn" href="/">Back to home</a>
     </div>` }));
@@ -393,7 +416,7 @@ function cardHtml(s) {
     </form></details>`;
 
   return `<div class="card">
-    <div class="row"><img class="avatar" src="/api/photo/${s.id}" alt="${esc(s.full_name)}">
+    <div class="row"><img class="thumb" src="/api/photo/${s.id}" alt="${esc(s.full_name)}">
       <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Starts ' + esc(s.start_date) : '📅 Start date — to be added by HR'}</p></div></div>
     <p style="margin:12px 0 0">${esc(s.intro)}</p>
     ${s.fun_fact ? `<p style="color:${C.earth};font-style:italic;margin:8px 0 0">🌼 Fun fact: ${esc(s.fun_fact)}</p>` : ''}
@@ -559,9 +582,11 @@ function buildEdmHtml(hires, occasion, sendDate) {
     const accent = ACCENTS[i % ACCENTS.length];
     const bg = i % 2 === 0 ? '#FFFFFF' : '#F3FAF4';
     const img = photoDataUri(h);
+    // Whole photo shown as a left-hand rectangle (no circular crop), so any
+    // aspect ratio the new hire uploads displays cleanly and lines up.
     const photoCell = img
-      ? `<img src="${img}" width="96" height="96" alt="${esc(h.full_name)}" style="width:96px;height:96px;border-radius:50%;object-fit:cover;display:block;border:4px solid ${accent};" />`
-      : `<div style="width:96px;height:96px;border-radius:50%;background-color:${accent};"></div>`;
+      ? `<img src="${img}" width="120" alt="${esc(h.full_name)}" style="width:120px;height:auto;display:block;border:3px solid ${accent};border-radius:8px;" />`
+      : `<div style="width:120px;height:120px;background-color:${accent};border-radius:8px;"></div>`;
     const funFact = h.fun_fact
       ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 0 0;background-color:${SAGE_BG};border-radius:10px;">
            <tr><td width="6" style="background-color:${accent};font-size:0;line-height:0;border-radius:10px 0 0 10px;">&nbsp;</td>
@@ -572,7 +597,7 @@ function buildEdmHtml(hires, occasion, sendDate) {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};border:1px solid #dcece2;border-radius:16px;">
         <tr><td colspan="2" style="background-color:${accent};height:8px;line-height:8px;font-size:0;border-radius:16px 16px 0 0;">&nbsp;</td></tr>
         <tr>
-          <td valign="top" width="118" style="padding:18px 6px 18px 18px;">${photoCell}</td>
+          <td valign="top" width="150" style="padding:18px 8px 18px 18px;">${photoCell}</td>
           <td valign="top" style="padding:18px 18px 18px 6px;">
             <p style="margin:0;font-family:${FONT};font-size:20px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:7px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:4px 13px;border-radius:14px;font-family:${FONT};font-size:13px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>

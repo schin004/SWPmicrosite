@@ -241,8 +241,27 @@ app.post('/api/submissions', (req, res) => {
         return res.status(400).json({ error: 'Full name, introduction and a profile photo are all required.' });
       }
 
+      const name = full_name.trim();
       const ai = await moderateText(intro);
       const photo = checkPhoto(req.file.buffer);
+
+      // Resubmission: if this person already has an entry HR hasn't approved,
+      // overwrite it (back to the review queue). Approved entries stay put and a
+      // fresh submission is created instead. Matched by full name.
+      const existing = await pool.query(
+        `select id from submissions where lower(full_name) = lower($1) and status <> 'approved'
+         order by created_at desc limit 1`, [name],
+      );
+      if (existing.rows.length) {
+        await pool.query(
+          `update submissions set intro=$1, fun_fact=$2, status='awaiting-hr-review',
+             ai_status=$3, ai_confidence=$4, ai_reason=$5, photo_status=$6, photo_reason=$7,
+             photo_mime=$8, photo_data=$9, updated_at=now() where id=$10`,
+          [intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
+           photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
+        );
+        return res.status(200).json({ id: existing.rows[0].id, name, updated: true });
+      }
 
       const { rows } = await pool.query(
         `insert into submissions
@@ -252,7 +271,7 @@ app.post('/api/submissions', (req, res) => {
          values ($1,$2,$3,'awaiting-hr-review',$4,$5,$6,$7,$8,$9,$10)
          returning id, full_name`,
         [
-          full_name.trim(), intro.trim(), (fun_fact || '').trim() || null,
+          name, intro.trim(), (fun_fact || '').trim() || null,
           ai.status, ai.confidence, ai.reason, photo.status, photo.reason,
           req.file.mimetype, req.file.buffer,
         ],
@@ -397,9 +416,11 @@ function renderEdm(hires, occasion, sendDate, esc, photoUri) {
     const accent = ACCENTS[i % ACCENTS.length];
     const bg = i % 2 === 0 ? '#FFFFFF' : '#F3FAF4';
     const img = photoUri(h);
+    // Whole photo shown as a left-hand rectangle (no circular crop), so any
+    // aspect ratio the new hire uploads displays cleanly and lines up.
     const photoCell = img
-      ? `<img src="${img}" width="96" height="96" alt="${esc(h.full_name)}" style="width:96px;height:96px;border-radius:50%;object-fit:cover;display:block;border:4px solid ${accent};" />`
-      : `<div style="width:96px;height:96px;border-radius:50%;background-color:${accent};"></div>`;
+      ? `<img src="${img}" width="120" alt="${esc(h.full_name)}" style="width:120px;height:auto;display:block;border:3px solid ${accent};border-radius:8px;" />`
+      : `<div style="width:120px;height:120px;background-color:${accent};border-radius:8px;"></div>`;
     const funFact = h.fun_fact
       ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 0 0;background-color:${SAGE_BG};border-radius:10px;">
            <tr><td width="6" style="background-color:${accent};font-size:0;line-height:0;border-radius:10px 0 0 10px;">&nbsp;</td>
@@ -410,7 +431,7 @@ function renderEdm(hires, occasion, sendDate, esc, photoUri) {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};border:1px solid #dcece2;border-radius:16px;">
         <tr><td colspan="2" style="background-color:${accent};height:8px;line-height:8px;font-size:0;border-radius:16px 16px 0 0;">&nbsp;</td></tr>
         <tr>
-          <td valign="top" width="118" style="padding:18px 6px 18px 18px;">${photoCell}</td>
+          <td valign="top" width="150" style="padding:18px 8px 18px 18px;">${photoCell}</td>
           <td valign="top" style="padding:18px 18px 18px 6px;">
             <p style="margin:0;font-family:${FONT};font-size:20px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:7px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:4px 13px;border-radius:14px;font-family:${FONT};font-size:13px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>

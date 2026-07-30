@@ -106,6 +106,12 @@ export default function Submit() {
             </div>
           )}
 
+          <div className="rounded-xl bg-sage-light/80 px-4 py-3 text-sm text-forest-dark/80">
+            <strong>Already submitted before?</strong> You can send this form again to update your entry — as long as HR
+            hasn't approved it yet, your new submission replaces the old one. Just enter your <strong>full name exactly
+            the same way</strong> so we can match it.
+          </div>
+
           <div>
             <label className="gp-label" htmlFor="fullName">
               <Leaf className="h-4 w-4 text-forest" /> Full name <span className="text-red-500">*</span>
@@ -125,9 +131,9 @@ export default function Submit() {
               <Leaf className="h-4 w-4 text-forest" /> Profile photo <span className="text-red-500">*</span>
             </label>
             <div className="flex items-center gap-4">
-              <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-sage bg-sage-light">
+              <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-sage bg-sage-light">
                 {preview ? (
-                  <img src={preview} alt="Preview" className="h-full w-full object-cover" />
+                  <img src={preview} alt="Preview" className="max-h-full max-w-full object-contain" />
                 ) : (
                   <Leaf className="h-9 w-9 text-forest/40" />
                 )}
@@ -136,7 +142,7 @@ export default function Submit() {
                 <button type="button" className="gp-btn-secondary" onClick={() => fileRef.current?.click()}>
                   {preview ? 'Change photo' : 'Upload photo'}
                 </button>
-                <p className="mt-1.5 text-xs text-forest/60">JPG or PNG, up to 5MB. A clear headshot works best.</p>
+                <p className="mt-1.5 text-xs text-forest/60">JPG or PNG, up to 5MB. Your whole photo is shown as a rectangle — a clear, upright photo works best.</p>
               </div>
               <input
                 ref={fileRef}
