@@ -57,7 +57,7 @@ async function ensureSchema() {
       id uuid primary key default gen_random_uuid(),
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now(),
-      full_name text not null, start_date text, intro text not null,
+      full_name text not null, email text, start_date text, intro text not null,
       fun_fact text, status text not null default 'awaiting-hr-review',
       job_title text, division text,
       ai_status text, ai_confidence int, ai_reason text,
@@ -69,9 +69,10 @@ async function ensureSchema() {
       occasion text not null, send_date text,
       hire_names jsonb not null, html text not null
     );
-    -- Start date is filled in by HR, not the new hire — make sure the column is
-    -- nullable even on databases created by an earlier version of this app.
+    -- Migrations so databases created by an earlier version of this app pick up
+    -- new columns / relaxed constraints.
     alter table submissions alter column start_date drop not null;
+    alter table submissions add column if not exists email text;
   `);
 }
 
@@ -228,9 +229,11 @@ function submitPage({ error = '', values = {} } = {}) {
     ${error ? `<div class="err">${esc(error)}</div>` : ''}
     <div class="card">
       <p class="muted">Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look. <b>Job title, division and start date are added by HR</b> — you don't need to fill those in.</p>
-      <p class="muted" style="background:${C.sageLight};border-radius:10px;padding:10px 12px"><b>Already submitted before?</b> You can send this form again to update your entry — as long as HR hasn't approved it yet, your new submission replaces the old one. Just enter your <b>full name exactly the same way</b> so we can match it.</p>
+      <p class="muted" style="background:${C.sageLight};border-radius:10px;padding:10px 12px"><b>Already submitted before?</b> Enter the <b>same personal email address</b> you used before and send the form again — as long as HR hasn't approved your entry yet, your new submission replaces the old one.</p>
       <form method="post" action="/submit" enctype="multipart/form-data">
         <div class="field"><label>Full name <span class="req">*</span></label><input type="text" name="full_name" required value="${esc(values.full_name)}" placeholder="e.g. Amara Tan"></div>
+        <div class="field"><label>Personal email address <span class="req">*</span></label><input type="email" name="email" required value="${esc(values.email)}" placeholder="e.g. yourname@gmail.com">
+          <p class="muted" style="margin-top:4px">We use this only to find your submission if you need to edit it later — it won't be shared in the welcome email or shown to your colleagues.</p></div>
         <div class="field"><label>Profile photo (JPG/PNG, max 5MB) <span class="req">*</span></label>
           <div class="row"><img id="pv" alt="" style="display:none;width:120px;height:auto;border-radius:8px;border:2px solid ${C.sage}">
           <input type="file" name="photo" accept="image/jpeg,image/png" required onchange="var f=this.files[0];if(f){var i=document.getElementById('pv');i.src=URL.createObjectURL(f);i.style.display='block'}"></div>
@@ -249,8 +252,10 @@ app.post('/submit', (req, res) => {
   upload.single('photo')(req, res, async (err) => {
     if (err) return res.status(400).send(submitPage({ error: err.message, values: req.body }));
     if (!pool) return res.status(503).send(submitPage({ error: 'Database is not configured yet. Please try again shortly.', values: req.body }));
-    const { full_name, intro, fun_fact } = req.body;
-    if (!full_name || !intro || !req.file) return res.status(400).send(submitPage({ error: 'Full name, introduction and a profile photo are all required.', values: req.body }));
+    const { full_name, email, intro, fun_fact } = req.body;
+    if (!full_name || !email || !intro || !req.file) return res.status(400).send(submitPage({ error: 'Full name, personal email, introduction and a profile photo are all required.', values: req.body }));
+    const mail = (email || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).send(submitPage({ error: 'Please enter a valid email address.', values: req.body }));
     try {
       const name = full_name.trim();
       const ai = await moderateText(intro);
@@ -259,25 +264,25 @@ app.post('/submit', (req, res) => {
       // Resubmission: if this person already has an entry that HR has NOT yet
       // approved, overwrite it (their new submission replaces the old one and
       // goes back to the front of the review queue). Approved entries are left
-      // untouched — a fresh submission is created instead. Matched by full name.
+      // untouched — a fresh submission is created instead. Matched by email.
       const existing = await pool.query(
-        `select id from submissions where lower(full_name) = lower($1) and status <> 'approved'
-         order by created_at desc limit 1`, [name]);
+        `select id from submissions where lower(email) = lower($1) and status <> 'approved'
+         order by created_at desc limit 1`, [mail]);
       if (existing.rows.length) {
         await pool.query(
-          `update submissions set intro=$1, fun_fact=$2, status='awaiting-hr-review',
-             ai_status=$3, ai_confidence=$4, ai_reason=$5, photo_status=$6, photo_reason=$7,
-             photo_mime=$8, photo_data=$9, updated_at=now() where id=$10`,
-          [intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
+          `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
+             ai_status=$5, ai_confidence=$6, ai_reason=$7, photo_status=$8, photo_reason=$9,
+             photo_mime=$10, photo_data=$11, updated_at=now() where id=$12`,
+          [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
            photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
         );
         return res.redirect(`/submit/thanks?name=${encodeURIComponent(name)}&updated=1`);
       }
 
       const { rows } = await pool.query(
-        `insert into submissions (full_name,intro,fun_fact,status,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,photo_mime,photo_data)
-         values ($1,$2,$3,'awaiting-hr-review',$4,$5,$6,$7,$8,$9,$10) returning full_name`,
-        [name, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, photo.status, photo.reason, req.file.mimetype, req.file.buffer],
+        `insert into submissions (full_name,email,intro,fun_fact,status,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,photo_mime,photo_data)
+         values ($1,$2,$3,$4,'awaiting-hr-review',$5,$6,$7,$8,$9,$10,$11) returning full_name`,
+        [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, photo.status, photo.reason, req.file.mimetype, req.file.buffer],
       );
       res.redirect(`/submit/thanks?name=${encodeURIComponent(rows[0].full_name)}`);
     } catch (e) {
@@ -354,7 +359,7 @@ const AI_DISCLAIMER = `<div class="banner"><span>🤝</span><div><b>AI moderatio
 app.get('/admin', async (req, res) => {
   if (!hasAdmin(req)) return res.send(adminLoginPage());
   if (!pool) return res.send(layout({ title: 'GreenPass HR Console', adminNav: true, body: `${AI_DISCLAIMER}<div class="card">No database connected.</div>` }));
-  const { rows } = await pool.query(`select id,full_name,start_date,intro,fun_fact,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason from submissions order by created_at desc`);
+  const { rows } = await pool.query(`select id,full_name,email,start_date,intro,fun_fact,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason from submissions order by created_at desc`);
   const groups = [
     ['awaiting-hr-review', 'Awaiting HR Review', 'Add job details and approve, or reject.'],
     ['approved', 'Approved', 'Ready to include in an eDM.'],
@@ -410,6 +415,7 @@ function cardHtml(s) {
     <form method="post" action="/admin/update" style="margin-top:10px">
       <input type="hidden" name="id" value="${s.id}"><input type="hidden" name="action" value="edit">
       <div class="field"><label>Full name</label><input type="text" name="full_name" value="${esc(s.full_name)}"></div>
+      <div class="field"><label>Personal email</label><input type="email" name="email" value="${esc(s.email)}"></div>
       <div class="field"><label>Introduction</label><textarea name="intro">${esc(s.intro)}</textarea></div>
       <div class="field"><label>Fun fact</label><input type="text" name="fun_fact" value="${esc(s.fun_fact)}"></div>
       <button class="btn sec" type="submit">Save changes</button>
@@ -417,7 +423,7 @@ function cardHtml(s) {
 
   return `<div class="card">
     <div class="row"><img class="thumb" src="/api/photo/${s.id}" alt="${esc(s.full_name)}">
-      <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Starts ' + esc(s.start_date) : '📅 Start date — to be added by HR'}</p></div></div>
+      <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Starts ' + esc(s.start_date) : '📅 Start date — to be added by HR'}</p>${s.email ? `<p class="muted" style="margin:2px 0 0">📧 ${esc(s.email)}</p>` : ''}</div></div>
     <p style="margin:12px 0 0">${esc(s.intro)}</p>
     ${s.fun_fact ? `<p style="color:${C.earth};font-style:italic;margin:8px 0 0">🌼 Fun fact: ${esc(s.fun_fact)}</p>` : ''}
     <div class="modbox">${moderationTag(s.ai_status)} <span class="muted">AI moderation${conf}</span><p style="margin:6px 0 0">${esc(s.ai_reason)}</p>${photoNote}</div>
@@ -444,8 +450,8 @@ app.post('/admin/update', async (req, res) => {
       return res.redirect('/admin?msg=' + encodeURIComponent('Entry restored to review.'));
     }
     if (action === 'edit') {
-      await pool.query('update submissions set full_name=$1,intro=$2,fun_fact=$3,updated_at=now() where id=$4',
-        [(req.body.full_name || '').trim(), (req.body.intro || '').trim(), (req.body.fun_fact || '').trim() || null, id]);
+      await pool.query('update submissions set full_name=$1,email=$2,intro=$3,fun_fact=$4,updated_at=now() where id=$5',
+        [(req.body.full_name || '').trim(), (req.body.email || '').trim() || null, (req.body.intro || '').trim(), (req.body.fun_fact || '').trim() || null, id]);
       return res.redirect('/admin?msg=' + encodeURIComponent('Details updated.'));
     }
     // save or approve → persist HR fields (job title, division, start date)

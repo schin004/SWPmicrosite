@@ -8,6 +8,7 @@ export type SubmissionStatus = 'awaiting-hr-review' | 'approved' | 'rejected';
 export interface Submission {
   id: number;
   full_name: string;
+  email: string | null;
   start_date: string;
   photo_path: string | null;
   intro: string;

@@ -52,6 +52,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({
     full_name: sub.full_name,
+    email: sub.email ?? '',
     intro: sub.intro,
     fun_fact: sub.fun_fact ?? '',
   });
@@ -87,6 +88,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
     run(async () => {
       await updateSubmission(sub.id, {
         full_name: draft.full_name.trim(),
+        email: draft.email.trim(),
         intro: draft.intro.trim(),
         fun_fact: draft.fun_fact.trim(),
       });
@@ -115,6 +117,14 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
                 className="gp-input py-1.5"
                 value={draft.full_name}
                 onChange={(e) => setDraft({ ...draft, full_name: e.target.value })}
+                placeholder="Full name"
+              />
+              <input
+                type="email"
+                className="gp-input py-1.5"
+                value={draft.email}
+                onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+                placeholder="Personal email"
               />
             </div>
           ) : (
@@ -123,6 +133,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
               <p className="text-sm text-forest/60">
                 {sub.start_date ? `Starts ${sub.start_date}` : '📅 Start date — to be added by HR'}
               </p>
+              {sub.email && <p className="truncate text-sm text-forest/60">📧 {sub.email}</p>}
             </>
           )}
         </div>
@@ -214,7 +225,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
         {editing ? (
           <>
             <button className="gp-btn-primary" onClick={saveEdit} disabled={busy}>Save changes</button>
-            <button className="gp-btn-secondary" onClick={() => { setEditing(false); setDraft({ full_name: sub.full_name, intro: sub.intro, fun_fact: sub.fun_fact ?? '' }); }} disabled={busy}>
+            <button className="gp-btn-secondary" onClick={() => { setEditing(false); setDraft({ full_name: sub.full_name, email: sub.email ?? '', intro: sub.intro, fun_fact: sub.fun_fact ?? '' }); }} disabled={busy}>
               Cancel
             </button>
           </>

@@ -52,6 +52,7 @@ async function ensureSchema() {
       created_at    timestamptz not null default now(),
       updated_at    timestamptz not null default now(),
       full_name     text not null,
+      email         text,
       start_date    text,
       intro         text not null,
       fun_fact      text,
@@ -77,15 +78,16 @@ async function ensureSchema() {
       html        text not null
     );
   `);
-  // Start date is filled in by HR, not the new hire — ensure the column is
-  // nullable even on databases created by an earlier version of this app.
+  // Migrations so databases created by an earlier version of this app pick up
+  // new columns / relaxed constraints.
   await pool.query('alter table submissions alter column start_date drop not null');
+  await pool.query('alter table submissions add column if not exists email text');
 }
 
 // Columns returned to the client — everything EXCEPT the raw photo bytes, plus a
 // computed photo_path pointing at the /api/photo/:id endpoint.
 const PUBLIC_COLUMNS = `
-  id, full_name, start_date, intro, fun_fact, status, job_title, division,
+  id, full_name, email, start_date, intro, fun_fact, status, job_title, division,
   ai_status, ai_confidence, ai_reason, photo_status, photo_reason,
   ('/api/photo/' || id) as photo_path,
   created_at, updated_at
@@ -236,9 +238,13 @@ app.post('/api/submissions', (req, res) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!requireDb(res)) return;
     try {
-      const { full_name, intro, fun_fact } = req.body;
-      if (!full_name || !intro || !req.file) {
-        return res.status(400).json({ error: 'Full name, introduction and a profile photo are all required.' });
+      const { full_name, email, intro, fun_fact } = req.body;
+      if (!full_name || !email || !intro || !req.file) {
+        return res.status(400).json({ error: 'Full name, personal email, introduction and a profile photo are all required.' });
+      }
+      const mail = (email || '').trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+        return res.status(400).json({ error: 'Please enter a valid email address.' });
       }
 
       const name = full_name.trim();
@@ -247,17 +253,17 @@ app.post('/api/submissions', (req, res) => {
 
       // Resubmission: if this person already has an entry HR hasn't approved,
       // overwrite it (back to the review queue). Approved entries stay put and a
-      // fresh submission is created instead. Matched by full name.
+      // fresh submission is created instead. Matched by email.
       const existing = await pool.query(
-        `select id from submissions where lower(full_name) = lower($1) and status <> 'approved'
-         order by created_at desc limit 1`, [name],
+        `select id from submissions where lower(email) = lower($1) and status <> 'approved'
+         order by created_at desc limit 1`, [mail],
       );
       if (existing.rows.length) {
         await pool.query(
-          `update submissions set intro=$1, fun_fact=$2, status='awaiting-hr-review',
-             ai_status=$3, ai_confidence=$4, ai_reason=$5, photo_status=$6, photo_reason=$7,
-             photo_mime=$8, photo_data=$9, updated_at=now() where id=$10`,
-          [intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
+          `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
+             ai_status=$5, ai_confidence=$6, ai_reason=$7, photo_status=$8, photo_reason=$9,
+             photo_mime=$10, photo_data=$11, updated_at=now() where id=$12`,
+          [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
            photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
         );
         return res.status(200).json({ id: existing.rows[0].id, name, updated: true });
@@ -265,13 +271,13 @@ app.post('/api/submissions', (req, res) => {
 
       const { rows } = await pool.query(
         `insert into submissions
-           (full_name, intro, fun_fact, status,
+           (full_name, email, intro, fun_fact, status,
             ai_status, ai_confidence, ai_reason, photo_status, photo_reason,
             photo_mime, photo_data)
-         values ($1,$2,$3,'awaiting-hr-review',$4,$5,$6,$7,$8,$9,$10)
+         values ($1,$2,$3,$4,'awaiting-hr-review',$5,$6,$7,$8,$9,$10,$11)
          returning id, full_name`,
         [
-          name, intro.trim(), (fun_fact || '').trim() || null,
+          name, mail, intro.trim(), (fun_fact || '').trim() || null,
           ai.status, ai.confidence, ai.reason, photo.status, photo.reason,
           req.file.mimetype, req.file.buffer,
         ],
@@ -314,7 +320,7 @@ app.patch('/api/submissions/:id', requireAdmin, wrap(async (req, res) => {
   if (!existingRows.length) return res.status(404).json({ error: 'Submission not found.' });
   const existing = existingRows[0];
 
-  const allowed = ['full_name', 'start_date', 'intro', 'fun_fact', 'job_title', 'division', 'status'];
+  const allowed = ['full_name', 'email', 'start_date', 'intro', 'fun_fact', 'job_title', 'division', 'status'];
   const sets = [];
   const values = [];
   for (const key of allowed) {

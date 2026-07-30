@@ -14,6 +14,7 @@ function countWords(text: string) {
 
 export default function Submit() {
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [intro, setIntro] = useState('');
   const [funFact, setFunFact] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
@@ -60,12 +61,17 @@ export default function Submit() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!fullName.trim() || !intro.trim() || !photo) {
-      setError('Please fill in your name, introduction and upload a photo.');
+    if (!fullName.trim() || !email.trim() || !intro.trim() || !photo) {
+      setError('Please fill in your name, personal email, introduction and upload a photo.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Please enter a valid email address.');
       return;
     }
     const form = new FormData();
     form.append('full_name', fullName.trim());
+    form.append('email', email.trim());
     form.append('intro', intro.trim());
     form.append('fun_fact', funFact.trim());
     form.append('photo', photo);
@@ -107,9 +113,9 @@ export default function Submit() {
           )}
 
           <div className="rounded-xl bg-sage-light/80 px-4 py-3 text-sm text-forest-dark/80">
-            <strong>Already submitted before?</strong> You can send this form again to update your entry — as long as HR
-            hasn't approved it yet, your new submission replaces the old one. Just enter your <strong>full name exactly
-            the same way</strong> so we can match it.
+            <strong>Already submitted before?</strong> Enter the <strong>same personal email address</strong> you used
+            before and send the form again — as long as HR hasn't approved your entry yet, your new submission replaces
+            the old one.
           </div>
 
           <div>
@@ -124,6 +130,25 @@ export default function Submit() {
               placeholder="e.g. Amara Tan"
               required
             />
+          </div>
+
+          <div>
+            <label className="gp-label" htmlFor="email">
+              <Leaf className="h-4 w-4 text-forest" /> Personal email address <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="email"
+              type="email"
+              className="gp-input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g. yourname@gmail.com"
+              required
+            />
+            <p className="mt-1.5 text-xs text-forest/60">
+              We use this only to find your submission if you need to edit it later — it won't be shared in the welcome
+              email or shown to your colleagues.
+            </p>
           </div>
 
           <div>
