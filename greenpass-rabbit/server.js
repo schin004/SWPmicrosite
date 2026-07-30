@@ -54,7 +54,7 @@ async function ensureSchema() {
       id uuid primary key default gen_random_uuid(),
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now(),
-      full_name text not null, start_date text not null, intro text not null,
+      full_name text not null, start_date text, intro text not null,
       fun_fact text, status text not null default 'awaiting-hr-review',
       job_title text, division text,
       ai_status text, ai_confidence int, ai_reason text,
@@ -66,6 +66,9 @@ async function ensureSchema() {
       occasion text not null, send_date text,
       hire_names jsonb not null, html text not null
     );
+    -- Start date is filled in by HR, not the new hire — make sure the column is
+    -- nullable even on databases created by an earlier version of this app.
+    alter table submissions alter column start_date drop not null;
   `);
 }
 
@@ -220,10 +223,9 @@ function submitPage({ error = '', values = {} } = {}) {
   return layout({ title: "We're so glad you're here 🌱", body: `
     ${error ? `<div class="err">${esc(error)}</div>` : ''}
     <div class="card">
-      <p class="muted">Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look. <b>Job title and division are added by HR</b> — you don't need to fill those in.</p>
+      <p class="muted">Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look. <b>Job title, division and start date are added by HR</b> — you don't need to fill those in.</p>
       <form method="post" action="/submit" enctype="multipart/form-data">
         <div class="field"><label>Full name <span class="req">*</span></label><input type="text" name="full_name" required value="${esc(values.full_name)}" placeholder="e.g. Amara Tan"></div>
-        <div class="field"><label>Start date <span class="req">*</span></label><input type="date" name="start_date" required value="${esc(values.start_date)}"></div>
         <div class="field"><label>Profile photo (JPG/PNG, max 5MB) <span class="req">*</span></label>
           <div class="row"><img id="pv" class="avatar" alt="" style="display:none">
           <input type="file" name="photo" accept="image/jpeg,image/png" required onchange="var f=this.files[0];if(f){var i=document.getElementById('pv');i.src=URL.createObjectURL(f);i.style.display='block'}"></div>
@@ -242,15 +244,15 @@ app.post('/submit', (req, res) => {
   upload.single('photo')(req, res, async (err) => {
     if (err) return res.status(400).send(submitPage({ error: err.message, values: req.body }));
     if (!pool) return res.status(503).send(submitPage({ error: 'Database is not configured yet. Please try again shortly.', values: req.body }));
-    const { full_name, start_date, intro, fun_fact } = req.body;
-    if (!full_name || !start_date || !intro || !req.file) return res.status(400).send(submitPage({ error: 'Full name, start date, introduction and a profile photo are all required.', values: req.body }));
+    const { full_name, intro, fun_fact } = req.body;
+    if (!full_name || !intro || !req.file) return res.status(400).send(submitPage({ error: 'Full name, introduction and a profile photo are all required.', values: req.body }));
     try {
       const ai = await moderateText(intro);
       const photo = checkPhoto(req.file.buffer);
       const { rows } = await pool.query(
-        `insert into submissions (full_name,start_date,intro,fun_fact,status,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,photo_mime,photo_data)
-         values ($1,$2,$3,$4,'awaiting-hr-review',$5,$6,$7,$8,$9,$10,$11) returning full_name`,
-        [full_name.trim(), start_date, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, photo.status, photo.reason, req.file.mimetype, req.file.buffer],
+        `insert into submissions (full_name,intro,fun_fact,status,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,photo_mime,photo_data)
+         values ($1,$2,$3,'awaiting-hr-review',$4,$5,$6,$7,$8,$9,$10) returning full_name`,
+        [full_name.trim(), intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, photo.status, photo.reason, req.file.mimetype, req.file.buffer],
       );
       res.redirect(`/submit/thanks?name=${encodeURIComponent(rows[0].full_name)}`);
     } catch (e) {
@@ -355,6 +357,7 @@ function cardHtml(s) {
             <div><label>Job Title</label><input type="text" name="job_title" value="${jt}" placeholder="e.g. Park Manager"></div>
             <div><label>Division / Branch</label><input type="text" name="division" value="${dv}" placeholder="e.g. Parks Division"></div>
           </div>
+          <div class="field" style="margin:12px 0 0"><label>Start Date</label><input type="date" name="start_date" value="${esc(s.start_date)}"></div>
         </div>
         <div class="actions">
           ${s.status === 'awaiting-hr-review' ? `<button class="btn" name="action" value="approve">✓ Approve</button>` : ''}
@@ -370,7 +373,6 @@ function cardHtml(s) {
     <form method="post" action="/admin/update" style="margin-top:10px">
       <input type="hidden" name="id" value="${s.id}"><input type="hidden" name="action" value="edit">
       <div class="field"><label>Full name</label><input type="text" name="full_name" value="${esc(s.full_name)}"></div>
-      <div class="field"><label>Start date</label><input type="date" name="start_date" value="${esc(s.start_date)}"></div>
       <div class="field"><label>Introduction</label><textarea name="intro">${esc(s.intro)}</textarea></div>
       <div class="field"><label>Fun fact</label><input type="text" name="fun_fact" value="${esc(s.fun_fact)}"></div>
       <button class="btn sec" type="submit">Save changes</button>
@@ -378,7 +380,7 @@ function cardHtml(s) {
 
   return `<div class="card">
     <div class="row"><img class="avatar" src="/api/photo/${s.id}" alt="${esc(s.full_name)}">
-      <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">Starts ${esc(s.start_date)}</p></div></div>
+      <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Starts ' + esc(s.start_date) : '📅 Start date — to be added by HR'}</p></div></div>
     <p style="margin:12px 0 0">${esc(s.intro)}</p>
     ${s.fun_fact ? `<p style="color:${C.earth};font-style:italic;margin:8px 0 0">🌼 Fun fact: ${esc(s.fun_fact)}</p>` : ''}
     <div class="modbox">${moderationTag(s.ai_status)} <span class="muted">AI moderation${conf}</span><p style="margin:6px 0 0">${esc(s.ai_reason)}</p>${photoNote}</div>
@@ -405,19 +407,20 @@ app.post('/admin/update', async (req, res) => {
       return res.redirect('/admin?msg=' + encodeURIComponent('Entry restored to review.'));
     }
     if (action === 'edit') {
-      await pool.query('update submissions set full_name=$1,start_date=$2,intro=$3,fun_fact=$4,updated_at=now() where id=$5',
-        [(req.body.full_name || '').trim(), req.body.start_date, (req.body.intro || '').trim(), (req.body.fun_fact || '').trim() || null, id]);
+      await pool.query('update submissions set full_name=$1,intro=$2,fun_fact=$3,updated_at=now() where id=$4',
+        [(req.body.full_name || '').trim(), (req.body.intro || '').trim(), (req.body.fun_fact || '').trim() || null, id]);
       return res.redirect('/admin?msg=' + encodeURIComponent('Details updated.'));
     }
-    // save or approve → persist HR fields
+    // save or approve → persist HR fields (job title, division, start date)
     const jobTitle = (req.body.job_title || '').trim();
     const division = (req.body.division || '').trim();
-    if (action === 'approve' && (!jobTitle || !division)) {
-      return res.redirect('/admin?err=' + encodeURIComponent('Job Title and Division must both be filled in before approving.'));
+    const startDate = (req.body.start_date || '').trim();
+    if (action === 'approve' && (!jobTitle || !division || !startDate)) {
+      return res.redirect('/admin?err=' + encodeURIComponent('Job Title, Division and Start Date must all be filled in before approving.'));
     }
     const status = action === 'approve' ? 'approved' : undefined;
-    if (status) await pool.query('update submissions set job_title=$1,division=$2,status=$3,updated_at=now() where id=$4', [jobTitle, division, status, id]);
-    else await pool.query('update submissions set job_title=$1,division=$2,updated_at=now() where id=$3', [jobTitle, division, id]);
+    if (status) await pool.query('update submissions set job_title=$1,division=$2,start_date=$3,status=$4,updated_at=now() where id=$5', [jobTitle, division, startDate || null, status, id]);
+    else await pool.query('update submissions set job_title=$1,division=$2,start_date=$3,updated_at=now() where id=$4', [jobTitle, division, startDate || null, id]);
     res.redirect('/admin?msg=' + encodeURIComponent(action === 'approve' ? `Approved — ${jobTitle}, ${division}.` : 'HR details saved.'));
   } catch (e) {
     console.error(e);
@@ -587,8 +590,8 @@ async function seedIfEmpty() {
   const { rows } = await pool.query('select count(*)::int n from submissions');
   if (rows[0].n > 0) { console.log(`[seed] skipped (already has ${rows[0].n} rows)`); return; }
   const demo = [
-    { full_name: 'Amara Tan', start_date: '2025-07-14', rgb: [45, 106, 79], intro: "Hello everyone! I'm Amara, joining NParks after five years in urban landscape design. I'm passionate about pollinator gardens and can't wait to help make our parks even more welcoming for people and wildlife alike. Looking forward to meeting you all on the trails!", fun_fact: 'I once cycled the entire Round Island Route in a single day.', status: 'awaiting-hr-review', job_title: null, division: null, ai_status: 'clear', ai_confidence: 96, ai_reason: 'The introduction is warm, professional, and free of sensitive personal information.' },
-    { full_name: 'Wei Jie Lim', start_date: '2025-07-21', rgb: [107, 66, 38], intro: "Hi team! I'm Wei Jie. I live at 42 Sunbird Avenue and you can always reach me on my mobile at 9123 4567. I'm currently managing a chronic back condition so I may need to sit during long outdoor events, but I'm thrilled to be here and love birdwatching at Sungei Buloh!", fun_fact: 'I have spotted over 200 bird species across Singapore.', status: 'awaiting-hr-review', job_title: null, division: null, ai_status: 'flagged', ai_confidence: 92, ai_reason: 'The text discloses a home address, a personal mobile number, and a medical condition that should not appear in a mass email.' },
+    { full_name: 'Amara Tan', start_date: null, rgb: [45, 106, 79], intro: "Hello everyone! I'm Amara, joining NParks after five years in urban landscape design. I'm passionate about pollinator gardens and can't wait to help make our parks even more welcoming for people and wildlife alike. Looking forward to meeting you all on the trails!", fun_fact: 'I once cycled the entire Round Island Route in a single day.', status: 'awaiting-hr-review', job_title: null, division: null, ai_status: 'clear', ai_confidence: 96, ai_reason: 'The introduction is warm, professional, and free of sensitive personal information.' },
+    { full_name: 'Wei Jie Lim', start_date: null, rgb: [107, 66, 38], intro: "Hi team! I'm Wei Jie. I live at 42 Sunbird Avenue and you can always reach me on my mobile at 9123 4567. I'm currently managing a chronic back condition so I may need to sit during long outdoor events, but I'm thrilled to be here and love birdwatching at Sungei Buloh!", fun_fact: 'I have spotted over 200 bird species across Singapore.', status: 'awaiting-hr-review', job_title: null, division: null, ai_status: 'flagged', ai_confidence: 92, ai_reason: 'The text discloses a home address, a personal mobile number, and a medical condition that should not appear in a mass email.' },
     { full_name: 'Priya Nair', start_date: '2025-06-30', rgb: [149, 213, 178], intro: "Hello NParks family! I'm Priya, and I'm delighted to be joining the conservation team. My background is in freshwater ecology, and I'm especially excited about our habitat restoration work. I believe every small green space makes a difference — see you out in the field!", fun_fact: 'I keep a balcony full of native ferns at home.', status: 'approved', job_title: 'Senior Conservation Officer', division: 'National Biodiversity Centre', ai_status: 'clear', ai_confidence: 98, ai_reason: 'A professional, enthusiastic introduction with no sensitive or off-topic content.' },
   ];
   for (const d of demo) {

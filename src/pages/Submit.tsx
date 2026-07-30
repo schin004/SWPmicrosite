@@ -14,7 +14,6 @@ function countWords(text: string) {
 
 export default function Submit() {
   const [fullName, setFullName] = useState('');
-  const [startDate, setStartDate] = useState('');
   const [intro, setIntro] = useState('');
   const [funFact, setFunFact] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
@@ -61,13 +60,12 @@ export default function Submit() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!fullName.trim() || !startDate || !intro.trim() || !photo) {
-      setError('Please fill in your name, start date, introduction and upload a photo.');
+    if (!fullName.trim() || !intro.trim() || !photo) {
+      setError('Please fill in your name, introduction and upload a photo.');
       return;
     }
     const form = new FormData();
     form.append('full_name', fullName.trim());
-    form.append('start_date', startDate);
     form.append('intro', intro.trim());
     form.append('fun_fact', funFact.trim());
     form.append('photo', photo);
@@ -118,20 +116,6 @@ export default function Submit() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Amara Tan"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="gp-label" htmlFor="startDate">
-              <Leaf className="h-4 w-4 text-forest" /> Start date <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="startDate"
-              type="date"
-              className="gp-input"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
               required
             />
           </div>
@@ -203,7 +187,7 @@ export default function Submit() {
           </div>
 
           <div className="rounded-xl bg-sage-light/70 px-4 py-3 text-xs text-forest-dark/70">
-            Job title and division are added by HR — you don't need to fill those in here.
+            Job title, division and start date are added by HR — you don't need to fill those in here.
           </div>
 
           <button type="submit" className="gp-btn-primary w-full text-lg" disabled={submitting}>

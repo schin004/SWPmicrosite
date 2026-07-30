@@ -48,17 +48,17 @@ export default function ReviewTab({
 function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promise<void> }) {
   const [jobTitle, setJobTitle] = useState(sub.job_title ?? '');
   const [division, setDivision] = useState(sub.division ?? '');
+  const [startDate, setStartDate] = useState(sub.start_date ?? '');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({
     full_name: sub.full_name,
-    start_date: sub.start_date,
     intro: sub.intro,
     fun_fact: sub.fun_fact ?? '',
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canApprove = jobTitle.trim() !== '' && division.trim() !== '';
+  const canApprove = jobTitle.trim() !== '' && division.trim() !== '' && startDate.trim() !== '';
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -74,10 +74,10 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
   }
 
   const saveHrFields = () =>
-    run(() => updateSubmission(sub.id, { job_title: jobTitle.trim(), division: division.trim() }));
+    run(() => updateSubmission(sub.id, { job_title: jobTitle.trim(), division: division.trim(), start_date: startDate.trim() }));
 
   const approve = () =>
-    run(() => updateSubmission(sub.id, { job_title: jobTitle.trim(), division: division.trim(), status: 'approved' }));
+    run(() => updateSubmission(sub.id, { job_title: jobTitle.trim(), division: division.trim(), start_date: startDate.trim(), status: 'approved' }));
 
   const reject = () => run(() => updateSubmission(sub.id, { status: 'rejected' }));
 
@@ -87,7 +87,6 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
     run(async () => {
       await updateSubmission(sub.id, {
         full_name: draft.full_name.trim(),
-        start_date: draft.start_date,
         intro: draft.intro.trim(),
         fun_fact: draft.fun_fact.trim(),
       });
@@ -117,17 +116,13 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
                 value={draft.full_name}
                 onChange={(e) => setDraft({ ...draft, full_name: e.target.value })}
               />
-              <input
-                type="date"
-                className="gp-input py-1.5"
-                value={draft.start_date}
-                onChange={(e) => setDraft({ ...draft, start_date: e.target.value })}
-              />
             </div>
           ) : (
             <>
               <h3 className="truncate text-lg font-extrabold text-forest">{sub.full_name}</h3>
-              <p className="text-sm text-forest/60">Starts {sub.start_date}</p>
+              <p className="text-sm text-forest/60">
+                {sub.start_date ? `Starts ${sub.start_date}` : '📅 Start date — to be added by HR'}
+              </p>
             </>
           )}
         </div>
@@ -199,6 +194,15 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
                 onChange={(e) => setDivision(e.target.value)}
               />
             </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-forest">Start Date</label>
+              <input
+                type="date"
+                className="gp-input py-1.5"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -210,7 +214,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
         {editing ? (
           <>
             <button className="gp-btn-primary" onClick={saveEdit} disabled={busy}>Save changes</button>
-            <button className="gp-btn-secondary" onClick={() => { setEditing(false); setDraft({ full_name: sub.full_name, start_date: sub.start_date, intro: sub.intro, fun_fact: sub.fun_fact ?? '' }); }} disabled={busy}>
+            <button className="gp-btn-secondary" onClick={() => { setEditing(false); setDraft({ full_name: sub.full_name, intro: sub.intro, fun_fact: sub.fun_fact ?? '' }); }} disabled={busy}>
               Cancel
             </button>
           </>

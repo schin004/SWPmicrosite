@@ -52,7 +52,7 @@ async function ensureSchema() {
       created_at    timestamptz not null default now(),
       updated_at    timestamptz not null default now(),
       full_name     text not null,
-      start_date    text not null,
+      start_date    text,
       intro         text not null,
       fun_fact      text,
       status        text not null default 'awaiting-hr-review',
@@ -77,6 +77,9 @@ async function ensureSchema() {
       html        text not null
     );
   `);
+  // Start date is filled in by HR, not the new hire — ensure the column is
+  // nullable even on databases created by an earlier version of this app.
+  await pool.query('alter table submissions alter column start_date drop not null');
 }
 
 // Columns returned to the client — everything EXCEPT the raw photo bytes, plus a
@@ -233,9 +236,9 @@ app.post('/api/submissions', (req, res) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!requireDb(res)) return;
     try {
-      const { full_name, start_date, intro, fun_fact } = req.body;
-      if (!full_name || !start_date || !intro || !req.file) {
-        return res.status(400).json({ error: 'Full name, start date, introduction and a profile photo are all required.' });
+      const { full_name, intro, fun_fact } = req.body;
+      if (!full_name || !intro || !req.file) {
+        return res.status(400).json({ error: 'Full name, introduction and a profile photo are all required.' });
       }
 
       const ai = await moderateText(intro);
@@ -243,13 +246,13 @@ app.post('/api/submissions', (req, res) => {
 
       const { rows } = await pool.query(
         `insert into submissions
-           (full_name, start_date, intro, fun_fact, status,
+           (full_name, intro, fun_fact, status,
             ai_status, ai_confidence, ai_reason, photo_status, photo_reason,
             photo_mime, photo_data)
-         values ($1,$2,$3,$4,'awaiting-hr-review',$5,$6,$7,$8,$9,$10,$11)
+         values ($1,$2,$3,'awaiting-hr-review',$4,$5,$6,$7,$8,$9,$10)
          returning id, full_name`,
         [
-          full_name.trim(), start_date, intro.trim(), (fun_fact || '').trim() || null,
+          full_name.trim(), intro.trim(), (fun_fact || '').trim() || null,
           ai.status, ai.confidence, ai.reason, photo.status, photo.reason,
           req.file.mimetype, req.file.buffer,
         ],
@@ -288,7 +291,7 @@ app.get('/api/submissions', requireAdmin, wrap(async (_req, res) => {
 // ── Admin: update a submission (HR fields, edits, status changes) ────────────
 app.patch('/api/submissions/:id', requireAdmin, wrap(async (req, res) => {
   if (!requireDb(res)) return;
-  const { rows: existingRows } = await pool.query('select job_title, division from submissions where id = $1', [req.params.id]);
+  const { rows: existingRows } = await pool.query('select job_title, division, start_date from submissions where id = $1', [req.params.id]);
   if (!existingRows.length) return res.status(404).json({ error: 'Submission not found.' });
   const existing = existingRows[0];
 
@@ -300,12 +303,13 @@ app.patch('/api/submissions/:id', requireAdmin, wrap(async (req, res) => {
   }
   if (!sets.length) return res.status(400).json({ error: 'No valid fields to update.' });
 
-  // Guard: cannot approve until HR has filled in both job title and division.
+  // Guard: cannot approve until HR has filled in job title, division AND start date.
   if (req.body.status === 'approved') {
     const jobTitle = 'job_title' in req.body ? req.body.job_title : existing.job_title;
     const division = 'division' in req.body ? req.body.division : existing.division;
-    if (!jobTitle?.trim() || !division?.trim()) {
-      return res.status(400).json({ error: 'Job Title and Division must both be filled in before approving.' });
+    const startDate = 'start_date' in req.body ? req.body.start_date : existing.start_date;
+    if (!jobTitle?.trim() || !division?.trim() || !startDate?.trim()) {
+      return res.status(400).json({ error: 'Job Title, Division and Start Date must all be filled in before approving.' });
     }
   }
 
@@ -514,7 +518,7 @@ async function seedIfEmpty() {
 
   const demo = [
     {
-      full_name: 'Amara Tan', start_date: '2025-07-14', rgb: [45, 106, 79],
+      full_name: 'Amara Tan', start_date: null, rgb: [45, 106, 79],
       intro: "Hello everyone! I'm Amara, joining NParks after five years in urban landscape design. I'm passionate about pollinator gardens and can't wait to help make our parks even more welcoming for people and wildlife alike. Looking forward to meeting you all on the trails!",
       fun_fact: 'I once cycled the entire Round Island Route in a single day.',
       status: 'awaiting-hr-review', job_title: null, division: null,
@@ -522,7 +526,7 @@ async function seedIfEmpty() {
       ai_reason: 'The introduction is warm, professional, and free of sensitive personal information.',
     },
     {
-      full_name: 'Wei Jie Lim', start_date: '2025-07-21', rgb: [107, 66, 38],
+      full_name: 'Wei Jie Lim', start_date: null, rgb: [107, 66, 38],
       intro: "Hi team! I'm Wei Jie. I live at 42 Sunbird Avenue and you can always reach me on my mobile at 9123 4567. I'm currently managing a chronic back condition so I may need to sit during long outdoor events, but I'm thrilled to be here and love birdwatching at Sungei Buloh!",
       fun_fact: 'I have spotted over 200 bird species across Singapore.',
       status: 'awaiting-hr-review', job_title: null, division: null,
