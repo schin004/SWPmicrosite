@@ -1,0 +1,17 @@
+{
+  "name": "nparks-edm-generator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NParks Internal Opportunities eDM Generator — self-contained Node/Express server backed by Neon PostgreSQL. Deployable on Rabbit Deploy.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

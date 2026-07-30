@@ -16,3 +16,7 @@ frontend/.env
 
 # TS build info
 frontend/*.tsbuildinfo
+
+# Deploy (Node) build
+deploy/node_modules/
+deploy/.env
