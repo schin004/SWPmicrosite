@@ -240,7 +240,7 @@ app.post('/api/submissions', (req, res) => {
     try {
       const { full_name, email, intro, fun_fact } = req.body;
       if (!full_name || !email || !intro || !req.file) {
-        return res.status(400).json({ error: 'Full name, personal email, introduction and a profile photo are all required.' });
+        return res.status(400).json({ error: 'Full name, email address, introduction and a profile photo are all required.' });
       }
       const mail = (email || '').trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {

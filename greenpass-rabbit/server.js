@@ -229,10 +229,10 @@ function submitPage({ error = '', values = {} } = {}) {
     ${error ? `<div class="err">${esc(error)}</div>` : ''}
     <div class="card">
       <p class="muted">Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look. <b>Job title, division and start date are added by HR</b> — you don't need to fill those in.</p>
-      <p class="muted" style="background:${C.sageLight};border-radius:10px;padding:10px 12px"><b>Already submitted before?</b> Enter the <b>same personal email address</b> you used before and send the form again — as long as HR hasn't approved your entry yet, your new submission replaces the old one.</p>
+      <p class="muted" style="background:${C.sageLight};border-radius:10px;padding:10px 12px"><b>Already submitted before?</b> Enter the <b>same email address</b> you used before and send the form again — as long as HR hasn't approved your entry yet, your new submission replaces the old one.</p>
       <form method="post" action="/submit" enctype="multipart/form-data">
         <div class="field"><label>Full name <span class="req">*</span></label><input type="text" name="full_name" required value="${esc(values.full_name)}" placeholder="e.g. Amara Tan"></div>
-        <div class="field"><label>Personal email address <span class="req">*</span></label><input type="email" name="email" required value="${esc(values.email)}" placeholder="e.g. yourname@gmail.com">
+        <div class="field"><label>Email address <span class="req">*</span></label><input type="email" name="email" required value="${esc(values.email)}" placeholder="e.g. yourname@gmail.com">
           <p class="muted" style="margin-top:4px">We use this only to find your submission if you need to edit it later — it won't be shared in the welcome email or shown to your colleagues.</p></div>
         <div class="field"><label>Profile photo (JPG/PNG, max 5MB) <span class="req">*</span></label>
           <div class="row"><img id="pv" alt="" style="display:none;width:120px;height:auto;border-radius:8px;border:2px solid ${C.sage}">
@@ -253,7 +253,7 @@ app.post('/submit', (req, res) => {
     if (err) return res.status(400).send(submitPage({ error: err.message, values: req.body }));
     if (!pool) return res.status(503).send(submitPage({ error: 'Database is not configured yet. Please try again shortly.', values: req.body }));
     const { full_name, email, intro, fun_fact } = req.body;
-    if (!full_name || !email || !intro || !req.file) return res.status(400).send(submitPage({ error: 'Full name, personal email, introduction and a profile photo are all required.', values: req.body }));
+    if (!full_name || !email || !intro || !req.file) return res.status(400).send(submitPage({ error: 'Full name, email address, introduction and a profile photo are all required.', values: req.body }));
     const mail = (email || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).send(submitPage({ error: 'Please enter a valid email address.', values: req.body }));
     try {
@@ -415,7 +415,7 @@ function cardHtml(s) {
     <form method="post" action="/admin/update" style="margin-top:10px">
       <input type="hidden" name="id" value="${s.id}"><input type="hidden" name="action" value="edit">
       <div class="field"><label>Full name</label><input type="text" name="full_name" value="${esc(s.full_name)}"></div>
-      <div class="field"><label>Personal email</label><input type="email" name="email" value="${esc(s.email)}"></div>
+      <div class="field"><label>Email</label><input type="email" name="email" value="${esc(s.email)}"></div>
       <div class="field"><label>Introduction</label><textarea name="intro">${esc(s.intro)}</textarea></div>
       <div class="field"><label>Fun fact</label><input type="text" name="fun_fact" value="${esc(s.fun_fact)}"></div>
       <button class="btn sec" type="submit">Save changes</button>

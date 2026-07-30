@@ -124,7 +124,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
                 className="gp-input py-1.5"
                 value={draft.email}
                 onChange={(e) => setDraft({ ...draft, email: e.target.value })}
-                placeholder="Personal email"
+                placeholder="Email"
               />
             </div>
           ) : (

@@ -62,7 +62,7 @@ export default function Submit() {
     e.preventDefault();
     setError(null);
     if (!fullName.trim() || !email.trim() || !intro.trim() || !photo) {
-      setError('Please fill in your name, personal email, introduction and upload a photo.');
+      setError('Please fill in your name, email address, introduction and upload a photo.');
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -113,7 +113,7 @@ export default function Submit() {
           )}
 
           <div className="rounded-xl bg-sage-light/80 px-4 py-3 text-sm text-forest-dark/80">
-            <strong>Already submitted before?</strong> Enter the <strong>same personal email address</strong> you used
+            <strong>Already submitted before?</strong> Enter the <strong>same email address</strong> you used
             before and send the form again — as long as HR hasn't approved your entry yet, your new submission replaces
             the old one.
           </div>
@@ -134,7 +134,7 @@ export default function Submit() {
 
           <div>
             <label className="gp-label" htmlFor="email">
-              <Leaf className="h-4 w-4 text-forest" /> Personal email address <span className="text-red-500">*</span>
+              <Leaf className="h-4 w-4 text-forest" /> Email address <span className="text-red-500">*</span>
             </label>
             <input
               id="email"
