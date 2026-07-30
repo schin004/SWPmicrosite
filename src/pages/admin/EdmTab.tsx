@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import html2canvas from 'html2canvas';
 import { generateEdm, type Submission } from '../../api';
 
 export default function EdmTab({ submissions }: { submissions: Submission[] }) {
@@ -40,6 +41,33 @@ export default function EdmTab({ submissions }: { submissions: Submission[] }) {
       setTimeout(() => setCopied(false), 2500);
     } catch {
       setError('Could not copy automatically — please select the HTML in the box below and copy it manually.');
+    }
+  }
+
+  // Render the eDM to a PNG the admin can download and insert into Outlook.
+  async function savePng() {
+    if (!html) return;
+    setError(null);
+    const holder = document.createElement('div');
+    holder.style.cssText = 'position:fixed;left:-10000px;top:0;width:640px;background:#F8F4E3';
+    holder.innerHTML = html;
+    document.body.appendChild(holder);
+    try {
+      const canvas = await html2canvas(holder, { backgroundColor: '#F8F4E3', scale: 2, width: 640, windowWidth: 640, useCORS: true });
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'nparks-welcome-edm.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      }, 'image/png');
+    } catch (e) {
+      setError('Could not create the image: ' + (e as Error).message);
+    } finally {
+      holder.remove();
     }
   }
 
@@ -113,9 +141,12 @@ export default function EdmTab({ submissions }: { submissions: Submission[] }) {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-forest">Preview</h2>
           {html && (
-            <button className="gp-btn-secondary" onClick={copy}>
-              {copied ? '✓ Copied!' : 'Copy HTML to clipboard'}
-            </button>
+            <div className="flex gap-2">
+              <button className="gp-btn-primary" onClick={savePng}>⬇ Save as PNG</button>
+              <button className="gp-btn-secondary" onClick={copy}>
+                {copied ? '✓ Copied!' : 'Copy HTML'}
+              </button>
+            </div>
           )}
         </div>
         {html ? (

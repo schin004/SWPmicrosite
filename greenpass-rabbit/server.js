@@ -21,7 +21,10 @@ import express from 'express';
 import multer from 'multer';
 import pg from 'pg';
 import zlib from 'node:zlib';
+import path from 'node:path';
+import { createRequire } from 'node:module';
 
+const require = createRequire(import.meta.url);
 const app = express();
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
@@ -289,6 +292,17 @@ app.get('/api/photo/:id', async (req, res) => {
 // ── Health ───────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ ok: true, db: Boolean(pool) }));
 
+// ── Serve the html2canvas library (installed via npm) so the eDM preview can
+//    export a PNG. Same-origin script — no external CDN required. ─────────────
+app.get('/vendor/html2canvas.js', (_req, res) => {
+  try {
+    const dir = path.dirname(require.resolve('html2canvas/package.json'));
+    res.type('application/javascript').sendFile(path.join(dir, 'dist', 'html2canvas.min.js'));
+  } catch {
+    res.status(404).type('application/javascript').send('/* html2canvas not installed */');
+  }
+});
+
 // ── Admin auth ───────────────────────────────────────────────────────────────
 function adminLoginPage(error = '') {
   return layout({ title: 'HR Admin Login', body: `
@@ -454,10 +468,37 @@ function renderEdmPage(approved, generated = null, error = '') {
     <div class="card"><h2 style="margin-top:0;color:${C.green}">Preview</h2>`;
   if (generated) {
     body += `<iframe class="preview" srcdoc="${esc(generated.html)}"></iframe>
-      <details open><summary>Copy raw HTML</summary>
+      <div style="margin:12px 0 2px 0"><button class="btn" type="button" onclick="gpSavePng(this)">⬇ Save as PNG image</button>
+        <span class="muted" id="pngmsg"></span></div>
+      <p class="muted" style="margin-top:2px">Downloads the eDM as an image you can insert into Outlook (Insert → Picture), or just paste in.</p>
+      <details><summary>Or copy the raw HTML</summary>
       <textarea id="raw" readonly style="height:150px;font-family:monospace;font-size:12px;margin-top:8px" onfocus="this.select()">${esc(generated.html)}</textarea>
       <button class="btn sec" type="button" onclick="navigator.clipboard.writeText(document.getElementById('raw').value);this.textContent='✓ Copied!'">Copy HTML to clipboard</button>
-      <p class="muted">Paste straight into Outlook — all styles are inlined and images embedded.</p></details>`;
+      <p class="muted">Paste straight into Outlook — all styles are inlined and images embedded.</p></details>
+      <script src="/vendor/html2canvas.js"></script>
+      <script>
+        function gpSavePng(btn){
+          var msg=document.getElementById('pngmsg');
+          if(!window.html2canvas){ msg.textContent=' — image library did not load; try the screenshot method instead.'; return; }
+          var html=document.getElementById('raw').value;
+          var holder=document.createElement('div');
+          holder.style.cssText='position:fixed;left:-10000px;top:0;width:640px;background:#F8F4E3';
+          holder.innerHTML=html;
+          document.body.appendChild(holder);
+          btn.disabled=true; msg.textContent=' — generating image…';
+          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:640,windowWidth:640,useCORS:true}).then(function(canvas){
+            canvas.toBlob(function(blob){
+              var a=document.createElement('a');
+              a.href=URL.createObjectURL(blob);
+              a.download='nparks-welcome-edm.png';
+              document.body.appendChild(a); a.click(); a.remove();
+              setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+              msg.textContent=' — done! Check your Downloads folder.';
+            },'image/png');
+          }).catch(function(e){ msg.textContent=' — could not create image: '+e.message; })
+          .then(function(){ holder.remove(); btn.disabled=false; });
+        }
+      </script>`;
   } else {
     body += `<p class="muted">Select joiners and click <b>Generate eDM</b> — the formatted email will appear here.</p>`;
   }
