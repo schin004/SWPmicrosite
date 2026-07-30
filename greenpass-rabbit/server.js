@@ -582,10 +582,12 @@ function buildEdmHtml(hires, occasion, sendDate) {
     const accent = ACCENTS[i % ACCENTS.length];
     const bg = i % 2 === 0 ? '#FFFFFF' : '#F3FAF4';
     const img = photoDataUri(h);
-    // Whole photo shown as a left-hand rectangle (no circular crop), so any
-    // aspect ratio the new hire uploads displays cleanly and lines up.
+    // Whole photo shown as a left-hand rectangle (no circular crop). Both max
+    // dimensions are capped with width/height auto, so the image always keeps
+    // its true proportions — it can never be stretched, squashed, or run
+    // overly long, whatever aspect ratio the new hire uploads.
     const photoCell = img
-      ? `<img src="${img}" width="120" alt="${esc(h.full_name)}" style="width:120px;height:auto;display:block;border:3px solid ${accent};border-radius:8px;" />`
+      ? `<img src="${img}" alt="${esc(h.full_name)}" style="max-width:120px;max-height:150px;width:auto;height:auto;display:block;border:3px solid ${accent};border-radius:8px;" />`
       : `<div style="width:120px;height:120px;background-color:${accent};border-radius:8px;"></div>`;
     const funFact = h.fun_fact
       ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 0 0;background-color:${SAGE_BG};border-radius:10px;">
