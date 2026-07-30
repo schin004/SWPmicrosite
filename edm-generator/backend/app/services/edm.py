@@ -34,21 +34,20 @@ HEADER_TITLE = "🌿 Explore Career Opportunities Within NParks"
 OPENING_MESSAGE = (
     "Looking for your next opportunity within NParks?<br><br>"
     "Explore our latest internal openings across the organisation. "
-    "If a role interests you, have a conversation with your HR Business "
-    "Partner before applying through Careers@Gov."
+    "If a role interests you, simply have a conversation with your HR "
+    "Business Partner to find out more."
 )
 FOOTER_MESSAGE = (
     "Interested in exploring a different career pathway within NParks?<br>"
-    "Speak with your HR Business Partner before submitting your application "
-    "through Careers@Gov."
+    "Have a chat with your HR Business Partner — they can tell you more and "
+    "guide you on your next steps."
 )
 
 
-def _card_html(title: str, division: str, closing_date: str, summary: str, apply_url: str) -> str:
-    """Render a single vacancy as a rounded card (table-based)."""
+def _card_html(title: str, division: str, closing_date: str, summary: str) -> str:
+    """Render a single vacancy as a rounded, informational card (table-based)."""
     title = escape(title or "")
     summary = escape(summary or "")
-    apply_url = escape(apply_url or "https://www.careers.gov.sg/", quote=True)
 
     meta_rows: List[str] = []
     if division:
@@ -76,21 +75,9 @@ def _card_html(title: str, division: str, closing_date: str, summary: str, apply
               <p style="margin:0 0 12px 0;font-family:{FONT};font-size:13px;line-height:18px;">
                 {meta_html}
               </p>
-              <p style="margin:0 0 18px 0;font-family:{FONT};font-size:15px;line-height:22px;color:{INK};">
+              <p style="margin:0;font-family:{FONT};font-size:15px;line-height:22px;color:{INK};">
                 {summary}
               </p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td align="center" bgcolor="{GREEN}"
-                      style="border-radius:8px;background-color:{GREEN};">
-                    <a href="{apply_url}" target="_blank"
-                       style="display:inline-block;padding:11px 22px;font-family:{FONT};font-size:14px;
-                              font-weight:bold;color:{WHITE};text-decoration:none;border-radius:8px;">
-                      Apply on Careers@Gov &nbsp;&rarr;
-                    </a>
-                  </td>
-                </tr>
-              </table>
             </td>
           </tr>
         </table>
@@ -105,9 +92,9 @@ def build_edm_html(vacancies: Iterable[dict]) -> str:
     Parameters
     ----------
     vacancies:
-        Iterable of dicts with keys: title, division, closing_date, summary,
-        apply_url. Only the vacancies passed in are rendered (the caller is
-        responsible for filtering hidden ones and ordering).
+        Iterable of dicts with keys: title, division, closing_date, summary.
+        Only the vacancies passed in are rendered (the caller is responsible
+        for filtering hidden ones and ordering).
     """
     cards = "".join(
         _card_html(
@@ -115,7 +102,6 @@ def build_edm_html(vacancies: Iterable[dict]) -> str:
             v.get("division", ""),
             v.get("closing_date", ""),
             v.get("summary", ""),
-            v.get("apply_url", ""),
         )
         for v in vacancies
     )

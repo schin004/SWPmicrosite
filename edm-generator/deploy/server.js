@@ -447,7 +447,6 @@ const EDM = {
 function edmCard(v) {
   const title = escapeHtml(v.title);
   const summary = escapeHtml(v.summary);
-  const applyUrl = escapeHtml(v.apply_url || 'https://www.careers.gov.sg/');
   const meta = [];
   if (v.division) {
     meta.push(
@@ -472,17 +471,7 @@ function edmCard(v) {
             <td style="padding:22px 24px;border-left:4px solid ${EDM.greenAccent};border-radius:12px;">
               <p style="margin:0 0 6px 0;font-family:${EDM.font};font-size:18px;line-height:24px;font-weight:bold;color:${EDM.greenDark};">${title}</p>
               <p style="margin:0 0 12px 0;font-family:${EDM.font};font-size:13px;line-height:18px;">${metaHtml}</p>
-              <p style="margin:0 0 18px 0;font-family:${EDM.font};font-size:15px;line-height:22px;color:${EDM.ink};">${summary}</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td align="center" bgcolor="${EDM.green}" style="border-radius:8px;background-color:${EDM.green};">
-                    <a href="${applyUrl}" target="_blank"
-                       style="display:inline-block;padding:11px 22px;font-family:${EDM.font};font-size:14px;font-weight:bold;color:${EDM.white};text-decoration:none;border-radius:8px;">
-                      Apply on Careers@Gov &nbsp;&rarr;
-                    </a>
-                  </td>
-                </tr>
-              </table>
+              <p style="margin:0;font-family:${EDM.font};font-size:15px;line-height:22px;color:${EDM.ink};">${summary}</p>
             </td>
           </tr>
         </table>
@@ -519,7 +508,7 @@ function buildEdmHtml(vacancies) {
           <tr>
             <td style="padding:26px 28px 8px 28px;font-family:${EDM.font};font-size:15px;line-height:23px;color:${EDM.ink};">
               Looking for your next opportunity within NParks?<br><br>
-              Explore our latest internal openings across the organisation. If a role interests you, have a conversation with your HR Business Partner before applying through Careers@Gov.
+              Explore our latest internal openings across the organisation. If a role interests you, simply have a conversation with your HR Business Partner to find out more.
             </td>
           </tr>
           <tr>
@@ -533,7 +522,7 @@ function buildEdmHtml(vacancies) {
                 <tr>
                   <td style="background-color:${EDM.greenSoft};border-radius:12px;padding:20px 22px;font-family:${EDM.font};font-size:14px;line-height:21px;color:${EDM.greenDark};">
                     Interested in exploring a different career pathway within NParks?<br>
-                    Speak with your HR Business Partner before submitting your application through Careers@Gov.
+                    Have a chat with your HR Business Partner — they can tell you more and guide you on your next steps.
                   </td>
                 </tr>
               </table>
