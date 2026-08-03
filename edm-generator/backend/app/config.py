@@ -35,11 +35,11 @@ class Settings(BaseSettings):
     careers_base_url: str = Field(default="https://www.careers.gov.sg")
     # The agency to filter vacancies by.
     careers_agency: str = Field(default="National Parks Board")
-    # Best-effort JSON search endpoint used by the public portal. The portal's
-    # markup/endpoints can change over time, so this is configurable.
-    careers_search_url: str = Field(
-        default="https://sgcareers-api.spf.gov.sg/api/v2/jobs/search"
-    )
+    # Real Careers@Gov listings endpoint (an OData JSON service on the "HRP"
+    # platform). Its base URL is not publicly published, so it must be supplied
+    # to sweep live data. Leave blank to run on the bundled sample dataset. The
+    # parser understands the real HRP fields (Jobtitle/Agncy/Endda/Jobdesc).
+    careers_search_url: str = Field(default="")
     request_timeout: float = Field(default=20.0)
     # Maximum number of vacancies to keep / display.
     max_vacancies: int = Field(default=60)

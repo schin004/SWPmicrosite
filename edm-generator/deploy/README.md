@@ -55,13 +55,37 @@ All via environment variables — see `.env.example`. Highlights:
 - `USE_SAMPLE_FALLBACK=true` — serve bundled sample vacancies when Careers@Gov
   is unreachable (e.g. restricted network), so the tool is always demonstrable.
 
-## Note on the Careers@Gov source
+## Sweeping live Careers@Gov data
 
-Careers@Gov is a dynamic app whose search endpoint/markup are **not a
-documented, stable public API** and can change without notice. `server.js` makes
-a best-effort JSON request to `CAREERS_SEARCH_URL`, filters to open vacancies and
-de-duplicates; if that fails it falls back to the bundled sample dataset. When
-deploying with real network access to Careers@Gov, verify/adjust
-`CAREERS_SEARCH_URL` (and the `normaliseJson` mapping in `server.js`) against the
-live portal. Retrieval steps are logged, and the admin UI shows whether data came
-from the **live** source or the **sample** fallback.
+To pull **real** NParks vacancies you must:
+
+1. **Set `CAREERS_SEARCH_URL`** to the real Careers@Gov listings endpoint. The
+   portal's applicant system ("HRP") exposes an **OData JSON API**; the exact
+   base URL is not publicly published (the reference project
+   [`opengovsg/careersgovsg-jobs-data`](https://github.com/opengovsg/careersgovsg-jobs-data)
+   keeps it as a private repository secret), so it must be supplied via this
+   env var. `server.js` already understands the real HRP field names
+   (`Jobtitle`, `Agncy`, `Endda`, `Jobdesc`) and OData response envelopes
+   (`{ d: { results: [] } }` / `{ value: [] }`), so no code changes are needed
+   once the URL is provided.
+2. **Run where the network allows `careers.gov.sg`.** Rabbit Deploy can reach it;
+   sandboxed/dev environments may not.
+
+What the scraper does with a live endpoint:
+
+- filters to the configured agency (`CAREERS_AGENCY`, default *National Parks
+  Board*) using the record's agency field,
+- drops expired/closed roles (by `Endda` / closing date),
+- de-duplicates, caps at `MAX_VACANCIES`, and normalises OData dates.
+
+If `CAREERS_SEARCH_URL` is blank, the endpoint is unreachable, or it returns
+nothing usable, the app falls back to the **bundled sample dataset** (unless
+`USE_SAMPLE_FALLBACK=false`). The admin UI's refresh banner shows whether data
+came from the **live** source or the **sample** fallback, and all retrieval
+steps are logged.
+
+> Some agencies also post via Workday
+> (`sggovterp…myworkdayjobs.com/PublicServiceCareers`), Greenhouse or Workable.
+> If NParks roles live on one of those instead, point `CAREERS_SEARCH_URL` at
+> that board's JSON API — the parser already recognises common fields
+> (`title`, `content`, `application_deadline`, `absolute_url`, `externalPath`).

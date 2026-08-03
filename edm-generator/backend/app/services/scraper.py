@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -71,6 +72,10 @@ def _is_open(closing_date: str) -> bool:
 def _parse_date(value: str) -> Optional[date]:
     """Parse a variety of common date formats into a ``date``."""
     value = value.strip()
+    # OData/HRP dates look like "/Date(1699999999000)/" (epoch milliseconds).
+    odata = re.search(r"/Date\((\d+)", value)
+    if odata:
+        return datetime.utcfromtimestamp(int(odata.group(1)) / 1000).date()
     for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d %b %Y", "%d %B %Y", "%d-%m-%Y"):
         try:
             return datetime.strptime(value, fmt).date()
@@ -120,6 +125,8 @@ class CareersGovScraper:
     # ------------------------------------------------------------------ #
     def _fetch_from_json_api(self) -> List[Dict]:
         """Attempt to retrieve vacancies from a JSON search endpoint."""
+        if not self.settings.careers_search_url:
+            raise ScraperUnavailable("careers_search_url is not configured")
         params = {
             "agency": self.settings.careers_agency,
             "status": "open",
@@ -158,38 +165,48 @@ class CareersGovScraper:
     def _normalise_json(self, data) -> List[Dict]:
         """Normalise a JSON payload into our canonical vacancy dicts.
 
-        Handles a few plausible response shapes without assuming one specific
-        schema, since the portal's exact contract is not guaranteed.
+        Handles plain arrays, common REST keys, OData v4 (``{"value": []}``) and
+        OData v2 (``{"d": {"results": []}}``) envelopes — the last two are what
+        the Careers@Gov "HRP" platform uses. Field-name candidates cover both a
+        generic shape and the real HRP fields (Jobtitle, Agncy, Endda, Jobdesc)
+        as used by opengovsg's careersgovsg-jobs-data project.
         """
-        records = None
-        if isinstance(data, list):
-            records = data
-        elif isinstance(data, dict):
-            for key in ("results", "jobs", "data", "items", "hits"):
-                if isinstance(data.get(key), list):
-                    records = data[key]
-                    break
+        records = _extract_records(data)
         if not records:
             return []
 
+        needle = (self.settings.careers_agency or "").lower().strip()
         out: List[Dict] = []
         for rec in records:
             if not isinstance(rec, dict):
                 continue
-            title = _first(rec, "title", "jobTitle", "positionTitle", "name")
+            title = _first(rec, "Jobtitle", "title", "jobTitle", "positionTitle", "name")
             if not title:
                 continue
-            division = _first(
-                rec, "division", "department", "businessUnit", "team", default=""
+
+            agency = _first(
+                rec, "Agncy", "agency", "agencyName", "agencydesc", "company_name", default=""
             )
+            # If a record carries an agency and we have a filter, keep NParks only.
+            if needle and agency:
+                a = agency.lower()
+                if needle not in a and "nparks" not in a and "national parks" not in a:
+                    continue
+
+            division = _first(
+                rec, "Dept", "department", "division", "businessUnit", "team", default=""
+            ) or agency
             closing = _first(
-                rec, "closingDate", "closing_date", "expiryDate", "endDate", default=""
+                rec, "Endda", "closingDate", "closing_date", "expiryDate",
+                "endDate", "application_deadline", default="",
             )
             description = _first(
-                rec, "description", "jobDescription", "summary", "details", default=""
+                rec, "Jobdesc", "description", "jobDescription", "content",
+                "summary", "details", default="",
             )
             apply_url = _first(
-                rec, "applyUrl", "url", "link", "jobUrl", default=""
+                rec, "applyUrl", "url", "link", "jobUrl", "externalPath",
+                "absolute_url", default="",
             )
             if apply_url and apply_url.startswith("/"):
                 apply_url = self.settings.careers_base_url + apply_url
@@ -197,7 +214,7 @@ class CareersGovScraper:
                 {
                     "title": _clean(title),
                     "division": _clean(division),
-                    "closing_date": _clean(str(closing)),
+                    "closing_date": _format_date(str(closing)),
                     "description": _clean(description),
                     "apply_url": apply_url or self.settings.careers_base_url,
                 }
@@ -287,6 +304,29 @@ def _clean(text: Optional[str]) -> str:
     if not text:
         return ""
     return " ".join(str(text).split()).strip()
+
+
+def _format_date(value: str) -> str:
+    """Normalise a source date (incl. OData) to a clean YYYY-MM-DD string."""
+    parsed = _parse_date(value)
+    return parsed.isoformat() if parsed else _clean(value)
+
+
+def _extract_records(data) -> Optional[List]:
+    """Find the list of job records inside a variety of response envelopes."""
+    if isinstance(data, list):
+        return data
+    if not isinstance(data, dict):
+        return None
+    d = data.get("d")
+    if isinstance(d, dict) and isinstance(d.get("results"), list):
+        return d["results"]  # OData v2
+    if isinstance(d, list):
+        return d
+    for key in ("value", "results", "jobs", "jobPostings", "data", "items", "hits"):
+        if isinstance(data.get(key), list):
+            return data[key]
+    return None
 
 
 def _first(rec: Dict, *keys: str, default: str = "") -> str:

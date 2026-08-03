@@ -26,9 +26,12 @@ const CONFIG = {
   useSsl: process.env.PGSSL !== 'disable', // Neon requires SSL (default on)
   careersAgency: process.env.CAREERS_AGENCY || 'National Parks Board',
   careersBaseUrl: process.env.CAREERS_BASE_URL || 'https://www.careers.gov.sg',
-  careersSearchUrl:
-    process.env.CAREERS_SEARCH_URL ||
-    'https://www.careers.gov.sg/api/v2/jobs/search',
+  // The real Careers@Gov listings endpoint (an OData JSON service on the "HRP"
+  // platform) is not publicly published, so this MUST be supplied via the
+  // CAREERS_SEARCH_URL env var to sweep live data. The parser understands the
+  // real HRP fields (Jobtitle/Agncy/Endda/Jobdesc) and OData envelopes. Without
+  // a working endpoint the app falls back to the bundled sample dataset.
+  careersSearchUrl: process.env.CAREERS_SEARCH_URL || '',
   useSampleFallback: process.env.USE_SAMPLE_FALLBACK !== 'false',
   requestTimeoutMs: Number(process.env.REQUEST_TIMEOUT_MS || 20000),
   maxVacancies: Number(process.env.MAX_VACANCIES || 60),
@@ -154,6 +157,9 @@ function makeExternalId(title, applyUrl) {
 function parseDate(value) {
   const v = clean(value);
   if (!v) return null;
+  // OData/HRP dates look like "/Date(1699999999000)/" (epoch milliseconds).
+  const odata = /\/Date\((\d+)/.exec(v);
+  if (odata) return new Date(Number(odata[1]));
   // Accept ISO and a few common formats.
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
   if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
@@ -161,6 +167,13 @@ function parseDate(value) {
   if (dmy) return new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
   const parsed = new Date(v);
   return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+// Format a parsed date back to a clean YYYY-MM-DD for display.
+function formatDate(value) {
+  const d = parseDate(value);
+  if (!d) return clean(value);
+  return d.toISOString().slice(0, 10);
 }
 
 function isOpen(closingDate) {
@@ -188,6 +201,9 @@ function escapeHtml(text) {
 // failure we fall back to the bundled sample dataset (if enabled) so the tool
 // stays usable. Only OPEN, de-duplicated vacancies are returned.
 async function fetchLiveVacancies() {
+  if (!CONFIG.careersSearchUrl) {
+    throw new Error('CAREERS_SEARCH_URL is not configured');
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CONFIG.requestTimeoutMs);
   try {
@@ -217,31 +233,52 @@ function firstOf(rec, keys, fallback = '') {
   return fallback;
 }
 
-function normaliseJson(data) {
-  let records = null;
-  if (Array.isArray(data)) records = data;
-  else if (data && typeof data === 'object') {
-    for (const key of ['results', 'jobs', 'data', 'items', 'hits']) {
-      if (Array.isArray(data[key])) {
-        records = data[key];
-        break;
-      }
-    }
+// Locate the array of job records inside a variety of response envelopes.
+// Handles plain arrays, common REST keys, OData v4 ({ value: [] }) and
+// OData v2 ({ d: { results: [] } } or { d: [] }) — the last two are what the
+// Careers@Gov "HRP" platform uses.
+function extractRecords(data) {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return null;
+  if (data.d && Array.isArray(data.d.results)) return data.d.results; // OData v2
+  if (Array.isArray(data.d)) return data.d;
+  for (const key of ['value', 'results', 'jobs', 'jobPostings', 'data', 'items', 'hits']) {
+    if (Array.isArray(data[key])) return data[key];
   }
+  return null;
+}
+
+// Field-name candidates cover our generic shape AND the real Careers@Gov (HRP)
+// OData fields (Jobtitle, Agncy, Endda, Jobdesc) as used by opengovsg's
+// careersgovsg-jobs-data project.
+function normaliseJson(data) {
+  const records = extractRecords(data);
   if (!records) return [];
 
+  const agencyNeedle = (CONFIG.careersAgency || '').toLowerCase().trim();
   const out = [];
   for (const rec of records) {
     if (!rec || typeof rec !== 'object') continue;
-    const title = clean(firstOf(rec, ['title', 'jobTitle', 'positionTitle', 'name']));
+    const title = clean(firstOf(rec, ['Jobtitle', 'title', 'jobTitle', 'positionTitle', 'name']));
     if (!title) continue;
-    let applyUrl = firstOf(rec, ['applyUrl', 'url', 'link', 'jobUrl']);
+
+    // If the record carries an agency and we have a filter, keep NParks only.
+    const agency = clean(firstOf(rec, ['Agncy', 'agency', 'agencyName', 'agencydesc', 'company_name']));
+    if (agencyNeedle && agency) {
+      const a = agency.toLowerCase();
+      if (!a.includes(agencyNeedle) && !a.includes('nparks') && !a.includes('national parks')) {
+        continue;
+      }
+    }
+
+    let applyUrl = firstOf(rec, ['applyUrl', 'url', 'link', 'jobUrl', 'externalPath', 'absolute_url']);
     if (applyUrl && applyUrl.startsWith('/')) applyUrl = CONFIG.careersBaseUrl + applyUrl;
+
     out.push({
       title,
-      division: clean(firstOf(rec, ['division', 'department', 'businessUnit', 'team'])),
-      closing_date: clean(firstOf(rec, ['closingDate', 'closing_date', 'expiryDate', 'endDate'])),
-      description: clean(firstOf(rec, ['description', 'jobDescription', 'summary', 'details'])),
+      division: clean(firstOf(rec, ['Dept', 'department', 'division', 'businessUnit', 'team'])) || agency,
+      closing_date: formatDate(firstOf(rec, ['Endda', 'closingDate', 'closing_date', 'expiryDate', 'endDate', 'application_deadline'])),
+      description: clean(firstOf(rec, ['Jobdesc', 'description', 'jobDescription', 'content', 'summary', 'details'])),
       apply_url: applyUrl || CONFIG.careersBaseUrl,
     });
   }
