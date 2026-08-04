@@ -61,8 +61,24 @@ export async function adminLogin(password: string): Promise<void> {
   setAdminPassword(password);
 }
 
-export async function submitEntry(form: FormData): Promise<{ id: number; name: string }> {
+export async function submitEntry(form: FormData): Promise<{ id: number; name: string; updated?: boolean }> {
   return parse(await fetch('/api/submissions', { method: 'POST', body: form }));
+}
+
+export interface LookupResult {
+  found: boolean;
+  id?: number;
+  full_name?: string;
+  email?: string;
+  intro?: string;
+  fun_fact?: string | null;
+  status?: SubmissionStatus;
+  photo_path?: string | null;
+}
+
+// Public: look up a submission by email so the new hire can amend it.
+export async function lookupSubmission(email: string): Promise<LookupResult> {
+  return parse(await fetch('/api/submissions/lookup?email=' + encodeURIComponent(email)));
 }
 
 export async function fetchSubmissions(): Promise<Submission[]> {

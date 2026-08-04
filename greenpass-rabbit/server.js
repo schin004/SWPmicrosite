@@ -218,64 +218,106 @@ app.get('/', (_req, res) => {
   res.send(layout({ title: 'Welcome to GreenPass 🌿', body: `
     <p class="muted" style="font-size:16px;max-width:640px">Our warm welcome for every new member of the NParks family. New joiners share a short introduction; HR reviews it, adds job details, and sends a welcome email.</p>
     <div class="grid two" style="margin-top:18px">
-      <div class="card"><h2 style="color:${C.green};margin-top:0">I'm a new joiner 🌱</h2><p class="muted">Share a little about yourself so we can introduce you to your new colleagues. It only takes a couple of minutes.</p><a class="btn" href="/submit">Start my introduction →</a></div>
+      <div class="card"><h2 style="color:${C.green};margin-top:0">I'm a new joiner 🌱</h2><p class="muted">Share a little about yourself so we can introduce you to your new colleagues. It only takes a couple of minutes.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px"><a class="btn" href="/submit">Start my introduction →</a><a class="btn sec" href="/amend">Amend my introduction</a></div></div>
       <div class="card"><h2 style="color:${C.green};margin-top:0">HR admin dashboard</h2><p class="muted">Review submissions, verify content with AI assistance, add job details, and generate the welcome eDM.</p><a class="btn sec" href="/admin">Open dashboard →</a></div>
     </div>` }));
 });
 
 // ── Public: submission form ──────────────────────────────────────────────────
-function submitPage({ error = '', values = {} } = {}) {
-  return layout({ title: "We're so glad you're here 🌱", body: `
+function submitPage({ error = '', values = {}, amend = false, photoUrl = null } = {}) {
+  const introBlurb = amend
+    ? `<p class="muted">Update anything you'd like to change below, then save. Your amended introduction will go back to the HR team for a quick review. <b>Job title, division and start date are added by HR.</b></p>`
+    : `<p class="muted">Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look. <b>Job title, division and start date are added by HR</b> — you don't need to fill those in.</p>
+       <p class="muted" style="background:${C.sageLight};border-radius:10px;padding:10px 12px"><b>Already submitted before?</b> You can <a href="/amend">amend your existing introduction</a> instead of starting again.</p>`;
+  const emailField = amend
+    ? `<div class="field"><label>Email address</label><input type="email" name="email" value="${esc(values.email)}" readonly style="background:#eef3ef">
+        <p class="muted" style="margin-top:4px">This is the email you submitted with. To use a different one, start a new introduction instead.</p></div>`
+    : `<div class="field"><label>Email address <span class="req">*</span></label><input type="email" name="email" required value="${esc(values.email)}" placeholder="e.g. yourname@gmail.com">
+        <p class="muted" style="margin-top:4px">We use this only to find your submission if you need to edit it later — it won't be shared in the welcome email or shown to your colleagues.</p></div>`;
+  const photoField = amend
+    ? `<div class="field"><label>Profile photo (JPG/PNG, max 5MB)</label>
+        <div class="row"><img id="pv" ${photoUrl ? `src="${photoUrl}"` : ''} alt="Current photo" style="width:120px;height:auto;border-radius:8px;border:2px solid ${C.sage}${photoUrl ? '' : ';display:none'}">
+        <input type="file" name="photo" accept="image/jpeg,image/png" onchange="var f=this.files[0];if(f){var i=document.getElementById('pv');i.src=URL.createObjectURL(f);i.style.display='block'}"></div>
+        <p class="muted">Leave this empty to keep your current photo, or upload a new one to replace it.</p></div>`
+    : `<div class="field"><label>Profile photo (JPG/PNG, max 5MB) <span class="req">*</span></label>
+        <div class="row"><img id="pv" alt="" style="display:none;width:120px;height:auto;border-radius:8px;border:2px solid ${C.sage}">
+        <input type="file" name="photo" accept="image/jpeg,image/png" required onchange="var f=this.files[0];if(f){var i=document.getElementById('pv');i.src=URL.createObjectURL(f);i.style.display='block'}"></div>
+        <p class="muted">Your whole photo is shown as a rectangle — a clear, upright photo works best.</p></div>`;
+  return layout({ title: amend ? 'Amend your introduction 🌱' : "We're so glad you're here 🌱", body: `
     ${error ? `<div class="err">${esc(error)}</div>` : ''}
     <div class="card">
-      <p class="muted">Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look. <b>Job title, division and start date are added by HR</b> — you don't need to fill those in.</p>
-      <p class="muted" style="background:${C.sageLight};border-radius:10px;padding:10px 12px"><b>Already submitted before?</b> Enter the <b>same email address</b> you used before and send the form again — as long as HR hasn't approved your entry yet, your new submission replaces the old one.</p>
+      ${introBlurb}
       <form method="post" action="/submit" enctype="multipart/form-data">
+        ${amend ? '<input type="hidden" name="amend" value="1">' : ''}
         <div class="field"><label>Full name <span class="req">*</span></label><input type="text" name="full_name" required value="${esc(values.full_name)}" placeholder="e.g. Amara Tan"></div>
-        <div class="field"><label>Email address <span class="req">*</span></label><input type="email" name="email" required value="${esc(values.email)}" placeholder="e.g. yourname@gmail.com">
-          <p class="muted" style="margin-top:4px">We use this only to find your submission if you need to edit it later — it won't be shared in the welcome email or shown to your colleagues.</p></div>
-        <div class="field"><label>Profile photo (JPG/PNG, max 5MB) <span class="req">*</span></label>
-          <div class="row"><img id="pv" alt="" style="display:none;width:120px;height:auto;border-radius:8px;border:2px solid ${C.sage}">
-          <input type="file" name="photo" accept="image/jpeg,image/png" required onchange="var f=this.files[0];if(f){var i=document.getElementById('pv');i.src=URL.createObjectURL(f);i.style.display='block'}"></div>
-          <p class="muted">Your whole photo is shown as a rectangle — a clear, upright photo works best.</p></div>
+        ${emailField}
+        ${photoField}
         <div class="field"><label>Personal introduction <span class="req">*</span></label>
           <textarea name="intro" required oninput="var w=this.value.trim()?this.value.trim().split(/\\s+/).length:0;var c=document.getElementById('wc');c.textContent=w+' / 300 words';c.style.color=w>300?'#b45309':'';" placeholder="Share a short paragraph introducing yourself to your NParks colleagues.">${esc(values.intro)}</textarea>
           <p class="muted" id="wc">0 / 300 words</p></div>
         <div class="field"><label>Fun fact (optional)</label><input type="text" name="fun_fact" value="${esc(values.fun_fact)}" placeholder="One fun fact about yourself 🌼"></div>
-        <button class="btn" type="submit">Send my introduction 🌿</button>
+        <button class="btn" type="submit">${amend ? 'Save my changes 🌿' : 'Send my introduction 🌿'}</button>
       </form>
-    </div>` });
+    </div>
+    <script>(function(){var t=document.querySelector('textarea[name=intro]');if(t)t.dispatchEvent(new Event('input'));})();</script>` });
 }
 app.get('/submit', (_req, res) => res.send(submitPage()));
 
 app.post('/submit', (req, res) => {
   upload.single('photo')(req, res, async (err) => {
-    if (err) return res.status(400).send(submitPage({ error: err.message, values: req.body }));
-    if (!pool) return res.status(503).send(submitPage({ error: 'Database is not configured yet. Please try again shortly.', values: req.body }));
+    const amend = req.body.amend === '1';
+    // Re-render the right form (new or amend) with an error message.
+    const fail = async (message, status = 400) => {
+      let photoUrl = null;
+      const mail = (req.body.email || '').trim();
+      if (amend && pool && mail) {
+        const ex = await pool.query('select id from submissions where lower(email)=lower($1) order by created_at desc limit 1', [mail]);
+        photoUrl = ex.rows.length ? `/api/photo/${ex.rows[0].id}` : null;
+      }
+      return res.status(status).send(submitPage({ error: message, values: req.body, amend, photoUrl }));
+    };
+
+    if (err) return fail(err.message);
+    if (!pool) return fail('Database is not configured yet. Please try again shortly.', 503);
     const { full_name, email, intro, fun_fact } = req.body;
-    if (!full_name || !email || !intro || !req.file) return res.status(400).send(submitPage({ error: 'Full name, email address, introduction and a profile photo are all required.', values: req.body }));
+    if (!full_name || !email || !intro) return fail('Full name, email address and introduction are all required.');
     const mail = (email || '').trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).send(submitPage({ error: 'Please enter a valid email address.', values: req.body }));
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail('Please enter a valid email address.');
+
     try {
       const name = full_name.trim();
-      const ai = await moderateText(intro);
-      const photo = checkPhoto(req.file.buffer);
 
-      // Resubmission: if this person already has an entry that HR has NOT yet
-      // approved, overwrite it (their new submission replaces the old one and
-      // goes back to the front of the review queue). Approved entries are left
-      // untouched — a fresh submission is created instead. Matched by email.
+      // Find this person's existing entry (matched by email) that HR has NOT yet
+      // approved. If found, we UPDATE it in place — a photo is optional here
+      // (leave it out to keep the current one). If not found, this is a brand-new
+      // submission and a photo is required. Approved entries are left untouched.
       const existing = await pool.query(
         `select id from submissions where lower(email) = lower($1) and status <> 'approved'
          order by created_at desc limit 1`, [mail]);
-      if (existing.rows.length) {
-        await pool.query(
-          `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
-             ai_status=$5, ai_confidence=$6, ai_reason=$7, photo_status=$8, photo_reason=$9,
-             photo_mime=$10, photo_data=$11, updated_at=now() where id=$12`,
-          [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
-           photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
-        );
+      const isEdit = existing.rows.length > 0;
+      if (!req.file && !isEdit) return fail('A profile photo is required.');
+
+      const ai = await moderateText(intro);
+      const photo = req.file ? checkPhoto(req.file.buffer) : null;
+
+      if (isEdit) {
+        if (req.file) {
+          await pool.query(
+            `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
+               ai_status=$5, ai_confidence=$6, ai_reason=$7, photo_status=$8, photo_reason=$9,
+               photo_mime=$10, photo_data=$11, updated_at=now() where id=$12`,
+            [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
+             photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
+          );
+        } else {
+          // No new photo — keep the existing one, update everything else.
+          await pool.query(
+            `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
+               ai_status=$5, ai_confidence=$6, ai_reason=$7, updated_at=now() where id=$8`,
+            [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, existing.rows[0].id],
+          );
+        }
         return res.redirect(`/submit/thanks?name=${encodeURIComponent(name)}&updated=1`);
       }
 
@@ -287,9 +329,35 @@ app.post('/submit', (req, res) => {
       res.redirect(`/submit/thanks?name=${encodeURIComponent(rows[0].full_name)}`);
     } catch (e) {
       console.error(e);
-      res.status(500).send(submitPage({ error: 'Something went wrong saving your submission. Please try again.', values: req.body }));
+      return fail('Something went wrong saving your submission. Please try again.', 500);
     }
   });
+});
+
+// ── Public: amend an existing submission ─────────────────────────────────────
+function amendLookupPage({ error = '', email = '' } = {}) {
+  return layout({ title: 'Amend your introduction 🌱', body: `
+    ${error ? `<div class="err">${esc(error)}</div>` : ''}
+    <div class="card" style="max-width:520px;margin:0 auto">
+      <p class="muted">Enter the email address you used when you first submitted, and we'll bring up your introduction so you can make changes. You can amend any time before HR approves your entry.</p>
+      <form method="post" action="/amend">
+        <div class="field"><label>Email address <span class="req">*</span></label><input type="email" name="email" required value="${esc(email)}" placeholder="e.g. yourname@gmail.com"></div>
+        <button class="btn" type="submit">Find my introduction</button>
+        <a class="btn sec" href="/submit" style="margin-left:8px">Start a new one instead</a>
+      </form>
+    </div>` });
+}
+app.get('/amend', (_req, res) => res.send(amendLookupPage()));
+app.post('/amend', async (req, res) => {
+  if (!pool) return res.status(503).send(amendLookupPage({ error: 'Database is not configured yet. Please try again shortly.' }));
+  const mail = (req.body.email || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).send(amendLookupPage({ error: 'Please enter a valid email address.', email: mail }));
+  const { rows } = await pool.query(
+    `select id, full_name, email, intro, fun_fact, status from submissions where lower(email) = lower($1) order by created_at desc limit 1`, [mail]);
+  if (!rows.length) return res.status(404).send(amendLookupPage({ error: "We couldn't find a submission for that email address. If you haven't submitted yet, please start a new introduction.", email: mail }));
+  const s = rows[0];
+  if (s.status === 'approved') return res.status(400).send(amendLookupPage({ error: 'Your introduction has already been approved by HR, so it can no longer be edited here. Please contact HR if something needs to change.', email: mail }));
+  res.send(submitPage({ amend: true, values: { full_name: s.full_name, email: s.email, intro: s.intro, fun_fact: s.fun_fact || '' }, photoUrl: `/api/photo/${s.id}` }));
 });
 
 app.get('/submit/thanks', (req, res) => {

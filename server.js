@@ -239,8 +239,8 @@ app.post('/api/submissions', (req, res) => {
     if (!requireDb(res)) return;
     try {
       const { full_name, email, intro, fun_fact } = req.body;
-      if (!full_name || !email || !intro || !req.file) {
-        return res.status(400).json({ error: 'Full name, email address, introduction and a profile photo are all required.' });
+      if (!full_name || !email || !intro) {
+        return res.status(400).json({ error: 'Full name, email address and introduction are all required.' });
       }
       const mail = (email || '').trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
@@ -248,24 +248,39 @@ app.post('/api/submissions', (req, res) => {
       }
 
       const name = full_name.trim();
-      const ai = await moderateText(intro);
-      const photo = checkPhoto(req.file.buffer);
 
-      // Resubmission: if this person already has an entry HR hasn't approved,
-      // overwrite it (back to the review queue). Approved entries stay put and a
-      // fresh submission is created instead. Matched by email.
+      // Find this person's existing entry (matched by email) that HR hasn't
+      // approved. If found we UPDATE it in place; a photo is optional here (leave
+      // it out to keep the current one). Otherwise it's a new submission and a
+      // photo is required. Approved entries stay put.
       const existing = await pool.query(
         `select id from submissions where lower(email) = lower($1) and status <> 'approved'
          order by created_at desc limit 1`, [mail],
       );
-      if (existing.rows.length) {
-        await pool.query(
-          `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
-             ai_status=$5, ai_confidence=$6, ai_reason=$7, photo_status=$8, photo_reason=$9,
-             photo_mime=$10, photo_data=$11, updated_at=now() where id=$12`,
-          [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
-           photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
-        );
+      const isEdit = existing.rows.length > 0;
+      if (!req.file && !isEdit) {
+        return res.status(400).json({ error: 'A profile photo is required.' });
+      }
+
+      const ai = await moderateText(intro);
+      const photo = req.file ? checkPhoto(req.file.buffer) : null;
+
+      if (isEdit) {
+        if (req.file) {
+          await pool.query(
+            `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
+               ai_status=$5, ai_confidence=$6, ai_reason=$7, photo_status=$8, photo_reason=$9,
+               photo_mime=$10, photo_data=$11, updated_at=now() where id=$12`,
+            [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
+             photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
+          );
+        } else {
+          await pool.query(
+            `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
+               ai_status=$5, ai_confidence=$6, ai_reason=$7, updated_at=now() where id=$8`,
+            [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, existing.rows[0].id],
+          );
+        }
         return res.status(200).json({ id: existing.rows[0].id, name, updated: true });
       }
 
@@ -289,6 +304,19 @@ app.post('/api/submissions', (req, res) => {
     }
   });
 });
+
+// ── Public: look up an existing submission by email (for the amend flow) ─────
+app.get('/api/submissions/lookup', wrap(async (req, res) => {
+  if (!requireDb(res)) return;
+  const mail = (req.query.email || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).json({ error: 'Please enter a valid email address.' });
+  const { rows } = await pool.query(
+    `select id, full_name, email, intro, fun_fact, status, ('/api/photo/' || id) as photo_path
+       from submissions where lower(email) = lower($1) order by created_at desc limit 1`, [mail],
+  );
+  if (!rows.length) return res.json({ found: false });
+  res.json({ found: true, ...rows[0] });
+}));
 
 // ── Public: serve a stored profile photo ─────────────────────────────────────
 app.get('/api/photo/:id', wrap(async (req, res) => {

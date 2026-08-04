@@ -12,13 +12,27 @@ function countWords(text: string) {
   return t ? t.split(/\s+/).length : 0;
 }
 
-export default function Submit() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [intro, setIntro] = useState('');
-  const [funFact, setFunFact] = useState('');
+export interface AmendInitial {
+  full_name: string;
+  email: string;
+  intro: string;
+  fun_fact: string;
+}
+
+// Shared by the "start new" flow (/submit) and the "amend" flow (/amend). In
+// amend mode the fields are pre-filled, the email is read-only and the photo is
+// optional (leave it to keep the current one).
+export default function Submit({
+  amend = false,
+  initial,
+  photoUrl = null,
+}: { amend?: boolean; initial?: AmendInitial; photoUrl?: string | null } = {}) {
+  const [fullName, setFullName] = useState(initial?.full_name ?? '');
+  const [email, setEmail] = useState(initial?.email ?? '');
+  const [intro, setIntro] = useState(initial?.intro ?? '');
+  const [funFact, setFunFact] = useState(initial?.fun_fact ?? '');
   const [photo, setPhoto] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(photoUrl ?? null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -39,7 +53,6 @@ export default function Submit() {
       setPhotoError('That photo is larger than 5MB. Please choose a smaller file.');
       return;
     }
-    // Validate dimensions client-side (at least 100x100px).
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
@@ -61,8 +74,10 @@ export default function Submit() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!fullName.trim() || !email.trim() || !intro.trim() || !photo) {
-      setError('Please fill in your name, email address, introduction and upload a photo.');
+    if (!fullName.trim() || !email.trim() || !intro.trim() || (!photo && !amend)) {
+      setError(amend
+        ? 'Please fill in your name and introduction.'
+        : 'Please fill in your name, email address, introduction and upload a photo.');
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -74,7 +89,7 @@ export default function Submit() {
     form.append('email', email.trim());
     form.append('intro', intro.trim());
     form.append('fun_fact', funFact.trim());
-    form.append('photo', photo);
+    if (photo) form.append('photo', photo);
 
     setSubmitting(true);
     try {
@@ -88,15 +103,17 @@ export default function Submit() {
     }
   }
 
-  if (done) return <Confirmation name={done} />;
+  if (done) return <Confirmation name={done} amend={amend} />;
 
   return (
     <div className="relative min-h-screen">
       <BackgroundLeaves />
       <Header
         eyebrow="New Joiner Portal"
-        title="We're so glad you're here 🌱"
-        subtitle="Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look."
+        title={amend ? 'Amend your introduction 🌱' : "We're so glad you're here 🌱"}
+        subtitle={amend
+          ? 'Update anything you’d like to change below, then save. Your amended introduction goes back to HR for a quick review.'
+          : 'Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look.'}
         right={
           <Link to="/" className="gp-btn-secondary bg-white/10 text-cream hover:bg-white/20">
             ← Home
@@ -112,11 +129,13 @@ export default function Submit() {
             </div>
           )}
 
-          <div className="rounded-xl bg-sage-light/80 px-4 py-3 text-sm text-forest-dark/80">
-            <strong>Already submitted before?</strong> Enter the <strong>same email address</strong> you used
-            before and send the form again — as long as HR hasn't approved your entry yet, your new submission replaces
-            the old one.
-          </div>
+          {!amend && (
+            <div className="rounded-xl bg-sage-light/80 px-4 py-3 text-sm text-forest-dark/80">
+              <strong>Already submitted before?</strong> You can{' '}
+              <Link to="/amend" className="font-bold underline">amend your existing introduction</Link>{' '}
+              instead of starting again.
+            </div>
+          )}
 
           <div>
             <label className="gp-label" htmlFor="fullName">
@@ -134,7 +153,7 @@ export default function Submit() {
 
           <div>
             <label className="gp-label" htmlFor="email">
-              <Leaf className="h-4 w-4 text-forest" /> Email address <span className="text-red-500">*</span>
+              <Leaf className="h-4 w-4 text-forest" /> Email address {!amend && <span className="text-red-500">*</span>}
             </label>
             <input
               id="email"
@@ -144,16 +163,18 @@ export default function Submit() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="e.g. yourname@gmail.com"
               required
+              readOnly={amend}
             />
             <p className="mt-1.5 text-xs text-forest/60">
-              We use this only to find your submission if you need to edit it later — it won't be shared in the welcome
-              email or shown to your colleagues.
+              {amend
+                ? 'This is the email you submitted with. To use a different one, start a new introduction instead.'
+                : "We use this only to find your submission if you need to edit it later — it won't be shared in the welcome email or shown to your colleagues."}
             </p>
           </div>
 
           <div>
             <label className="gp-label">
-              <Leaf className="h-4 w-4 text-forest" /> Profile photo <span className="text-red-500">*</span>
+              <Leaf className="h-4 w-4 text-forest" /> Profile photo {!amend && <span className="text-red-500">*</span>}
             </label>
             <div className="flex items-center gap-4">
               <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-sage bg-sage-light">
@@ -167,7 +188,10 @@ export default function Submit() {
                 <button type="button" className="gp-btn-secondary" onClick={() => fileRef.current?.click()}>
                   {preview ? 'Change photo' : 'Upload photo'}
                 </button>
-                <p className="mt-1.5 text-xs text-forest/60">JPG or PNG, up to 5MB. Your whole photo is shown as a rectangle — a clear, upright photo works best.</p>
+                <p className="mt-1.5 text-xs text-forest/60">
+                  JPG or PNG, up to 5MB. Your whole photo is shown as a rectangle — a clear, upright photo works best.
+                  {amend && ' Leave it as-is to keep your current photo.'}
+                </p>
               </div>
               <input
                 ref={fileRef}
@@ -222,7 +246,9 @@ export default function Submit() {
           </div>
 
           <button type="submit" className="gp-btn-primary w-full text-lg" disabled={submitting}>
-            {submitting ? 'Sending your introduction…' : 'Send my introduction 🌿'}
+            {submitting
+              ? (amend ? 'Saving your changes…' : 'Sending your introduction…')
+              : (amend ? 'Save my changes 🌿' : 'Send my introduction 🌿')}
           </button>
         </form>
       </main>
@@ -230,7 +256,7 @@ export default function Submit() {
   );
 }
 
-function Confirmation({ name }: { name: string }) {
+function Confirmation({ name, amend }: { name: string; amend: boolean }) {
   return (
     <div className="relative flex min-h-screen items-center justify-center">
       <BackgroundLeaves />
@@ -238,9 +264,11 @@ function Confirmation({ name }: { name: string }) {
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-forest">
           <Leaf className="h-10 w-10 text-cream animate-sway" />
         </div>
-        <h1 className="mt-6 text-3xl font-extrabold text-forest">Thanks for sharing, {name}! 🌱</h1>
+        <h1 className="mt-6 text-3xl font-extrabold text-forest">Thanks, {name}! 🌱</h1>
         <p className="mt-3 text-forest-dark/80">
-          Your introduction has been sent to the team. Welcome to NParks — we're so glad you're here.
+          {amend
+            ? 'Your entry has been updated and sent back to the team for review.'
+            : 'Your introduction has been sent to the team. Welcome to NParks — we’re so glad you’re here.'}{' '}
           Keep an eye on your inbox for a warm welcome from your new colleagues.
         </p>
         <p className="mt-4 text-sm font-semibold text-forest/70">Growing together, one green space at a time. 🌳</p>

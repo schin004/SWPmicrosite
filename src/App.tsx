@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { BackgroundLeaves, Leaf } from './components/Botanical';
 import { Header } from './components/Header';
 import Submit from './pages/Submit';
+import Amend from './pages/Amend';
 import Admin from './pages/Admin';
 
 function Landing() {
@@ -14,14 +15,17 @@ function Landing() {
         subtitle="Our warm welcome for every new member of the NParks family — growing together, one green space at a time."
       />
       <main className="mx-auto grid max-w-5xl gap-6 px-5 py-12 sm:grid-cols-2">
-        <Link to="/submit" className="gp-card group flex flex-col p-7 transition hover:-translate-y-1 hover:shadow-card">
-          <Leaf className="h-10 w-10 text-forest transition group-hover:rotate-12" />
+        <div className="gp-card flex flex-col p-7">
+          <Leaf className="h-10 w-10 text-forest" />
           <h2 className="mt-4 text-2xl font-extrabold text-forest">I'm a new joiner</h2>
           <p className="mt-2 flex-1 text-forest-dark/70">
             Share a little about yourself so we can introduce you to your new colleagues. It only takes a couple of minutes.
           </p>
-          <span className="mt-4 font-bold text-forest group-hover:underline">Start my introduction →</span>
-        </Link>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link to="/submit" className="gp-btn-primary">Start my introduction →</Link>
+            <Link to="/amend" className="gp-btn-secondary">Amend my introduction</Link>
+          </div>
+        </div>
         <Link to="/admin" className="gp-card group flex flex-col p-7 transition hover:-translate-y-1 hover:shadow-card">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-forest text-cream">HR</div>
           <h2 className="mt-4 text-2xl font-extrabold text-forest">HR admin dashboard</h2>
@@ -44,6 +48,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/submit" element={<Submit />} />
+        <Route path="/amend" element={<Amend />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
