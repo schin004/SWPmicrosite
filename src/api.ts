@@ -21,6 +21,7 @@ export interface Submission {
   ai_reason: string | null;
   photo_status: string | null;
   photo_reason: string | null;
+  has_orig: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -101,6 +102,13 @@ export async function updatePhoto(id: number, blob: Blob): Promise<void> {
   fd.append('photo', blob, 'photo.jpg');
   await parse(
     await fetch(`/api/submissions/${id}/photo`, { method: 'POST', headers: adminHeaders(), body: fd }),
+  );
+}
+
+// Admin: revert a submission's photo back to the joiner's original.
+export async function revertPhoto(id: number): Promise<void> {
+  await parse(
+    await fetch(`/api/submissions/${id}/photo/revert`, { method: 'POST', headers: adminHeaders() }),
   );
 }
 

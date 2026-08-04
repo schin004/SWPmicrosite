@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Leaf } from '../../components/Botanical';
 import { ModerationBadge } from '../../components/ModerationBadge';
-import { updatePhoto, updateSubmission, type Submission, type SubmissionStatus } from '../../api';
+import { revertPhoto, updatePhoto, updateSubmission, type Submission, type SubmissionStatus } from '../../api';
 
 // Format a stored 'YYYY-MM-DD' start date for display as DD/MM/YY.
 function fmtDate(s: string | null | undefined): string {
@@ -165,6 +165,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
             <PhotoEditor
               id={sub.id}
               photoUrl={sub.photo_path}
+              hasOrig={sub.has_orig}
               onSaved={async () => {
                 setEditingPhoto(false);
                 await reload();
@@ -310,10 +311,12 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
 function PhotoEditor({
   id,
   photoUrl,
+  hasOrig,
   onSaved,
 }: {
   id: number;
   photoUrl: string;
+  hasOrig: boolean;
   onSaved: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -421,6 +424,20 @@ function PhotoEditor({
     );
   }
 
+  async function revert() {
+    setBusy(true);
+    setMsg('Reverting…');
+    try {
+      await revertPhoto(id);
+      setMsg('✓ Reverted!');
+      onSaved();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const sliders: [string, number, (v: number) => void, number, number][] = [
     ['Brightness', brightness, setBrightness, 50, 200],
     ['Contrast', contrast, setContrast, 50, 200],
@@ -470,9 +487,17 @@ function PhotoEditor({
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button className="gp-btn-primary text-sm" onClick={save} disabled={busy}>💾 Save adjusted photo</button>
-        <button className="gp-btn-secondary text-sm" onClick={reset} disabled={busy}>↺ Reset</button>
+        <button className="gp-btn-secondary text-sm" onClick={reset} disabled={busy}>↺ Reset sliders</button>
         {msg && <span className="text-sm text-forest/70">{msg}</span>}
       </div>
+      {hasOrig && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-sage/40 pt-2">
+          <button className="gp-btn-secondary text-sm" onClick={revert} disabled={busy}>
+            ↩ Revert to joiner's original photo
+          </button>
+          <span className="text-xs text-forest/60">Undo HR photo edits and restore the photo the joiner submitted.</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -82,6 +82,10 @@ async function ensureSchema() {
   // new columns / relaxed constraints.
   await pool.query('alter table submissions alter column start_date drop not null');
   await pool.query('alter table submissions add column if not exists email text');
+  // Snapshot of the joiner's original photo, kept the first time HR edits the
+  // photo so it can be reverted later.
+  await pool.query('alter table submissions add column if not exists orig_photo_mime text');
+  await pool.query('alter table submissions add column if not exists orig_photo_data bytea');
 }
 
 // Columns returned to the client — everything EXCEPT the raw photo bytes, plus a
@@ -90,6 +94,7 @@ const PUBLIC_COLUMNS = `
   id, full_name, email, start_date, intro, fun_fact, status, job_title, division,
   ai_status, ai_confidence, ai_reason, photo_status, photo_reason,
   ('/api/photo/' || id) as photo_path,
+  (orig_photo_data is not null) as has_orig,
   created_at, updated_at
 `;
 
@@ -270,7 +275,7 @@ app.post('/api/submissions', (req, res) => {
           await pool.query(
             `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
                ai_status=$5, ai_confidence=$6, ai_reason=$7, photo_status=$8, photo_reason=$9,
-               photo_mime=$10, photo_data=$11, updated_at=now() where id=$12`,
+               photo_mime=$10, photo_data=$11, orig_photo_mime=null, orig_photo_data=null, updated_at=now() where id=$12`,
             [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
              photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
           );
@@ -416,14 +421,35 @@ app.post('/api/submissions/:id/photo', requireAdmin, (req, res) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'No image was received.' });
     const photo = checkPhoto(req.file.buffer);
+    // Keep a one-time snapshot of the joiner's original photo (coalesce: only
+    // fills orig_* the first time HR edits) so it can be reverted later.
     const { rowCount } = await pool.query(
-      'update submissions set photo_mime = $1, photo_data = $2, photo_status = $3, photo_reason = $4, updated_at = now() where id = $5',
+      `update submissions set
+         orig_photo_mime = coalesce(orig_photo_mime, photo_mime),
+         orig_photo_data = coalesce(orig_photo_data, photo_data),
+         photo_mime = $1, photo_data = $2, photo_status = $3, photo_reason = $4, updated_at = now()
+       where id = $5`,
       [req.file.mimetype, req.file.buffer, photo.status, photo.reason, req.params.id],
     );
     if (!rowCount) return res.status(404).json({ error: 'Submission not found.' });
     res.json({ ok: true });
   }));
 });
+
+// ── Admin: revert a submission's photo to the joiner's original ──────────────
+app.post('/api/submissions/:id/photo/revert', requireAdmin, wrap(async (req, res) => {
+  if (!requireDb(res)) return;
+  const { rowCount } = await pool.query(
+    `update submissions set photo_mime = orig_photo_mime, photo_data = orig_photo_data,
+       photo_status = 'manual-review',
+       photo_reason = 'Reverted to the joiner''s original submitted photo — please verify before approving.',
+       orig_photo_mime = null, orig_photo_data = null, updated_at = now()
+     where id = $1 and orig_photo_data is not null`,
+    [req.params.id],
+  );
+  if (!rowCount) return res.status(400).json({ error: 'There is no original photo to revert to.' });
+  res.json({ ok: true });
+}));
 
 // ── Health check (used by Rabbit / uptime probes) ────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ ok: true, db: Boolean(pool) }));

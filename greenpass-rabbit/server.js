@@ -75,6 +75,10 @@ async function ensureSchema() {
     -- new columns / relaxed constraints.
     alter table submissions alter column start_date drop not null;
     alter table submissions add column if not exists email text;
+    -- Snapshot of the joiner's original photo, kept the first time HR edits the
+    -- photo so it can be reverted later.
+    alter table submissions add column if not exists orig_photo_mime text;
+    alter table submissions add column if not exists orig_photo_data bytea;
   `);
 }
 
@@ -325,7 +329,7 @@ app.post('/submit', (req, res) => {
           await pool.query(
             `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
                ai_status=$5, ai_confidence=$6, ai_reason=$7, photo_status=$8, photo_reason=$9,
-               photo_mime=$10, photo_data=$11, updated_at=now() where id=$12`,
+               photo_mime=$10, photo_data=$11, orig_photo_mime=null, orig_photo_data=null, updated_at=now() where id=$12`,
             [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
              photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
           );
@@ -446,7 +450,7 @@ const AI_DISCLAIMER = `<div class="banner"><span>🤝</span><div><b>AI moderatio
 app.get('/admin', async (req, res) => {
   if (!hasAdmin(req)) return res.send(adminLoginPage());
   if (!pool) return res.send(layout({ title: 'GreenPass HR Console', adminNav: true, body: `${AI_DISCLAIMER}<div class="card">No database connected.</div>` }));
-  const { rows } = await pool.query(`select id,full_name,email,start_date,intro,fun_fact,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,updated_at from submissions order by created_at desc`);
+  const { rows } = await pool.query(`select id,full_name,email,start_date,intro,fun_fact,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,updated_at,(orig_photo_data is not null) as has_orig from submissions order by created_at desc`);
   const groups = [
     ['awaiting-hr-review', 'Awaiting HR Review', 'Add job details and approve, or reject.'],
     ['approved', 'Approved', 'Ready to include in an eDM.'],
@@ -557,9 +561,14 @@ function photoEditor(s) {
       </div>
       <div class="actions" style="border:0;padding-top:10px">
         <button type="button" class="btn" onclick="gpSavePhoto('${id}',this)">💾 Save adjusted photo</button>
-        <button type="button" class="btn sec" onclick="gpResetPhoto('${id}')">↺ Reset</button>
+        <button type="button" class="btn sec" onclick="gpResetPhoto('${id}')">↺ Reset sliders</button>
         <span class="muted" id="pe-${id}"></span>
       </div>
+      ${s.has_orig ? `<form method="post" action="/admin/update" style="margin-top:8px">
+        <input type="hidden" name="id" value="${id}"><input type="hidden" name="action" value="revert-photo">
+        <button type="submit" class="btn sec">↩ Revert to joiner's original photo</button>
+        <span class="muted" style="margin-left:6px">Undo HR photo edits and restore the photo the joiner submitted.</span>
+      </form>` : ''}
     </div>
   </details>`;
 }
@@ -652,6 +661,15 @@ app.post('/admin/update', async (req, res) => {
       await pool.query("update submissions set status='approved',updated_at=now() where id=$1 and status='archived'", [id]);
       return res.redirect('/admin?msg=' + encodeURIComponent('Entry restored to Approved.'));
     }
+    if (action === 'revert-photo') {
+      // Restore the joiner's original photo and clear the snapshot (current == original again).
+      const { rowCount } = await pool.query(
+        `update submissions set photo_mime=orig_photo_mime, photo_data=orig_photo_data,
+           photo_status='manual-review', photo_reason='Reverted to the joiner''s original submitted photo — please verify before approving.',
+           orig_photo_mime=null, orig_photo_data=null, updated_at=now()
+         where id=$1 and orig_photo_data is not null`, [id]);
+      return res.redirect('/admin?msg=' + encodeURIComponent(rowCount ? 'Photo reverted to the joiner\'s original.' : 'There is no original photo to revert to.'));
+    }
     if (action === 'edit') {
       await pool.query('update submissions set full_name=$1,email=$2,intro=$3,fun_fact=$4,updated_at=now() where id=$5',
         [(req.body.full_name || '').trim(), (req.body.email || '').trim() || null, (req.body.intro || '').trim(), (req.body.fun_fact || '').trim() || null, id]);
@@ -685,8 +703,14 @@ app.post('/admin/photo', (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No image was received.' });
     try {
       const photo = checkPhoto(req.file.buffer);
+      // Keep a one-time snapshot of the joiner's original photo (coalesce: only
+      // fills orig_* the first time HR edits) so it can be reverted later.
       const { rowCount } = await pool.query(
-        'update submissions set photo_mime=$1, photo_data=$2, photo_status=$3, photo_reason=$4, updated_at=now() where id=$5',
+        `update submissions set
+           orig_photo_mime = coalesce(orig_photo_mime, photo_mime),
+           orig_photo_data = coalesce(orig_photo_data, photo_data),
+           photo_mime=$1, photo_data=$2, photo_status=$3, photo_reason=$4, updated_at=now()
+         where id=$5`,
         [req.file.mimetype, req.file.buffer, photo.status, photo.reason, id]);
       if (!rowCount) return res.status(404).json({ error: 'Submission not found.' });
       res.json({ ok: true });
