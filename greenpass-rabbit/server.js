@@ -237,13 +237,27 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
         <p class="muted" style="margin-top:4px">We use this only to find your submission if you need to edit it later — it won't be shared in the welcome email or shown to your colleagues.</p></div>`;
   const photoField = amend
     ? `<div class="field"><label>Profile photo (JPG/PNG, max 5MB)</label>
-        <div class="row"><img id="pv" ${photoUrl ? `src="${photoUrl}"` : ''} alt="Current photo" style="width:120px;height:auto;border-radius:8px;border:2px solid ${C.sage}${photoUrl ? '' : ';display:none'}">
-        <input type="file" name="photo" accept="image/jpeg,image/png" onchange="var f=this.files[0];if(f){var i=document.getElementById('pv');i.src=URL.createObjectURL(f);i.style.display='block'}"></div>
-        <p class="muted">Leave this empty to keep your current photo, or upload a new one to replace it.</p></div>`
+        <div class="row">
+          <div style="flex:0 0 auto;text-align:center">
+            <img id="pv" ${photoUrl ? `src="${photoUrl}"` : ''} alt="Photo preview" style="width:130px;height:auto;border-radius:10px;border:2px solid ${C.sage};background:${C.sageLight}${photoUrl ? '' : ';display:none'}">
+            <p class="muted" id="pvcap" style="margin:5px 0 0;font-size:12px;font-weight:800;color:${C.green}${photoUrl ? '' : ';display:none'}">👀 Preview</p>
+          </div>
+          <div style="flex:1">
+            <input type="file" name="photo" accept="image/jpeg,image/png" onchange="gpPreview(this)">
+            <p class="muted" style="margin-top:8px">The preview shows exactly how your photo will look. Not happy with it? Just choose another file. Leave this empty to keep your current photo.</p>
+          </div>
+        </div></div>`
     : `<div class="field"><label>Profile photo (JPG/PNG, max 5MB) <span class="req">*</span></label>
-        <div class="row"><img id="pv" alt="" style="display:none;width:120px;height:auto;border-radius:8px;border:2px solid ${C.sage}">
-        <input type="file" name="photo" accept="image/jpeg,image/png" required onchange="var f=this.files[0];if(f){var i=document.getElementById('pv');i.src=URL.createObjectURL(f);i.style.display='block'}"></div>
-        <p class="muted">Your whole photo is shown as a rectangle — a clear, upright photo works best.</p></div>`;
+        <div class="row">
+          <div style="flex:0 0 auto;text-align:center">
+            <img id="pv" alt="Photo preview" style="display:none;width:130px;height:auto;border-radius:10px;border:2px solid ${C.sage};background:${C.sageLight}">
+            <p class="muted" id="pvcap" style="display:none;margin:5px 0 0;font-size:12px;font-weight:800;color:${C.green}">👀 Preview</p>
+          </div>
+          <div style="flex:1">
+            <input type="file" name="photo" accept="image/jpeg,image/png" required onchange="gpPreview(this)">
+            <p class="muted" style="margin-top:8px">Once you choose a photo, a preview appears here so you can check it looks good. Not happy with it? Just choose another file. Your whole photo is shown as a rectangle, so a clear, upright photo works best.</p>
+          </div>
+        </div></div>`;
   return layout({ title: amend ? 'Amend your introduction 🌱' : "We're so glad you're here 🌱", body: `
     ${error ? `<div class="err">${esc(error)}</div>` : ''}
     <div class="card">
@@ -260,7 +274,10 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
         <button class="btn" type="submit">${amend ? 'Save my changes 🌿' : 'Send my introduction 🌿'}</button>
       </form>
     </div>
-    <script>(function(){var t=document.querySelector('textarea[name=intro]');if(t)t.dispatchEvent(new Event('input'));})();</script>` });
+    <script>
+      function gpPreview(inp){var f=inp.files[0];var i=document.getElementById('pv'),c=document.getElementById('pvcap');if(f){i.src=URL.createObjectURL(f);i.style.display='';if(c)c.style.display='';}}
+      (function(){var t=document.querySelector('textarea[name=intro]');if(t)t.dispatchEvent(new Event('input'));})();
+    </script>` });
 }
 app.get('/submit', (_req, res) => res.send(submitPage()));
 
@@ -431,6 +448,7 @@ app.get('/admin', async (req, res) => {
   const groups = [
     ['awaiting-hr-review', 'Awaiting HR Review', 'Add job details and approve, or reject.'],
     ['approved', 'Approved', 'Ready to include in an eDM.'],
+    ['archived', 'Archived', 'eDM already sent — kept for records, not offered for new eDMs.'],
     ['rejected', 'Rejected', 'Not included in any eDM.'],
   ];
   const notice = req.query.msg ? `<div class="banner" style="background:${C.sageLight};border-color:${C.sage};color:${C.greenDark}"><span>✓</span><div>${esc(req.query.msg)}</div></div>` : '';
@@ -451,10 +469,15 @@ function cardHtml(s) {
   const jt = esc(s.job_title), dv = esc(s.division);
 
   let hrFields, actions;
-  if (s.status === 'rejected') {
-    hrFields = `<div class="hrbox"><span class="tag hr">✎ Added by HR</span> <span class="muted">Not submitted by the new joiner</span><p class="muted" style="margin:8px 0 0">${jt || dv ? `${jt || '—'} · ${dv || '—'}` : 'No job details added.'}</p></div>`;
-    actions = `<form method="post" action="/admin/update" class="actions"><input type="hidden" name="id" value="${s.id}">
-      <button class="btn sec" name="action" value="restore">↩ Restore to review</button></form>`;
+  if (s.status === 'rejected' || s.status === 'archived') {
+    const details = `${jt || dv ? `${jt || '—'} · ${dv || '—'}` : 'No job details added.'}${s.start_date ? ` · 📅 Joined from ${esc(s.start_date)}` : ''}`;
+    hrFields = `<div class="hrbox"><span class="tag hr">✎ Added by HR</span> <span class="muted">Not submitted by the new joiner</span><p class="muted" style="margin:8px 0 0">${details}</p></div>`;
+    actions = s.status === 'archived'
+      ? `<form method="post" action="/admin/update" class="actions"><input type="hidden" name="id" value="${s.id}">
+          <span class="muted">📦 Archived — kept for records, not offered for new eDMs.</span>
+          <button class="btn sec" name="action" value="unarchive">↩ Restore to Approved</button></form>`
+      : `<form method="post" action="/admin/update" class="actions"><input type="hidden" name="id" value="${s.id}">
+          <button class="btn sec" name="action" value="restore">↩ Restore to review</button></form>`;
   } else {
     // Shared form: job title + division inputs, with save / approve / reject buttons.
     const approveDisabledNote = `<span class="muted" id="hint-${s.id}"></span>`;
@@ -467,11 +490,12 @@ function cardHtml(s) {
             <div><label>Job Title</label><input type="text" name="job_title" value="${jt}" placeholder="e.g. Park Manager"></div>
             <div><label>Division / Branch</label><input type="text" name="division" value="${dv}" placeholder="e.g. Parks Division"></div>
           </div>
-          <div class="field" style="margin:12px 0 0"><label>Start Date</label><input type="date" name="start_date" value="${esc(s.start_date)}"></div>
+          <div class="field" style="margin:12px 0 0"><label>Joined from (start date)</label><input type="date" name="start_date" value="${esc(s.start_date)}"></div>
         </div>
         <div class="actions">
           ${s.status === 'awaiting-hr-review' ? `<button class="btn" name="action" value="approve">✓ Approve</button>` : ''}
           <button class="btn sec" name="action" value="save">Save HR details</button>
+          ${s.status === 'approved' ? `<button class="btn sec" name="action" value="archive">📦 Archive</button>` : ''}
           <button class="btn danger" name="action" value="reject">Reject</button>
         </div>
       </form>`;
@@ -491,7 +515,7 @@ function cardHtml(s) {
 
   return `<div class="card">
     <div class="row"><img class="thumb" src="/api/photo/${s.id}" alt="${esc(s.full_name)}">
-      <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Starts ' + esc(s.start_date) : '📅 Start date — to be added by HR'}</p>${s.email ? `<p class="muted" style="margin:2px 0 0">📧 ${esc(s.email)}</p>` : ''}</div></div>
+      <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Joined from ' + esc(s.start_date) : '📅 Joining date — to be added by HR'}</p>${s.email ? `<p class="muted" style="margin:2px 0 0">📧 ${esc(s.email)}</p>` : ''}</div></div>
     <p style="margin:12px 0 0">${esc(s.intro)}</p>
     ${s.fun_fact ? `<p style="color:${C.earth};font-style:italic;margin:8px 0 0">🌼 Fun fact: ${esc(s.fun_fact)}</p>` : ''}
     <div class="modbox">${moderationTag(s.ai_status)} <span class="muted">AI moderation${conf}</span><p style="margin:6px 0 0">${esc(s.ai_reason)}</p>${photoNote}</div>
@@ -516,6 +540,14 @@ app.post('/admin/update', async (req, res) => {
     if (action === 'restore') {
       await pool.query('update submissions set status=$1,updated_at=now() where id=$2', ['awaiting-hr-review', id]);
       return res.redirect('/admin?msg=' + encodeURIComponent('Entry restored to review.'));
+    }
+    if (action === 'archive') {
+      await pool.query("update submissions set status='archived',updated_at=now() where id=$1 and status='approved'", [id]);
+      return res.redirect('/admin?msg=' + encodeURIComponent('Entry archived — it stays on record but won\'t appear when generating new eDMs.'));
+    }
+    if (action === 'unarchive') {
+      await pool.query("update submissions set status='approved',updated_at=now() where id=$1 and status='archived'", [id]);
+      return res.redirect('/admin?msg=' + encodeURIComponent('Entry restored to Approved.'));
     }
     if (action === 'edit') {
       await pool.query('update submissions set full_name=$1,email=$2,intro=$3,fun_fact=$4,updated_at=now() where id=$5',
@@ -677,7 +709,7 @@ function buildEdmHtml(hires, occasion, sendDate) {
           <td valign="top" style="padding:18px 18px 18px 6px;">
             <p style="margin:0;font-family:${FONT};font-size:20px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:7px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:4px 13px;border-radius:14px;font-family:${FONT};font-size:13px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
-            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;&nbsp;·&nbsp;&nbsp;📅 Started ${esc(h.start_date)}</p>
+            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;&nbsp;·&nbsp;&nbsp;📅 Joined from ${esc(h.start_date)}</p>
             <p style="margin:11px 0 0 0;font-family:${FONT};font-size:14px;line-height:1.55;color:#333333;">${esc(h.intro)}</p>
             ${funFact}
           </td>

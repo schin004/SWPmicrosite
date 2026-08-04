@@ -3,7 +3,7 @@
 // a successful login).
 
 export type AiStatus = 'clear' | 'review' | 'flagged';
-export type SubmissionStatus = 'awaiting-hr-review' | 'approved' | 'rejected';
+export type SubmissionStatus = 'awaiting-hr-review' | 'approved' | 'archived' | 'rejected';
 
 export interface Submission {
   id: number;

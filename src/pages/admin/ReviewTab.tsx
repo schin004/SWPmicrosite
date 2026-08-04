@@ -6,6 +6,7 @@ import { updateSubmission, type Submission, type SubmissionStatus } from '../../
 const GROUPS: { key: SubmissionStatus; label: string; hint: string }[] = [
   { key: 'awaiting-hr-review', label: 'Awaiting HR Review', hint: 'Add job details and approve, or reject.' },
   { key: 'approved', label: 'Approved', hint: 'Ready to include in an eDM.' },
+  { key: 'archived', label: 'Archived', hint: 'eDM already sent — kept for records, not offered for new eDMs.' },
   { key: 'rejected', label: 'Rejected', hint: 'Not included in any eDM.' },
 ];
 
@@ -84,6 +85,10 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
 
   const restore = () => run(() => updateSubmission(sub.id, { status: 'awaiting-hr-review' }));
 
+  const archive = () => run(() => updateSubmission(sub.id, { status: 'archived' }));
+
+  const unarchive = () => run(() => updateSubmission(sub.id, { status: 'approved' }));
+
   const saveEdit = () =>
     run(async () => {
       await updateSubmission(sub.id, {
@@ -131,7 +136,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
             <>
               <h3 className="truncate text-lg font-extrabold text-forest">{sub.full_name}</h3>
               <p className="text-sm text-forest/60">
-                {sub.start_date ? `Starts ${sub.start_date}` : '📅 Start date — to be added by HR'}
+                {sub.start_date ? `Joined from ${sub.start_date}` : '📅 Joining date — to be added by HR'}
               </p>
               {sub.email && <p className="truncate text-sm text-forest/60">📧 {sub.email}</p>}
             </>
@@ -181,9 +186,10 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
           <span className="gp-tag bg-earth text-cream">✎ Added by HR</span>
           <span className="text-xs text-forest/60">Not submitted by the new joiner</span>
         </div>
-        {sub.status === 'rejected' ? (
+        {sub.status === 'rejected' || sub.status === 'archived' ? (
           <p className="text-sm text-forest/60">
             {sub.job_title || division ? `${sub.job_title ?? '—'} · ${sub.division ?? '—'}` : 'No job details added.'}
+            {sub.start_date && ` · 📅 Joined from ${sub.start_date}`}
           </p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
@@ -206,7 +212,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-bold text-forest">Start Date</label>
+              <label className="mb-1 block text-xs font-bold text-forest">Joined from (start date)</label>
               <input
                 type="date"
                 className="gp-input py-1.5"
@@ -248,7 +254,14 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
         ) : sub.status === 'approved' ? (
           <>
             <button className="gp-btn-secondary" onClick={saveHrFields} disabled={busy || !canApprove}>Save HR details</button>
+            <button className="gp-btn-secondary" onClick={archive} disabled={busy}>📦 Archive</button>
             <button className="gp-btn-secondary text-red-700" onClick={reject} disabled={busy}>Reject</button>
+            <button className="gp-btn-secondary" onClick={() => setEditing(true)} disabled={busy}>Edit</button>
+          </>
+        ) : sub.status === 'archived' ? (
+          <>
+            <span className="self-center text-sm text-forest/60">📦 Archived — kept for records, not offered for new eDMs.</span>
+            <button className="gp-btn-secondary" onClick={unarchive} disabled={busy}>↩ Restore to Approved</button>
             <button className="gp-btn-secondary" onClick={() => setEditing(true)} disabled={busy}>Edit</button>
           </>
         ) : (

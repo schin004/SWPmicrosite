@@ -177,19 +177,22 @@ export default function Submit({
               <Leaf className="h-4 w-4 text-forest" /> Profile photo {!amend && <span className="text-red-500">*</span>}
             </label>
             <div className="flex items-center gap-4">
-              <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-sage bg-sage-light">
-                {preview ? (
-                  <img src={preview} alt="Preview" className="max-h-full max-w-full object-contain" />
-                ) : (
-                  <Leaf className="h-9 w-9 text-forest/40" />
-                )}
+              <div className="shrink-0 text-center">
+                <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-sage bg-sage-light">
+                  {preview ? (
+                    <img src={preview} alt="Photo preview" className="max-h-full max-w-full object-contain" />
+                  ) : (
+                    <Leaf className="h-9 w-9 text-forest/40" />
+                  )}
+                </div>
+                {preview && <p className="mt-1.5 text-xs font-bold text-forest">👀 Preview</p>}
               </div>
               <div>
                 <button type="button" className="gp-btn-secondary" onClick={() => fileRef.current?.click()}>
-                  {preview ? 'Change photo' : 'Upload photo'}
+                  {preview ? 'Choose a different photo' : 'Upload photo'}
                 </button>
                 <p className="mt-1.5 text-xs text-forest/60">
-                  JPG or PNG, up to 5MB. Your whole photo is shown as a rectangle — a clear, upright photo works best.
+                  JPG or PNG, up to 5MB. The preview shows exactly how your photo will look — not happy with it? Just choose a different file. Your whole photo is shown as a rectangle, so a clear, upright photo works best.
                   {amend && ' Leave it as-is to keep your current photo.'}
                 </p>
               </div>

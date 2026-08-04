@@ -471,7 +471,7 @@ function renderEdm(hires, occasion, sendDate, esc, photoUri) {
           <td valign="top" style="padding:18px 18px 18px 6px;">
             <p style="margin:0;font-family:${FONT};font-size:20px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:7px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:4px 13px;border-radius:14px;font-family:${FONT};font-size:13px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
-            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;&nbsp;·&nbsp;&nbsp;📅 Started ${esc(h.start_date)}</p>
+            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;&nbsp;·&nbsp;&nbsp;📅 Joined from ${esc(h.start_date)}</p>
             <p style="margin:11px 0 0 0;font-family:${FONT};font-size:14px;line-height:1.55;color:#333333;">${esc(h.intro)}</p>
             ${funFact}
           </td>
