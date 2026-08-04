@@ -491,6 +491,23 @@ function gpDraw(id){
   ctx.drawImage(img, -w/2, -h/2, w, h);
   ctx.restore();
 }
+function gpLoadFile(id, inp){
+  var f = inp.files[0]; if(!f) return;
+  var msg = document.getElementById('pe-'+id);
+  var url = URL.createObjectURL(f);
+  var img = new Image();
+  img.onload = function(){
+    gpE[id] = { img: img, angle: 0 };
+    document.getElementById('br-'+id).value = 100;
+    document.getElementById('co-'+id).value = 100;
+    document.getElementById('sa-'+id).value = 100;
+    gpDraw(id);
+    URL.revokeObjectURL(url);
+    if(msg) msg.textContent = ' New photo loaded — adjust if you like, then Save.';
+  };
+  img.onerror = function(){ if(msg) msg.textContent = ' Could not read that image — please try another file.'; URL.revokeObjectURL(url); };
+  img.src = url;
+}
 function gpRotate(id){ var st = gpE[id]; if(!st) return; st.angle = (st.angle + 90) % 360; gpDraw(id); }
 function gpResetPhoto(id){
   document.getElementById('br-'+id).value = 100;
@@ -525,7 +542,12 @@ function photoEditor(s) {
   return `<details class="pe" ontoggle="if(this.open)gpInitEditor('${id}')">
     <summary>✨ Adjust photo (brighten / rotate)</summary>
     <div style="margin-top:10px">
-      <p class="muted" style="margin:0 0 8px">Drag the sliders to brighten or adjust, rotate if needed, then <b>Save</b>. The change replaces the stored photo for this joiner.</p>
+      <p class="muted" style="margin:0 0 8px">Adjust the current photo below, <b>or</b> load a completely different one. Rotate if needed, then <b>Save</b> — the result replaces the stored photo for this joiner.</p>
+      <div class="field" style="margin:0 0 12px">
+        <label>Replace with a different photo (JPG/PNG)</label>
+        <input type="file" id="fu-${id}" accept="image/jpeg,image/png" onchange="gpLoadFile('${id}',this)">
+        <p class="muted" style="margin:4px 0 0">Choose a new file to load it into the editor — then adjust it, or just Save to replace the photo as-is.</p>
+      </div>
       <div style="text-align:center"><canvas id="cv-${id}" style="max-width:100%;border:1px solid ${C.sage};border-radius:8px;background:#fff"></canvas></div>
       <div class="grid two" style="margin-top:10px">
         <div><label>Brightness</label><input type="range" id="br-${id}" min="50" max="200" value="100" oninput="gpDraw('${id}')" style="width:100%"></div>

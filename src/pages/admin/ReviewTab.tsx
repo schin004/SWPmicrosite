@@ -372,6 +372,28 @@ function PhotoEditor({
     setAngle(0);
   }
 
+  // Load a completely different photo into the editor (full re-upload).
+  function loadFile(file: File | undefined) {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      imgRef.current = img;
+      setBrightness(100);
+      setContrast(100);
+      setSaturation(100);
+      setAngle(0);
+      draw();
+      URL.revokeObjectURL(url);
+      setMsg('New photo loaded — adjust if you like, then Save.');
+    };
+    img.onerror = () => {
+      setMsg('Could not read that image — please try another file.');
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
   function save() {
     const cv = canvasRef.current;
     if (!cv) return;
@@ -408,8 +430,21 @@ function PhotoEditor({
   return (
     <div className="mt-3 rounded-xl border border-forest/15 bg-sage-light/40 p-3">
       <p className="mb-2 text-xs text-forest/70">
-        Drag the sliders to brighten or adjust, rotate if needed, then Save. The change replaces the stored photo.
+        Adjust the current photo, or load a completely different one. Rotate if needed, then Save — the result replaces the stored photo.
       </p>
+      <div className="mb-3">
+        <label className="block text-xs font-bold text-forest">Replace with a different photo (JPG/PNG)</label>
+        <input
+          type="file"
+          accept="image/jpeg,image/png"
+          className="mt-1 text-sm"
+          onChange={(e) => loadFile(e.target.files?.[0])}
+          disabled={busy}
+        />
+        <p className="mt-1 text-xs text-forest/60">
+          Choose a new file to load it into the editor — then adjust it, or just Save to replace the photo as-is.
+        </p>
+      </div>
       <div className="text-center">
         <canvas ref={canvasRef} className="mx-auto max-w-full rounded-lg border border-sage bg-white" />
       </div>
