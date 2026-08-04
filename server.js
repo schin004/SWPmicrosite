@@ -384,7 +384,8 @@ app.post('/api/edm', requireAdmin, wrap(async (req, res) => {
 
   const { rows: hires } = await pool.query(
     `select id, full_name, start_date, intro, fun_fact, job_title, division, photo_mime, photo_data
-       from submissions where id = any($1::uuid[]) and status = 'approved'`,
+       from submissions where id = any($1::uuid[]) and status = 'approved'
+       order by start_date asc nulls last, full_name asc`,
     [ids],
   );
   if (!hires.length) return res.status(400).json({ error: 'None of the selected entries are approved.' });
@@ -408,12 +409,34 @@ app.get('/api/edm', requireAdmin, wrap(async (_req, res) => {
   res.json(rows);
 }));
 
+// ── Admin: replace a submission's photo (from the in-app editor) ─────────────
+app.post('/api/submissions/:id/photo', requireAdmin, (req, res) => {
+  upload.single('photo')(req, res, wrap(async (err) => {
+    if (!requireDb(res)) return;
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: 'No image was received.' });
+    const photo = checkPhoto(req.file.buffer);
+    const { rowCount } = await pool.query(
+      'update submissions set photo_mime = $1, photo_data = $2, photo_status = $3, photo_reason = $4, updated_at = now() where id = $5',
+      [req.file.mimetype, req.file.buffer, photo.status, photo.reason, req.params.id],
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Submission not found.' });
+    res.json({ ok: true });
+  }));
+});
+
 // ── Health check (used by Rabbit / uptime probes) ────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ ok: true, db: Boolean(pool) }));
 
 // ── eDM HTML builder (Outlook-safe, table layout, all-inline CSS) ────────────
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Format a stored 'YYYY-MM-DD' start date for display as DD/MM/YY.
+function fmtDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
+  return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : String(s || '');
 }
 
 // Inline a stored photo (Buffer from Postgres bytea) as a base64 data URI so the
@@ -471,7 +494,7 @@ function renderEdm(hires, occasion, sendDate, esc, photoUri) {
           <td valign="top" style="padding:18px 18px 18px 6px;">
             <p style="margin:0;font-family:${FONT};font-size:20px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:7px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:4px 13px;border-radius:14px;font-family:${FONT};font-size:13px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
-            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;&nbsp;·&nbsp;&nbsp;📅 Joined from ${esc(h.start_date)}</p>
+            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;&nbsp;·&nbsp;&nbsp;📅 Joined from ${esc(fmtDate(h.start_date))}</p>
             <p style="margin:11px 0 0 0;font-family:${FONT};font-size:14px;line-height:1.55;color:#333333;">${esc(h.intro)}</p>
             ${funFact}
           </td>

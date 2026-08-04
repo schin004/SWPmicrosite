@@ -139,7 +139,7 @@ export default function Submit({
 
           <div>
             <label className="gp-label" htmlFor="fullName">
-              <Leaf className="h-4 w-4 text-forest" /> Full name <span className="text-red-500">*</span>
+              <Leaf className="h-4 w-4 text-forest" /> Full name (as per NRIC) <span className="text-red-500">*</span>
             </label>
             <input
               id="fullName"

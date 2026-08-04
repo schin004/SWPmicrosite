@@ -43,6 +43,8 @@ const C = { green: '#2D6A4F', greenDark: '#1B4332', sage: '#95D5B2', sageLight: 
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Format a stored 'YYYY-MM-DD' start date for display as DD/MM/YY.
+const fmtDate = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : (s || ''); };
 const hasAdmin = (req) => {
   const m = /(?:^|;\s*)gp_admin=([^;]+)/.exec(req.headers.cookie || '');
   return m && decodeURIComponent(m[1]) === ADMIN_PASSWORD;
@@ -264,7 +266,7 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
       ${introBlurb}
       <form method="post" action="/submit" enctype="multipart/form-data">
         ${amend ? '<input type="hidden" name="amend" value="1">' : ''}
-        <div class="field"><label>Full name <span class="req">*</span></label><input type="text" name="full_name" required value="${esc(values.full_name)}" placeholder="e.g. Amara Tan"></div>
+        <div class="field"><label>Full name (as per NRIC) <span class="req">*</span></label><input type="text" name="full_name" required value="${esc(values.full_name)}" placeholder="e.g. Amara Tan"></div>
         ${emailField}
         ${photoField}
         <div class="field"><label>Personal introduction <span class="req">*</span></label>
@@ -444,7 +446,7 @@ const AI_DISCLAIMER = `<div class="banner"><span>🤝</span><div><b>AI moderatio
 app.get('/admin', async (req, res) => {
   if (!hasAdmin(req)) return res.send(adminLoginPage());
   if (!pool) return res.send(layout({ title: 'GreenPass HR Console', adminNav: true, body: `${AI_DISCLAIMER}<div class="card">No database connected.</div>` }));
-  const { rows } = await pool.query(`select id,full_name,email,start_date,intro,fun_fact,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason from submissions order by created_at desc`);
+  const { rows } = await pool.query(`select id,full_name,email,start_date,intro,fun_fact,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,updated_at from submissions order by created_at desc`);
   const groups = [
     ['awaiting-hr-review', 'Awaiting HR Review', 'Add job details and approve, or reject.'],
     ['approved', 'Approved', 'Ready to include in an eDM.'],
@@ -460,8 +462,85 @@ app.get('/admin', async (req, res) => {
     if (!items.length) { body += `<p class="muted card" style="text-align:center">Nothing here yet.</p>`; continue; }
     body += `<div class="grid two">` + items.map(cardHtml).join('') + `</div>`;
   }
+  body += PHOTO_EDITOR_JS;
   res.send(layout({ title: 'GreenPass HR Console 🌿', adminNav: true, body }));
 });
+
+// Client-side canvas photo editor shared by every card on the review page.
+const PHOTO_EDITOR_JS = `<script>
+window.gpE = window.gpE || {};
+function gpInitEditor(id){
+  if(gpE[id] && gpE[id].img){ gpDraw(id); return; }
+  var img = new Image();
+  img.onload = function(){ gpE[id] = { img: img, angle: 0 }; gpDraw(id); };
+  img.onerror = function(){ var m=document.getElementById('pe-'+id); if(m) m.textContent=' Could not load the photo to edit.'; };
+  img.src = '/api/photo/' + id + '?t=' + Date.now();
+}
+function gpDraw(id){
+  var st = gpE[id]; if(!st) return;
+  var cv = document.getElementById('cv-'+id), ctx = cv.getContext('2d');
+  var br = document.getElementById('br-'+id).value, co = document.getElementById('co-'+id).value, sa = document.getElementById('sa-'+id).value;
+  var img = st.img, a = st.angle;
+  var scale = Math.min(1, 800 / Math.max(img.naturalWidth, img.naturalHeight));
+  var w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+  if(a === 90 || a === 270){ cv.width = h; cv.height = w; } else { cv.width = w; cv.height = h; }
+  ctx.save();
+  ctx.filter = 'brightness('+br+'%) contrast('+co+'%) saturate('+sa+'%)';
+  ctx.translate(cv.width/2, cv.height/2);
+  ctx.rotate(a * Math.PI / 180);
+  ctx.drawImage(img, -w/2, -h/2, w, h);
+  ctx.restore();
+}
+function gpRotate(id){ var st = gpE[id]; if(!st) return; st.angle = (st.angle + 90) % 360; gpDraw(id); }
+function gpResetPhoto(id){
+  document.getElementById('br-'+id).value = 100;
+  document.getElementById('co-'+id).value = 100;
+  document.getElementById('sa-'+id).value = 100;
+  if(gpE[id]) gpE[id].angle = 0;
+  gpDraw(id);
+}
+function gpSavePhoto(id, btn){
+  var cv = document.getElementById('cv-'+id), msg = document.getElementById('pe-'+id);
+  if(!gpE[id]){ msg.textContent = ' Open the editor first.'; return; }
+  btn.disabled = true; msg.textContent = ' Saving…';
+  cv.toBlob(function(blob){
+    var fd = new FormData(); fd.append('id', id); fd.append('photo', blob, 'photo.jpg');
+    fetch('/admin/photo', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.ok){ msg.textContent = ' ✓ Saved! Refreshing…'; setTimeout(function(){ location.reload(); }, 500); }
+        else { msg.textContent = ' ' + (d.error || 'Save failed.'); btn.disabled = false; }
+      })
+      .catch(function(e){ msg.textContent = ' ' + e.message; btn.disabled = false; });
+  }, 'image/jpeg', 0.92);
+}
+</script>`;
+
+// In-app photo touch-up: HR can brighten / adjust / rotate the joiner's photo
+// and save the result straight back to the database. All done client-side on a
+// <canvas>; the adjusted image is posted to /admin/photo. The <details> lazily
+// loads the photo into the editor only when opened (ontoggle).
+function photoEditor(s) {
+  const id = s.id;
+  return `<details class="pe" ontoggle="if(this.open)gpInitEditor('${id}')">
+    <summary>✨ Adjust photo (brighten / rotate)</summary>
+    <div style="margin-top:10px">
+      <p class="muted" style="margin:0 0 8px">Drag the sliders to brighten or adjust, rotate if needed, then <b>Save</b>. The change replaces the stored photo for this joiner.</p>
+      <div style="text-align:center"><canvas id="cv-${id}" style="max-width:100%;border:1px solid ${C.sage};border-radius:8px;background:#fff"></canvas></div>
+      <div class="grid two" style="margin-top:10px">
+        <div><label>Brightness</label><input type="range" id="br-${id}" min="50" max="200" value="100" oninput="gpDraw('${id}')" style="width:100%"></div>
+        <div><label>Contrast</label><input type="range" id="co-${id}" min="50" max="200" value="100" oninput="gpDraw('${id}')" style="width:100%"></div>
+        <div><label>Saturation</label><input type="range" id="sa-${id}" min="0" max="200" value="100" oninput="gpDraw('${id}')" style="width:100%"></div>
+        <div><label>Rotate</label><button type="button" class="btn sec" onclick="gpRotate('${id}')">⟳ Rotate 90°</button></div>
+      </div>
+      <div class="actions" style="border:0;padding-top:10px">
+        <button type="button" class="btn" onclick="gpSavePhoto('${id}',this)">💾 Save adjusted photo</button>
+        <button type="button" class="btn sec" onclick="gpResetPhoto('${id}')">↺ Reset</button>
+        <span class="muted" id="pe-${id}"></span>
+      </div>
+    </div>
+  </details>`;
+}
 
 function cardHtml(s) {
   const photoNote = s.photo_status === 'manual-review' ? `<p class="muted" style="margin:8px 0 0">📷 ${esc(s.photo_reason)}</p>` : '';
@@ -470,7 +549,7 @@ function cardHtml(s) {
 
   let hrFields, actions;
   if (s.status === 'rejected' || s.status === 'archived') {
-    const details = `${jt || dv ? `${jt || '—'} · ${dv || '—'}` : 'No job details added.'}${s.start_date ? ` · 📅 Joined from ${esc(s.start_date)}` : ''}`;
+    const details = `${jt || dv ? `${jt || '—'} · ${dv || '—'}` : 'No job details added.'}${s.start_date ? ` · 📅 Joined from ${esc(fmtDate(s.start_date))}` : ''}`;
     hrFields = `<div class="hrbox"><span class="tag hr">✎ Added by HR</span> <span class="muted">Not submitted by the new joiner</span><p class="muted" style="margin:8px 0 0">${details}</p></div>`;
     actions = s.status === 'archived'
       ? `<form method="post" action="/admin/update" class="actions"><input type="hidden" name="id" value="${s.id}">
@@ -506,16 +585,18 @@ function cardHtml(s) {
   const editForm = `<details><summary>Edit new-joiner details</summary>
     <form method="post" action="/admin/update" style="margin-top:10px">
       <input type="hidden" name="id" value="${s.id}"><input type="hidden" name="action" value="edit">
-      <div class="field"><label>Full name</label><input type="text" name="full_name" value="${esc(s.full_name)}"></div>
+      <div class="field"><label>Full name (as per NRIC)</label><input type="text" name="full_name" value="${esc(s.full_name)}"></div>
       <div class="field"><label>Email</label><input type="email" name="email" value="${esc(s.email)}"></div>
       <div class="field"><label>Introduction</label><textarea name="intro">${esc(s.intro)}</textarea></div>
       <div class="field"><label>Fun fact</label><input type="text" name="fun_fact" value="${esc(s.fun_fact)}"></div>
       <button class="btn sec" type="submit">Save changes</button>
     </form></details>`;
 
+  const ver = s.updated_at ? new Date(s.updated_at).getTime() : '';
   return `<div class="card">
-    <div class="row"><img class="thumb" src="/api/photo/${s.id}" alt="${esc(s.full_name)}">
-      <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Joined from ' + esc(s.start_date) : '📅 Joining date — to be added by HR'}</p>${s.email ? `<p class="muted" style="margin:2px 0 0">📧 ${esc(s.email)}</p>` : ''}</div></div>
+    <div class="row"><img class="thumb" src="/api/photo/${s.id}?v=${ver}" alt="${esc(s.full_name)}">
+      <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Joined from ' + esc(fmtDate(s.start_date)) : '📅 Joining date — to be added by HR'}</p>${s.email ? `<p class="muted" style="margin:2px 0 0">📧 ${esc(s.email)}</p>` : ''}</div></div>
+    ${photoEditor(s)}
     <p style="margin:12px 0 0">${esc(s.intro)}</p>
     ${s.fun_fact ? `<p style="color:${C.earth};font-style:italic;margin:8px 0 0">🌼 Fun fact: ${esc(s.fun_fact)}</p>` : ''}
     <div class="modbox">${moderationTag(s.ai_status)} <span class="muted">AI moderation${conf}</span><p style="margin:6px 0 0">${esc(s.ai_reason)}</p>${photoNote}</div>
@@ -571,11 +652,34 @@ app.post('/admin/update', async (req, res) => {
   }
 });
 
+// ── Admin: save an HR-edited photo (from the in-app canvas editor) ───────────
+app.post('/admin/photo', (req, res) => {
+  upload.single('photo')(req, res, async (err) => {
+    if (!hasAdmin(req)) return res.status(403).json({ error: 'Not authorised.' });
+    if (!pool) return res.status(503).json({ error: 'No database connected.' });
+    if (err) return res.status(400).json({ error: err.message });
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: 'Missing submission id.' });
+    if (!req.file) return res.status(400).json({ error: 'No image was received.' });
+    try {
+      const photo = checkPhoto(req.file.buffer);
+      const { rowCount } = await pool.query(
+        'update submissions set photo_mime=$1, photo_data=$2, photo_status=$3, photo_reason=$4, updated_at=now() where id=$5',
+        [req.file.mimetype, req.file.buffer, photo.status, photo.reason, id]);
+      if (!rowCount) return res.status(404).json({ error: 'Submission not found.' });
+      res.json({ ok: true });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Could not save the photo. Please try again.' });
+    }
+  });
+});
+
 // ── Admin: generate eDM ──────────────────────────────────────────────────────
 app.get('/admin/edm', async (req, res) => {
   if (!hasAdmin(req)) return res.send(adminLoginPage());
   if (!pool) return res.send(layout({ title: 'Generate eDM', adminNav: true, body: '<div class="card">No database connected.</div>' }));
-  const { rows: approved } = await pool.query(`select id,full_name,job_title,division from submissions where status='approved' order by created_at desc`);
+  const { rows: approved } = await pool.query(`select id,full_name,job_title,division,start_date,updated_at from submissions where status='approved' order by start_date asc nulls last, full_name asc`);
   res.send(renderEdmPage(approved));
 });
 
@@ -586,7 +690,7 @@ function renderEdmPage(approved, generated = null, error = '') {
     return layout({ title: 'Generate eDM 🌿', adminNav: true, body });
   }
   const checks = approved.map((a) => `<label style="display:flex;gap:10px;align-items:center;border:1px solid ${C.sage};border-radius:12px;padding:8px 12px;margin-bottom:8px;font-weight:400">
-    <input type="checkbox" name="ids" value="${a.id}" checked> <img class="avatar" style="width:36px;height:36px" src="/api/photo/${a.id}"> <span><b>${esc(a.full_name)}</b><br><span class="muted">${esc(a.job_title)} · ${esc(a.division)}</span></span></label>`).join('');
+    <input type="checkbox" name="ids" value="${a.id}" checked> <img class="avatar" style="width:36px;height:36px" src="/api/photo/${a.id}?v=${a.updated_at ? new Date(a.updated_at).getTime() : ''}"> <span><b>${esc(a.full_name)}</b><br><span class="muted">${esc(a.job_title)} · ${esc(a.division)}${a.start_date ? ' · 📅 ' + esc(fmtDate(a.start_date)) : ''}</span></span></label>`).join('');
   body += `<div class="grid two"><div class="card"><h2 style="margin-top:0;color:${C.green}">1 · Choose &amp; label</h2>
     <form method="post" action="/admin/edm">
       ${checks}
@@ -640,12 +744,14 @@ app.post('/admin/edm', async (req, res) => {
   if (!pool) return res.redirect('/admin/edm');
   let ids = req.body.ids || [];
   if (!Array.isArray(ids)) ids = [ids];
-  const { rows: approved } = await pool.query(`select id,full_name,job_title,division from submissions where status='approved' order by created_at desc`);
+  const { rows: approved } = await pool.query(`select id,full_name,job_title,division,start_date,updated_at from submissions where status='approved' order by start_date asc nulls last, full_name asc`);
   const occasion = (req.body.occasion || '').trim();
   if (!ids.length) return res.send(renderEdmPage(approved, null, 'Select at least one approved entry.'));
   if (!occasion) return res.send(renderEdmPage(approved, null, 'Please provide an occasion label.'));
   const { rows: hires } = await pool.query(
-    `select full_name,start_date,intro,fun_fact,job_title,division,photo_mime,photo_data from submissions where id = any($1::uuid[]) and status='approved'`, [ids]);
+    `select full_name,start_date,intro,fun_fact,job_title,division,photo_mime,photo_data from submissions
+       where id = any($1::uuid[]) and status='approved'
+       order by start_date asc nulls last, full_name asc`, [ids]);
   if (!hires.length) return res.send(renderEdmPage(approved, null, 'None of the selected entries are approved.'));
   const html = buildEdmHtml(hires, occasion, (req.body.send_date || '').trim());
   await pool.query('insert into edm_archive (occasion,send_date,hire_names,html) values ($1,$2,$3,$4)',
@@ -709,7 +815,7 @@ function buildEdmHtml(hires, occasion, sendDate) {
           <td valign="top" style="padding:18px 18px 18px 6px;">
             <p style="margin:0;font-family:${FONT};font-size:20px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:7px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:4px 13px;border-radius:14px;font-family:${FONT};font-size:13px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
-            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;&nbsp;·&nbsp;&nbsp;📅 Joined from ${esc(h.start_date)}</p>
+            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;&nbsp;·&nbsp;&nbsp;📅 Joined from ${esc(fmtDate(h.start_date))}</p>
             <p style="margin:11px 0 0 0;font-family:${FONT};font-size:14px;line-height:1.55;color:#333333;">${esc(h.intro)}</p>
             ${funFact}
           </td>

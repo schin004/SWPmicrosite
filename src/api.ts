@@ -95,6 +95,15 @@ export async function updateSubmission(id: number, patch: Partial<Submission>): 
   );
 }
 
+// Admin: replace a submission's photo with an HR-edited version (canvas blob).
+export async function updatePhoto(id: number, blob: Blob): Promise<void> {
+  const fd = new FormData();
+  fd.append('photo', blob, 'photo.jpg');
+  await parse(
+    await fetch(`/api/submissions/${id}/photo`, { method: 'POST', headers: adminHeaders(), body: fd }),
+  );
+}
+
 export async function generateEdm(
   ids: number[],
   occasion: string,

@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Leaf } from '../../components/Botanical';
 import { ModerationBadge } from '../../components/ModerationBadge';
-import { updateSubmission, type Submission, type SubmissionStatus } from '../../api';
+import { updatePhoto, updateSubmission, type Submission, type SubmissionStatus } from '../../api';
+
+// Format a stored 'YYYY-MM-DD' start date for display as DD/MM/YY.
+function fmtDate(s: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
+  return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : String(s || '');
+}
 
 const GROUPS: { key: SubmissionStatus; label: string; hint: string }[] = [
   { key: 'awaiting-hr-review', label: 'Awaiting HR Review', hint: 'Add job details and approve, or reject.' },
@@ -51,6 +57,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
   const [division, setDivision] = useState(sub.division ?? '');
   const [startDate, setStartDate] = useState(sub.start_date ?? '');
   const [editing, setEditing] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState(false);
   const [draft, setDraft] = useState({
     full_name: sub.full_name,
     email: sub.email ?? '',
@@ -106,7 +113,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
       <div className="flex items-start gap-4">
         {sub.photo_path ? (
           <img
-            src={sub.photo_path}
+            src={`${sub.photo_path}?v=${sub.updated_at ? new Date(sub.updated_at).getTime() : ''}`}
             alt={sub.full_name}
             className="w-24 shrink-0 rounded-lg border-2 border-sage bg-sage-light"
           />
@@ -136,13 +143,36 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
             <>
               <h3 className="truncate text-lg font-extrabold text-forest">{sub.full_name}</h3>
               <p className="text-sm text-forest/60">
-                {sub.start_date ? `Joined from ${sub.start_date}` : '📅 Joining date — to be added by HR'}
+                {sub.start_date ? `Joined from ${fmtDate(sub.start_date)}` : '📅 Joining date — to be added by HR'}
               </p>
               {sub.email && <p className="truncate text-sm text-forest/60">📧 {sub.email}</p>}
             </>
           )}
         </div>
       </div>
+
+      {/* in-app photo touch-up */}
+      {sub.photo_path && (
+        <div className="mt-3">
+          <button
+            className="gp-btn-secondary text-sm"
+            onClick={() => setEditingPhoto((v) => !v)}
+            disabled={busy}
+          >
+            {editingPhoto ? 'Close photo editor' : '✨ Adjust photo'}
+          </button>
+          {editingPhoto && (
+            <PhotoEditor
+              id={sub.id}
+              photoUrl={sub.photo_path}
+              onSaved={async () => {
+                setEditingPhoto(false);
+                await reload();
+              }}
+            />
+          )}
+        </div>
+      )}
 
       {/* intro + fun fact */}
       <div className="mt-4 space-y-2">
@@ -189,7 +219,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
         {sub.status === 'rejected' || sub.status === 'archived' ? (
           <p className="text-sm text-forest/60">
             {sub.job_title || division ? `${sub.job_title ?? '—'} · ${sub.division ?? '—'}` : 'No job details added.'}
-            {sub.start_date && ` · 📅 Joined from ${sub.start_date}`}
+            {sub.start_date && ` · 📅 Joined from ${fmtDate(sub.start_date)}`}
           </p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
@@ -272,5 +302,142 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
         )}
       </div>
     </article>
+  );
+}
+
+// Client-side canvas photo editor: HR can brighten / adjust / rotate the
+// joiner's photo and save the result straight back to the database.
+function PhotoEditor({
+  id,
+  photoUrl,
+  onSaved,
+}: {
+  id: number;
+  photoUrl: string;
+  onSaved: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [angle, setAngle] = useState(0);
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
+  const [saturation, setSaturation] = useState(100);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  function draw() {
+    const img = imgRef.current;
+    const cv = canvasRef.current;
+    if (!img || !cv) return;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return;
+    const scale = Math.min(1, 800 / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.round(img.naturalWidth * scale);
+    const h = Math.round(img.naturalHeight * scale);
+    if (angle === 90 || angle === 270) {
+      cv.width = h;
+      cv.height = w;
+    } else {
+      cv.width = w;
+      cv.height = h;
+    }
+    ctx.save();
+    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+    ctx.translate(cv.width / 2, cv.height / 2);
+    ctx.rotate((angle * Math.PI) / 180);
+    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+
+  // Load the photo once.
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      imgRef.current = img;
+      draw();
+    };
+    img.onerror = () => setMsg('Could not load the photo to edit.');
+    img.src = `${photoUrl}?t=${Date.now()}`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Redraw whenever a control changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => draw(), [angle, brightness, contrast, saturation]);
+
+  function reset() {
+    setBrightness(100);
+    setContrast(100);
+    setSaturation(100);
+    setAngle(0);
+  }
+
+  function save() {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    setBusy(true);
+    setMsg('Saving…');
+    cv.toBlob(
+      async (blob) => {
+        if (!blob) {
+          setMsg('Could not create the image.');
+          setBusy(false);
+          return;
+        }
+        try {
+          await updatePhoto(id, blob);
+          setMsg('✓ Saved!');
+          onSaved();
+        } catch (e) {
+          setMsg((e as Error).message);
+        } finally {
+          setBusy(false);
+        }
+      },
+      'image/jpeg',
+      0.92,
+    );
+  }
+
+  const sliders: [string, number, (v: number) => void, number, number][] = [
+    ['Brightness', brightness, setBrightness, 50, 200],
+    ['Contrast', contrast, setContrast, 50, 200],
+    ['Saturation', saturation, setSaturation, 0, 200],
+  ];
+
+  return (
+    <div className="mt-3 rounded-xl border border-forest/15 bg-sage-light/40 p-3">
+      <p className="mb-2 text-xs text-forest/70">
+        Drag the sliders to brighten or adjust, rotate if needed, then Save. The change replaces the stored photo.
+      </p>
+      <div className="text-center">
+        <canvas ref={canvasRef} className="mx-auto max-w-full rounded-lg border border-sage bg-white" />
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {sliders.map(([label, value, setter, min, max]) => (
+          <label key={label} className="block text-xs font-bold text-forest">
+            {label} ({value}%)
+            <input
+              type="range"
+              min={min}
+              max={max}
+              value={value}
+              onChange={(e) => setter(Number(e.target.value))}
+              className="mt-1 w-full"
+            />
+          </label>
+        ))}
+        <div className="flex items-end">
+          <button className="gp-btn-secondary text-sm" onClick={() => setAngle((a) => (a + 90) % 360)} disabled={busy}>
+            ⟳ Rotate 90°
+          </button>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button className="gp-btn-primary text-sm" onClick={save} disabled={busy}>💾 Save adjusted photo</button>
+        <button className="gp-btn-secondary text-sm" onClick={reset} disabled={busy}>↺ Reset</button>
+        {msg && <span className="text-sm text-forest/70">{msg}</span>}
+      </div>
+    </div>
   );
 }
