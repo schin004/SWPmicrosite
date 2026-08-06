@@ -234,7 +234,7 @@ app.get('/', (_req, res) => {
 function submitPage({ error = '', values = {}, amend = false, photoUrl = null } = {}) {
   const introBlurb = amend
     ? `<p class="muted">Update anything you'd like to change below, then save. Your amended introduction will go back to the HR team for a quick review. <b>Job title, division and start date are added by HR.</b></p>`
-    : `<p class="muted">Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look. <b>Job title, division and start date are added by HR</b> — you don't need to fill those in.</p>
+    : `<p class="muted">Our bi-monthly new joiner announcement will include a self-introduction from each new joiner, shared with NParks colleagues via email. Take this opportunity to tell your new colleagues a little about yourself! Your introduction will be included in a warm welcome email after a quick review by HR.<br>Note that your job title, division, and start date will be added by HR, so you don't need to include those.</p>
        <p class="muted" style="background:${C.sageLight};border-radius:10px;padding:10px 12px"><b>Already submitted before?</b> You can <a href="/amend">amend your existing introduction</a> instead of starting again.</p>`;
   const emailField = amend
     ? `<div class="field"><label>Email address</label><input type="email" name="email" value="${esc(values.email)}" readonly style="background:#eef3ef">
@@ -250,7 +250,7 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
           </div>
           <div style="flex:1">
             <input type="file" name="photo" accept="image/jpeg,image/png" onchange="gpPreview(this)">
-            <p class="muted" style="margin-top:8px">The preview shows exactly how your photo will look. Not happy with it? Just choose another file. Leave this empty to keep your current photo.</p>
+            <p class="muted" style="margin-top:8px">Please share a photo of yourself for your staff introduction — a solo shot with your face clearly visible, no sunglasses or headgear, dressed in suitable attire. The preview shows exactly how it will look. Leave this empty to keep your current photo.</p>
           </div>
         </div></div>`
     : `<div class="field"><label>Profile photo (JPG/PNG, max 5MB) <span class="req">*</span></label>
@@ -261,7 +261,7 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
           </div>
           <div style="flex:1">
             <input type="file" name="photo" accept="image/jpeg,image/png" required onchange="gpPreview(this)">
-            <p class="muted" style="margin-top:8px">Once you choose a photo, a preview appears here so you can check it looks good. Not happy with it? Just choose another file. Your whole photo is shown as a rectangle, so a clear, upright photo works best.</p>
+            <p class="muted" style="margin-top:8px">Please share a photo of yourself for your staff introduction! Make sure it's a solo shot with your face clearly visible — no sunglasses or headgear, and dressed in suitable attire. Once you choose a photo, a preview appears here — not happy with it? Just choose another file.</p>
           </div>
         </div></div>`;
   return layout({ title: amend ? 'Amend your introduction 🌱' : "We're so glad you're here 🌱", body: `
@@ -274,8 +274,10 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
         ${emailField}
         ${photoField}
         <div class="field"><label>Personal introduction <span class="req">*</span></label>
-          <textarea name="intro" required oninput="var w=this.value.trim()?this.value.trim().split(/\\s+/).length:0;var c=document.getElementById('wc');c.textContent=w+' / 300 words';c.style.color=w>300?'#b45309':'';" placeholder="Share a short paragraph introducing yourself to your NParks colleagues.">${esc(values.intro)}</textarea>
-          <p class="muted" id="wc">0 / 300 words</p></div>
+          <p class="muted" style="margin:0 0 8px">We will appreciate it if you can provide a brief write-up (not more than 100 words) using the below as a guide, and include information which you are comfortable to share with NParks colleagues. We may make slight changes where needed.</p>
+          <ul class="muted" style="margin:0 0 8px;padding-left:18px"><li>Which company/industry (e.g. public sector) you come from?</li><li>What hobbies do you have?</li><li>Why do you join NParks?</li></ul>
+          <textarea name="intro" required oninput="var w=this.value.trim()?this.value.trim().split(/\\s+/).length:0;var c=document.getElementById('wc');c.textContent=w+' / 100 words';c.style.color=w>100?'#b45309':'';" placeholder="Share a short introduction about yourself for your NParks colleagues.">${esc(values.intro)}</textarea>
+          <p class="muted" id="wc">0 / 100 words</p></div>
         <div class="field"><label>Fun fact (optional)</label><input type="text" name="fun_fact" value="${esc(values.fun_fact)}" placeholder="One fun fact about yourself 🌼"></div>
         <button class="btn" type="submit">${amend ? 'Save my changes 🌿' : 'Send my introduction 🌿'}</button>
       </form>

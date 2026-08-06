@@ -4,7 +4,7 @@ import { BackgroundLeaves, Leaf } from '../components/Botanical';
 import { Header } from '../components/Header';
 import { submitEntry } from '../api';
 
-const WORD_LIMIT = 300;
+const WORD_LIMIT = 100;
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 function countWords(text: string) {
@@ -113,7 +113,7 @@ export default function Submit({
         title={amend ? 'Amend your introduction 🌱' : "We're so glad you're here 🌱"}
         subtitle={amend
           ? 'Update anything you’d like to change below, then save. Your amended introduction goes back to HR for a quick review.'
-          : 'Tell your new NParks colleagues a little about yourself. Your introduction will be shared in a warm welcome email once HR has had a quick look.'}
+          : 'Our bi-monthly new joiner announcement includes a self-introduction from each new joiner, shared with NParks colleagues via email. Take this opportunity to tell your new colleagues a little about yourself! Your introduction will be included in a warm welcome email after a quick review by HR.'}
         right={
           <Link to="/" className="gp-btn-secondary bg-white/10 text-cream hover:bg-white/20">
             ← Home
@@ -192,7 +192,7 @@ export default function Submit({
                   {preview ? 'Choose a different photo' : 'Upload photo'}
                 </button>
                 <p className="mt-1.5 text-xs text-forest/60">
-                  JPG or PNG, up to 5MB. The preview shows exactly how your photo will look — not happy with it? Just choose a different file. Your whole photo is shown as a rectangle, so a clear, upright photo works best.
+                  Please share a photo of yourself for your staff introduction! Make sure it's a solo shot with your face clearly visible — no sunglasses or headgear, and dressed in suitable attire. JPG or PNG, up to 5MB. The preview shows exactly how your photo will look — not happy with it? Just choose a different file.
                   {amend && ' Leave it as-is to keep your current photo.'}
                 </p>
               </div>
@@ -211,6 +211,15 @@ export default function Submit({
             <label className="gp-label" htmlFor="intro">
               <Leaf className="h-4 w-4 text-forest" /> Personal introduction <span className="text-red-500">*</span>
             </label>
+            <p className="mb-2 text-xs text-forest-dark/70">
+              We will appreciate it if you can provide a brief write-up (not more than 100 words) using the below as a guide,
+              and include information which you are comfortable to share with NParks colleagues. We may make slight changes where needed.
+            </p>
+            <ul className="mb-2 list-disc pl-5 text-xs text-forest-dark/70">
+              <li>Which company/industry (e.g. public sector) you come from?</li>
+              <li>What hobbies do you have?</li>
+              <li>Why do you join NParks?</li>
+            </ul>
             <textarea
               id="intro"
               className="gp-input min-h-[140px] resize-y"
@@ -245,7 +254,7 @@ export default function Submit({
           </div>
 
           <div className="rounded-xl bg-sage-light/70 px-4 py-3 text-xs text-forest-dark/70">
-            Job title, division and start date are added by HR — you don't need to fill those in here.
+            Note that your job title, division, and start date will be added by HR, so you don't need to include those.
           </div>
 
           <button type="submit" className="gp-btn-primary w-full text-lg" disabled={submitting}>
