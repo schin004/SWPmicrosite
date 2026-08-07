@@ -538,7 +538,7 @@ function renderEdm(hires, occasion, sendDate, esc, photoUri) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};padding:24px 0;">
   <tr>
     <td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
+      <table role="presentation" width="700" cellpadding="0" cellspacing="0" border="0" style="width:700px;min-width:700px;max-width:700px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
         <tr><td style="background-color:${DARK};padding:10px 24px;text-align:center;font-size:17px;letter-spacing:7px;">🌿🌸🦋🌳☀️🍃</td></tr>
         <tr>
           <td style="background-color:${GREEN};padding:28px 24px 30px 24px;text-align:center;">

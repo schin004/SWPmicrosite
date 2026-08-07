@@ -80,11 +80,11 @@ export default function EdmTab({ submissions, reload }: { submissions: Submissio
     if (!html) return;
     setError(null);
     const holder = document.createElement('div');
-    holder.style.cssText = 'position:fixed;left:-10000px;top:0;width:640px;background:#F8F4E3';
+    holder.style.cssText = 'position:fixed;left:-10000px;top:0;width:740px;background:#F8F4E3';
     holder.innerHTML = html;
     document.body.appendChild(holder);
     try {
-      const canvas = await html2canvas(holder, { backgroundColor: '#F8F4E3', scale: 2, width: 640, windowWidth: 640, useCORS: true });
+      const canvas = await html2canvas(holder, { backgroundColor: '#F8F4E3', scale: 2, width: 740, windowWidth: 740, useCORS: true });
       canvas.toBlob((blob) => {
         if (!blob) return;
         const a = document.createElement('a');

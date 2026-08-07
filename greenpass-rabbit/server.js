@@ -199,8 +199,16 @@ function layout({ title, body, adminNav = false }) {
   .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid ${C.sage};background:${C.sageLight}}
   .thumb{width:100px;height:auto;border-radius:8px;border:2px solid ${C.sage};background:${C.sageLight};display:block}
   .banner{display:flex;gap:10px;align-items:flex-start;background:#fff8e1;border:1px solid #ecd58a;border-radius:14px;padding:12px 14px;color:#7a5c12;font-size:14px;margin-bottom:20px}
-  .section-h{display:flex;align-items:center;gap:10px;margin:26px 0 10px}
+  .section-h{display:flex;align-items:center;gap:10px;margin:26px 0 10px;scroll-margin-top:12px}
   .section-h h2{margin:0;color:${C.green};font-size:22px}
+  .adminwrap{display:flex;gap:20px;align-items:flex-start}
+  .admincontent{flex:1;min-width:0}
+  .sidebar{position:sticky;top:12px;flex:0 0 200px;background:#fff;border:1px solid rgba(149,213,178,.6);border-radius:14px;box-shadow:0 4px 18px -8px rgba(45,106,79,.25);padding:12px;margin-bottom:20px}
+  .sidebar .sbtitle{font-weight:800;color:${C.green};font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin:2px 6px 8px}
+  .sidebar a{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 11px;border-radius:10px;color:${C.greenDark};text-decoration:none;font-weight:700;font-size:14px;margin-bottom:3px}
+  .sidebar a:hover{background:${C.sageLight}}
+  .sidebar a .n{background:${C.sageLight};color:${C.green};border-radius:999px;padding:1px 9px;font-size:12px;font-weight:800}
+  @media(max-width:760px){.adminwrap{flex-direction:column}.sidebar{position:static;flex:auto;width:100%;display:flex;flex-wrap:wrap;gap:6px;padding:8px}.sidebar .sbtitle{width:100%}.sidebar a{margin:0;flex:1;min-width:130px}}
   .count{background:${C.sageLight};color:${C.green};font-weight:800;border-radius:999px;padding:2px 10px;font-size:14px}
   .modbox{background:rgba(248,244,227,.6);border:1px solid rgba(149,213,178,.6);border-radius:12px;padding:11px;margin:12px 0}
   .hrbox{background:rgba(232,245,233,.55);border:1px solid rgba(45,106,79,.18);border-radius:12px;padding:12px;margin:12px 0}
@@ -467,14 +475,22 @@ app.get(ADMIN_PATH, async (req, res) => {
   ];
   const notice = req.query.msg ? `<div class="banner" style="background:${C.sageLight};border-color:${C.sage};color:${C.greenDark}"><span>✓</span><div>${esc(req.query.msg)}</div></div>` : '';
   const err = req.query.err ? `<div class="err">${esc(req.query.err)}</div>` : '';
-  let body = AI_DISCLAIMER + notice + err;
+  const counts = Object.fromEntries(groups.map(([key]) => [key, rows.filter((r) => r.status === key).length]));
+  // Left panel: jump straight to any category without scrolling.
+  const sidebar = `<aside class="sidebar"><div class="sbtitle">Jump to</div>${
+    groups.map(([key, label]) => `<a href="#g-${key}"><span>${label}</span><span class="n">${counts[key]}</span></a>`).join('')
+  }</aside>`;
+  let content = AI_DISCLAIMER + notice + err;
   for (const [key, label, hint] of groups) {
     const items = rows.filter((r) => r.status === key);
-    body += `<div class="section-h"><h2>${label}</h2><span class="count">${items.length}</span><span class="muted">${hint}</span></div>`;
-    if (!items.length) { body += `<p class="muted card" style="text-align:center">Nothing here yet.</p>`; continue; }
-    body += `<div class="grid two">` + items.map(cardHtml).join('') + `</div>`;
+    const bulk = key === 'approved' && items.length
+      ? `<form method="post" action="${ADMIN_PATH}/archive-all-approved" style="margin-left:auto" onsubmit="return confirm('Archive all ${items.length} approved joiner(s)? They will move to the Archived list and won\\'t appear in future eDMs.')"><button class="btn sec" type="submit">📦 Archive all approved</button></form>`
+      : '';
+    content += `<div class="section-h" id="g-${key}"><h2>${label}</h2><span class="count">${items.length}</span><span class="muted">${hint}</span>${bulk}</div>`;
+    if (!items.length) { content += `<p class="muted card" style="text-align:center">Nothing here yet.</p>`; continue; }
+    content += `<div class="grid two">` + items.map(cardHtml).join('') + `</div>`;
   }
-  body += PHOTO_EDITOR_JS;
+  const body = `<div class="adminwrap">${sidebar}<div class="admincontent">${content}</div></div>` + PHOTO_EDITOR_JS;
   res.send(layout({ title: 'GreenPass HR Console 🌿', adminNav: true, body }));
 });
 
@@ -769,11 +785,11 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
           if(!window.html2canvas){ msg.textContent=' — image library did not load; try the screenshot method instead.'; return; }
           var html=document.getElementById('raw').value;
           var holder=document.createElement('div');
-          holder.style.cssText='position:fixed;left:-10000px;top:0;width:640px;background:#F8F4E3';
+          holder.style.cssText='position:fixed;left:-10000px;top:0;width:740px;background:#F8F4E3';
           holder.innerHTML=html;
           document.body.appendChild(holder);
           btn.disabled=true; msg.textContent=' — generating image…';
-          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:640,windowWidth:640,useCORS:true}).then(function(canvas){
+          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:740,windowWidth:740,useCORS:true}).then(function(canvas){
             canvas.toBlob(function(blob){
               var a=document.createElement('a');
               a.href=URL.createObjectURL(blob);
@@ -835,6 +851,19 @@ app.post(ADMIN_PATH + '/archive-batch', async (req, res) => {
   } catch (e) {
     console.error(e);
     res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Bulk archive failed. Please try again.'));
+  }
+});
+
+// ── Admin: archive every approved entry at once ──────────────────────────────
+app.post(ADMIN_PATH + '/archive-all-approved', async (req, res) => {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  if (!pool) return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('No database connected.'));
+  try {
+    const { rowCount } = await pool.query("update submissions set status='archived',updated_at=now() where status='approved'");
+    res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent(`Archived ${rowCount} approved joiner(s) — they've moved to the Archived list.`));
+  } catch (e) {
+    console.error(e);
+    res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Archive all failed. Please try again.'));
   }
 });
 
@@ -910,7 +939,7 @@ function buildEdmHtml(hires, occasion, sendDate) {
 
   return `<!-- GreenPass eDM -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};padding:24px 0;"><tr><td align="center">
-  <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
+  <table role="presentation" width="700" cellpadding="0" cellspacing="0" border="0" style="width:700px;min-width:700px;max-width:700px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
     <tr><td style="background-color:${DARK};padding:10px 24px;text-align:center;font-size:17px;letter-spacing:7px;">🌿🌸🦋🌳☀️🍃</td></tr>
     <tr><td style="background-color:${GREEN};padding:28px 24px 30px 24px;text-align:center;">
       <p style="margin:0;font-family:${FONT};font-size:13px;letter-spacing:2px;color:#95d5b2;text-transform:uppercase;">National Parks Board</p>

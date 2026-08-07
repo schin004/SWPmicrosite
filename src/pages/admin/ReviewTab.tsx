@@ -23,31 +23,69 @@ export default function ReviewTab({
   submissions: Submission[];
   reload: () => Promise<void>;
 }) {
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const counts = Object.fromEntries(GROUPS.map((g) => [g.key, submissions.filter((s) => s.status === g.key).length]));
+
+  async function archiveAllApproved() {
+    const approved = submissions.filter((s) => s.status === 'approved');
+    if (!approved.length) return;
+    if (!window.confirm(`Archive all ${approved.length} approved joiner(s)? They will move to the Archived list and won't appear in future eDMs.`)) return;
+    setBulkBusy(true);
+    try {
+      for (const s of approved) await updateSubmission(s.id, { status: 'archived' });
+      await reload();
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   return (
-    <div className="space-y-10">
-      {GROUPS.map((group) => {
-        const items = submissions.filter((s) => s.status === group.key);
-        return (
-          <section key={group.key}>
-            <div className="mb-3 flex items-baseline gap-3">
-              <h2 className="text-xl font-extrabold text-forest">{group.label}</h2>
-              <span className="rounded-full bg-sage-light px-2.5 py-0.5 text-sm font-bold text-forest">{items.length}</span>
-              <span className="text-sm text-forest/50">{group.hint}</span>
-            </div>
-            {items.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-sage/60 bg-white/50 px-4 py-6 text-center text-sm text-forest/50">
-                Nothing here yet.
-              </p>
-            ) : (
-              <div className="grid gap-5 md:grid-cols-2">
-                {items.map((s) => (
-                  <SubmissionCard key={s.id} sub={s} reload={reload} />
-                ))}
+    <div className="flex items-start gap-6">
+      {/* left panel: jump to any category */}
+      <aside className="sticky top-4 hidden w-48 shrink-0 rounded-2xl border border-sage/50 bg-white p-3 shadow-card md:block">
+        <p className="mb-2 px-1.5 text-xs font-extrabold uppercase tracking-wide text-forest">Jump to</p>
+        {GROUPS.map((g) => (
+          <a
+            key={g.key}
+            href={`#g-${g.key}`}
+            className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-sm font-bold text-forest-dark hover:bg-sage-light"
+          >
+            <span>{g.label}</span>
+            <span className="rounded-full bg-sage-light px-2 py-0.5 text-xs font-extrabold text-forest">{counts[g.key]}</span>
+          </a>
+        ))}
+      </aside>
+
+      <div className="min-w-0 flex-1 space-y-10">
+        {GROUPS.map((group) => {
+          const items = submissions.filter((s) => s.status === group.key);
+          return (
+            <section key={group.key} id={`g-${group.key}`} className="scroll-mt-4">
+              <div className="mb-3 flex flex-wrap items-baseline gap-3">
+                <h2 className="text-xl font-extrabold text-forest">{group.label}</h2>
+                <span className="rounded-full bg-sage-light px-2.5 py-0.5 text-sm font-bold text-forest">{items.length}</span>
+                <span className="text-sm text-forest/50">{group.hint}</span>
+                {group.key === 'approved' && items.length > 0 && (
+                  <button className="gp-btn-secondary ml-auto text-sm" onClick={archiveAllApproved} disabled={bulkBusy}>
+                    {bulkBusy ? 'Archiving…' : '📦 Archive all approved'}
+                  </button>
+                )}
               </div>
-            )}
-          </section>
-        );
-      })}
+              {items.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-sage/60 bg-white/50 px-4 py-6 text-center text-sm text-forest/50">
+                  Nothing here yet.
+                </p>
+              ) : (
+                <div className="grid gap-5 md:grid-cols-2">
+                  {items.map((s) => (
+                    <SubmissionCard key={s.id} sub={s} reload={reload} />
+                  ))}
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
