@@ -14,7 +14,7 @@ function Landing() {
         title={<>Welcome to <span className="text-sage">GreenPass</span> 🌿</>}
         subtitle="Our warm welcome for every new member of the NParks family — growing together, one green space at a time."
       />
-      <main className="mx-auto grid max-w-5xl gap-6 px-5 py-12 sm:grid-cols-2">
+      <main className="mx-auto max-w-lg px-5 py-12">
         <div className="gp-card flex flex-col p-7">
           <Leaf className="h-10 w-10 text-forest" />
           <h2 className="mt-4 text-2xl font-extrabold text-forest">I'm a new joiner</h2>
@@ -26,14 +26,6 @@ function Landing() {
             <Link to="/amend" className="gp-btn-secondary">Amend my introduction</Link>
           </div>
         </div>
-        <Link to="/admin" className="gp-card group flex flex-col p-7 transition hover:-translate-y-1 hover:shadow-card">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-forest text-cream">HR</div>
-          <h2 className="mt-4 text-2xl font-extrabold text-forest">HR admin dashboard</h2>
-          <p className="mt-2 flex-1 text-forest-dark/70">
-            Review submissions, verify content with AI assistance, add job details, and generate the welcome eDM.
-          </p>
-          <span className="mt-4 font-bold text-forest group-hover:underline">Open dashboard →</span>
-        </Link>
       </main>
       <footer className="pb-10 text-center text-sm text-forest/50">
         GreenPass · A friendlier welcome for the NParks family 🌳

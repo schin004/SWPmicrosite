@@ -115,7 +115,7 @@ export default function Admin() {
         )}
 
         {tab === 'review' && <ReviewTab submissions={submissions} reload={reload} />}
-        {tab === 'edm' && <EdmTab submissions={submissions} />}
+        {tab === 'edm' && <EdmTab submissions={submissions} reload={reload} />}
         {tab === 'archive' && <ArchiveTab />}
       </main>
     </div>

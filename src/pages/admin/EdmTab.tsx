@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import html2canvas from 'html2canvas';
-import { generateEdm, type Submission } from '../../api';
+import { generateEdm, updateSubmission, type Submission } from '../../api';
 
-export default function EdmTab({ submissions }: { submissions: Submission[] }) {
+export default function EdmTab({ submissions, reload }: { submissions: Submission[]; reload: () => Promise<void> }) {
   const approved = submissions.filter((s) => s.status === 'approved');
   const [selected, setSelected] = useState<Set<number>>(new Set(approved.map((s) => s.id)));
   const [occasion, setOccasion] = useState('July 2025 New Joiners');
   const [sendDate, setSendDate] = useState('');
   const [html, setHtml] = useState<string | null>(null);
+  const [generatedIds, setGeneratedIds] = useState<number[]>([]);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveMsg, setArchiveMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -23,13 +26,41 @@ export default function EdmTab({ submissions }: { submissions: Submission[] }) {
     setError(null);
     setBusy(true);
     setCopied(false);
+    setArchiveMsg(null);
     try {
-      const res = await generateEdm([...selected], occasion, sendDate);
+      const ids = [...selected];
+      const res = await generateEdm(ids, occasion, sendDate);
       setHtml(res.html);
+      setGeneratedIds(ids);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Bulk-archive everyone who was included in the eDM just generated.
+  async function archiveAll() {
+    if (!generatedIds.length) return;
+    if (!window.confirm(`Archive ${generatedIds.length} joiner(s) included in this eDM? They will move to the Archived list.`)) return;
+    setArchiving(true);
+    setArchiveMsg(null);
+    setError(null);
+    try {
+      let n = 0;
+      for (const id of generatedIds) {
+        if (approved.some((s) => s.id === id)) {
+          await updateSubmission(id, { status: 'archived' });
+          n++;
+        }
+      }
+      setArchiveMsg(`Archived ${n} joiner(s) — they've moved to the Archived list.`);
+      setGeneratedIds([]);
+      await reload();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setArchiving(false);
     }
   }
 
@@ -166,6 +197,17 @@ export default function EdmTab({ submissions }: { submissions: Submission[] }) {
                 Paste this straight into Outlook (or any email client) — all styles are inlined and images are embedded.
               </p>
             </details>
+            {generatedIds.length > 0 && (
+              <div className="mt-4 border-t border-sage/40 pt-3">
+                <p className="mb-2 text-xs text-forest/70">
+                  Done sending this eDM? Archive everyone included in it in one go — they move to the Archived list and won't appear when you generate the next eDM.
+                </p>
+                <button className="gp-btn-secondary text-sm" onClick={archiveAll} disabled={archiving}>
+                  {archiving ? 'Archiving…' : `📦 Archive all ${generatedIds.length} joiner(s) in this eDM`}
+                </button>
+              </div>
+            )}
+            {archiveMsg && <p className="mt-2 text-sm font-semibold text-forest">{archiveMsg}</p>}
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-sage/60 py-16 text-center text-sm text-forest/50">

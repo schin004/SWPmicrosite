@@ -30,6 +30,13 @@ app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'nparks-admin').trim();
+// HR console lives at this path. It is NOT linked anywhere on the public site,
+// so new joiners never see it — HR reaches it by typing the URL. Set ADMIN_PATH
+// in the Rabbit service env to a hard-to-guess value (e.g. /hr-console-7h3k2) to
+// move it off the obvious /admin. Defaults to /admin.
+let ADMIN_PATH = (process.env.ADMIN_PATH || '/admin').trim();
+if (!ADMIN_PATH.startsWith('/')) ADMIN_PATH = '/' + ADMIN_PATH;
+ADMIN_PATH = ADMIN_PATH.replace(/\/+$/, '') || '/admin';
 const DATABASE_URL = process.env.DATABASE_URL;
 const useSsl = process.env.PGSSL !== 'disable';
 const pool = DATABASE_URL
@@ -150,8 +157,8 @@ const upload = multer({
 function layout({ title, body, adminNav = false }) {
   const leaf = `<svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true"><path d="M56 8C24 8 8 26 8 52c0 2 1 4 4 4 26 0 44-16 44-48z" fill="${C.sage}"/><path d="M14 50C26 38 40 24 52 12" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2.5" stroke-linecap="round"/></svg>`;
   const nav = adminNav
-    ? `<nav class="nav"><a href="/admin">Review</a><a href="/admin/edm">Generate eDM</a><a href="/admin/archive">Archive</a><a href="/admin/logout">Log out</a></nav>`
-    : `<nav class="nav"><a href="/">Home</a><a href="/submit">New joiner</a><a href="/admin">HR admin</a></nav>`;
+    ? `<nav class="nav"><a href="${ADMIN_PATH}">Review</a><a href="${ADMIN_PATH}/edm">Generate eDM</a><a href="${ADMIN_PATH}/archive">Archive</a><a href="${ADMIN_PATH}/logout">Log out</a></nav>`
+    : `<nav class="nav"><a href="/">Home</a><a href="/submit">New joiner</a></nav>`;
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · GreenPass</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232D6A4F'/%3E%3Cpath d='M50 12C24 12 12 26 12 48c0 2 1 3 3 3 22 0 36-13 36-39z' fill='%2395D5B2'/%3E%3C/svg%3E">
@@ -222,11 +229,10 @@ function moderationTag(status) {
 // ── Public: landing ──────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {
   res.send(layout({ title: 'Welcome to GreenPass 🌿', body: `
-    <p class="muted" style="font-size:16px;max-width:640px">Our warm welcome for every new member of the NParks family. New joiners share a short introduction; HR reviews it, adds job details, and sends a welcome email.</p>
-    <div class="grid two" style="margin-top:18px">
-      <div class="card"><h2 style="color:${C.green};margin-top:0">I'm a new joiner 🌱</h2><p class="muted">Share a little about yourself so we can introduce you to your new colleagues. It only takes a couple of minutes.</p>
+    <p class="muted" style="font-size:16px;max-width:640px">Our warm welcome for every new member of the NParks family. Share a short introduction and it will be included in a friendly welcome email to your new colleagues.</p>
+    <div style="margin-top:18px">
+      <div class="card" style="max-width:560px"><h2 style="color:${C.green};margin-top:0">I'm a new joiner 🌱</h2><p class="muted">Share a little about yourself so we can introduce you to your new colleagues. It only takes a couple of minutes.</p>
         <div style="display:flex;flex-wrap:wrap;gap:10px"><a class="btn" href="/submit">Start my introduction →</a><a class="btn sec" href="/amend">Amend my introduction</a></div></div>
-      <div class="card"><h2 style="color:${C.green};margin-top:0">HR admin dashboard</h2><p class="muted">Review submissions, verify content with AI assistance, add job details, and generate the welcome eDM.</p><a class="btn sec" href="/admin">Open dashboard →</a></div>
     </div>` }));
 });
 
@@ -430,26 +436,26 @@ function adminLoginPage(error = '') {
     ${error ? `<div class="err">${esc(error)}</div>` : ''}
     <div class="card" style="max-width:420px;margin:10px auto">
       <p class="muted">Enter the shared HR password to continue.</p>
-      <form method="post" action="/admin/login">
+      <form method="post" action="${ADMIN_PATH}/login">
         <div class="field"><label>Admin password</label><input type="password" name="password" autofocus required></div>
         <button class="btn" type="submit">Log in 🌿</button>
       </form>
     </div>` });
 }
-app.post('/admin/login', (req, res) => {
+app.post(ADMIN_PATH + '/login', (req, res) => {
   if ((req.body.password || '') !== ADMIN_PASSWORD) return res.send(adminLoginPage('Incorrect password. Please try again.'));
   res.set('Set-Cookie', `gp_admin=${encodeURIComponent(ADMIN_PASSWORD)}; HttpOnly; Path=/; Max-Age=43200; SameSite=Lax`);
-  res.redirect('/admin');
+  res.redirect(ADMIN_PATH);
 });
-app.get('/admin/logout', (_req, res) => {
+app.get(ADMIN_PATH + '/logout', (_req, res) => {
   res.set('Set-Cookie', 'gp_admin=; HttpOnly; Path=/; Max-Age=0');
-  res.redirect('/admin');
+  res.redirect(ADMIN_PATH);
 });
 
 const AI_DISCLAIMER = `<div class="banner"><span>🤝</span><div><b>AI moderation is a first-pass check only.</b> Please review all content — including each photo — before approving. The final decision always rests with you.</div></div>`;
 
 // ── Admin: review submissions ────────────────────────────────────────────────
-app.get('/admin', async (req, res) => {
+app.get(ADMIN_PATH, async (req, res) => {
   if (!hasAdmin(req)) return res.send(adminLoginPage());
   if (!pool) return res.send(layout({ title: 'GreenPass HR Console', adminNav: true, body: `${AI_DISCLAIMER}<div class="card">No database connected.</div>` }));
   const { rows } = await pool.query(`select id,full_name,email,start_date,intro,fun_fact,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,updated_at,(orig_photo_data is not null) as has_orig from submissions order by created_at desc`);
@@ -528,7 +534,7 @@ function gpSavePhoto(id, btn){
   btn.disabled = true; msg.textContent = ' Saving…';
   cv.toBlob(function(blob){
     var fd = new FormData(); fd.append('id', id); fd.append('photo', blob, 'photo.jpg');
-    fetch('/admin/photo', { method: 'POST', body: fd })
+    fetch('${ADMIN_PATH}/photo', { method: 'POST', body: fd })
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(d.ok){ msg.textContent = ' ✓ Saved! Refreshing…'; setTimeout(function(){ location.reload(); }, 500); }
@@ -541,7 +547,7 @@ function gpSavePhoto(id, btn){
 
 // In-app photo touch-up: HR can brighten / adjust / rotate the joiner's photo
 // and save the result straight back to the database. All done client-side on a
-// <canvas>; the adjusted image is posted to /admin/photo. The <details> lazily
+// <canvas>; the adjusted image is posted to ${ADMIN_PATH}/photo. The <details> lazily
 // loads the photo into the editor only when opened (ontoggle).
 function photoEditor(s) {
   const id = s.id;
@@ -566,7 +572,7 @@ function photoEditor(s) {
         <button type="button" class="btn sec" onclick="gpResetPhoto('${id}')">↺ Reset sliders</button>
         <span class="muted" id="pe-${id}"></span>
       </div>
-      ${s.has_orig ? `<form method="post" action="/admin/update" style="margin-top:8px">
+      ${s.has_orig ? `<form method="post" action="${ADMIN_PATH}/update" style="margin-top:8px">
         <input type="hidden" name="id" value="${id}"><input type="hidden" name="action" value="revert-photo">
         <button type="submit" class="btn sec">↩ Revert to joiner's original photo</button>
         <span class="muted" style="margin-left:6px">Undo HR photo edits and restore the photo the joiner submitted.</span>
@@ -585,16 +591,16 @@ function cardHtml(s) {
     const details = `${jt || dv ? `${jt || '—'} · ${dv || '—'}` : 'No job details added.'}${s.start_date ? ` · 📅 Joined from ${esc(fmtDate(s.start_date))}` : ''}`;
     hrFields = `<div class="hrbox"><span class="tag hr">✎ Added by HR</span> <span class="muted">Not submitted by the new joiner</span><p class="muted" style="margin:8px 0 0">${details}</p></div>`;
     actions = s.status === 'archived'
-      ? `<form method="post" action="/admin/update" class="actions"><input type="hidden" name="id" value="${s.id}">
+      ? `<form method="post" action="${ADMIN_PATH}/update" class="actions"><input type="hidden" name="id" value="${s.id}">
           <span class="muted">📦 Archived — kept for records, not offered for new eDMs.</span>
           <button class="btn sec" name="action" value="unarchive">↩ Restore to Approved</button></form>`
-      : `<form method="post" action="/admin/update" class="actions"><input type="hidden" name="id" value="${s.id}">
+      : `<form method="post" action="${ADMIN_PATH}/update" class="actions"><input type="hidden" name="id" value="${s.id}">
           <button class="btn sec" name="action" value="restore">↩ Restore to review</button></form>`;
   } else {
     // Shared form: job title + division inputs, with save / approve / reject buttons.
     const approveDisabledNote = `<span class="muted" id="hint-${s.id}"></span>`;
     hrFields = `
-      <form method="post" action="/admin/update">
+      <form method="post" action="${ADMIN_PATH}/update">
         <input type="hidden" name="id" value="${s.id}">
         <div class="hrbox">
           <div style="margin-bottom:8px"><span class="tag hr">✎ Added by HR</span> <span class="muted">Not submitted by the new joiner</span></div>
@@ -616,7 +622,7 @@ function cardHtml(s) {
 
   // Edit form (all new-hire fields) inside a collapsible section.
   const editForm = `<details><summary>Edit new-joiner details</summary>
-    <form method="post" action="/admin/update" style="margin-top:10px">
+    <form method="post" action="${ADMIN_PATH}/update" style="margin-top:10px">
       <input type="hidden" name="id" value="${s.id}"><input type="hidden" name="action" value="edit">
       <div class="field"><label>Full name (as per NRIC)</label><input type="text" name="full_name" value="${esc(s.full_name)}"></div>
       <div class="field"><label>Email</label><input type="email" name="email" value="${esc(s.email)}"></div>
@@ -638,30 +644,30 @@ function cardHtml(s) {
 }
 
 // ── Admin: update (save / approve / reject / restore / edit) ─────────────────
-app.post('/admin/update', async (req, res) => {
+app.post(ADMIN_PATH + '/update', async (req, res) => {
   if (!hasAdmin(req)) return res.send(adminLoginPage());
-  if (!pool) return res.redirect('/admin?err=' + encodeURIComponent('No database connected.'));
+  if (!pool) return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('No database connected.'));
   const { id, action } = req.body;
   try {
     const { rows } = await pool.query('select job_title,division from submissions where id=$1', [id]);
-    if (!rows.length) return res.redirect('/admin?err=' + encodeURIComponent('Submission not found.'));
+    if (!rows.length) return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Submission not found.'));
     const cur = rows[0];
 
     if (action === 'reject') {
       await pool.query('update submissions set status=$1,updated_at=now() where id=$2', ['rejected', id]);
-      return res.redirect('/admin?msg=' + encodeURIComponent('Entry rejected.'));
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent('Entry rejected.'));
     }
     if (action === 'restore') {
       await pool.query('update submissions set status=$1,updated_at=now() where id=$2', ['awaiting-hr-review', id]);
-      return res.redirect('/admin?msg=' + encodeURIComponent('Entry restored to review.'));
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent('Entry restored to review.'));
     }
     if (action === 'archive') {
       await pool.query("update submissions set status='archived',updated_at=now() where id=$1 and status='approved'", [id]);
-      return res.redirect('/admin?msg=' + encodeURIComponent('Entry archived — it stays on record but won\'t appear when generating new eDMs.'));
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent('Entry archived — it stays on record but won\'t appear when generating new eDMs.'));
     }
     if (action === 'unarchive') {
       await pool.query("update submissions set status='approved',updated_at=now() where id=$1 and status='archived'", [id]);
-      return res.redirect('/admin?msg=' + encodeURIComponent('Entry restored to Approved.'));
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent('Entry restored to Approved.'));
     }
     if (action === 'revert-photo') {
       // Restore the joiner's original photo and clear the snapshot (current == original again).
@@ -670,32 +676,32 @@ app.post('/admin/update', async (req, res) => {
            photo_status='manual-review', photo_reason='Reverted to the joiner''s original submitted photo — please verify before approving.',
            orig_photo_mime=null, orig_photo_data=null, updated_at=now()
          where id=$1 and orig_photo_data is not null`, [id]);
-      return res.redirect('/admin?msg=' + encodeURIComponent(rowCount ? 'Photo reverted to the joiner\'s original.' : 'There is no original photo to revert to.'));
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent(rowCount ? 'Photo reverted to the joiner\'s original.' : 'There is no original photo to revert to.'));
     }
     if (action === 'edit') {
       await pool.query('update submissions set full_name=$1,email=$2,intro=$3,fun_fact=$4,updated_at=now() where id=$5',
         [(req.body.full_name || '').trim(), (req.body.email || '').trim() || null, (req.body.intro || '').trim(), (req.body.fun_fact || '').trim() || null, id]);
-      return res.redirect('/admin?msg=' + encodeURIComponent('Details updated.'));
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent('Details updated.'));
     }
     // save or approve → persist HR fields (job title, division, start date)
     const jobTitle = (req.body.job_title || '').trim();
     const division = (req.body.division || '').trim();
     const startDate = (req.body.start_date || '').trim();
     if (action === 'approve' && (!jobTitle || !division || !startDate)) {
-      return res.redirect('/admin?err=' + encodeURIComponent('Job Title, Division and Start Date must all be filled in before approving.'));
+      return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Job Title, Division and Start Date must all be filled in before approving.'));
     }
     const status = action === 'approve' ? 'approved' : undefined;
     if (status) await pool.query('update submissions set job_title=$1,division=$2,start_date=$3,status=$4,updated_at=now() where id=$5', [jobTitle, division, startDate || null, status, id]);
     else await pool.query('update submissions set job_title=$1,division=$2,start_date=$3,updated_at=now() where id=$4', [jobTitle, division, startDate || null, id]);
-    res.redirect('/admin?msg=' + encodeURIComponent(action === 'approve' ? `Approved — ${jobTitle}, ${division}.` : 'HR details saved.'));
+    res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent(action === 'approve' ? `Approved — ${jobTitle}, ${division}.` : 'HR details saved.'));
   } catch (e) {
     console.error(e);
-    res.redirect('/admin?err=' + encodeURIComponent('Update failed. Please try again.'));
+    res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Update failed. Please try again.'));
   }
 });
 
 // ── Admin: save an HR-edited photo (from the in-app canvas editor) ───────────
-app.post('/admin/photo', (req, res) => {
+app.post(ADMIN_PATH + '/photo', (req, res) => {
   upload.single('photo')(req, res, async (err) => {
     if (!hasAdmin(req)) return res.status(403).json({ error: 'Not authorised.' });
     if (!pool) return res.status(503).json({ error: 'No database connected.' });
@@ -724,23 +730,23 @@ app.post('/admin/photo', (req, res) => {
 });
 
 // ── Admin: generate eDM ──────────────────────────────────────────────────────
-app.get('/admin/edm', async (req, res) => {
+app.get(ADMIN_PATH + '/edm', async (req, res) => {
   if (!hasAdmin(req)) return res.send(adminLoginPage());
   if (!pool) return res.send(layout({ title: 'Generate eDM', adminNav: true, body: '<div class="card">No database connected.</div>' }));
   const { rows: approved } = await pool.query(`select id,full_name,job_title,division,start_date,updated_at from submissions where status='approved' order by start_date asc nulls last, full_name asc`);
   res.send(renderEdmPage(approved));
 });
 
-function renderEdmPage(approved, generated = null, error = '') {
+function renderEdmPage(approved, generated = null, error = '', archiveIds = []) {
   let body = AI_DISCLAIMER + (error ? `<div class="err">${esc(error)}</div>` : '');
   if (!approved.length) {
-    body += `<div class="card"><p class="muted">No approved entries yet. Approve some submissions in the <a href="/admin">Review</a> tab first.</p></div>`;
+    body += `<div class="card"><p class="muted">No approved entries yet. Approve some submissions in the <a href="${ADMIN_PATH}">Review</a> tab first.</p></div>`;
     return layout({ title: 'Generate eDM 🌿', adminNav: true, body });
   }
   const checks = approved.map((a) => `<label style="display:flex;gap:10px;align-items:center;border:1px solid ${C.sage};border-radius:12px;padding:8px 12px;margin-bottom:8px;font-weight:400">
     <input type="checkbox" name="ids" value="${a.id}" checked> <img class="avatar" style="width:36px;height:36px" src="/api/photo/${a.id}?v=${a.updated_at ? new Date(a.updated_at).getTime() : ''}"> <span><b>${esc(a.full_name)}</b><br><span class="muted">${esc(a.job_title)} · ${esc(a.division)}${a.start_date ? ' · 📅 ' + esc(fmtDate(a.start_date)) : ''}</span></span></label>`).join('');
   body += `<div class="grid two"><div class="card"><h2 style="margin-top:0;color:${C.green}">1 · Choose &amp; label</h2>
-    <form method="post" action="/admin/edm">
+    <form method="post" action="${ADMIN_PATH}/edm">
       ${checks}
       <div class="field" style="margin-top:12px"><label>Occasion label</label><input type="text" name="occasion" value="July 2025 New Joiners" required></div>
       <div class="field"><label>Send date / label (optional)</label><input type="text" name="send_date" placeholder="e.g. 1 August 2025"></div>
@@ -780,6 +786,14 @@ function renderEdmPage(approved, generated = null, error = '') {
           .then(function(){ holder.remove(); btn.disabled=false; });
         }
       </script>`;
+    if (archiveIds.length) {
+      body += `<div style="margin-top:16px;border-top:1px solid ${C.sage};padding-top:14px">
+        <p class="muted" style="margin:0 0 8px">Done sending this eDM? Archive everyone included in it in one go — they move to the <b>Archived</b> list and won't appear when you generate the next eDM.</p>
+        <form method="post" action="${ADMIN_PATH}/archive-batch" onsubmit="return confirm('Archive ${archiveIds.length} joiner(s) included in this eDM? They will move to the Archived list.')">
+          ${archiveIds.map((id) => `<input type="hidden" name="ids" value="${id}">`).join('')}
+          <button class="btn sec" type="submit">📦 Archive all ${archiveIds.length} joiner(s) in this eDM</button>
+        </form></div>`;
+    }
   } else {
     body += `<p class="muted">Select joiners and click <b>Generate eDM</b> — the formatted email will appear here.</p>`;
   }
@@ -787,9 +801,9 @@ function renderEdmPage(approved, generated = null, error = '') {
   return layout({ title: 'Generate eDM 🌿', adminNav: true, body });
 }
 
-app.post('/admin/edm', async (req, res) => {
+app.post(ADMIN_PATH + '/edm', async (req, res) => {
   if (!hasAdmin(req)) return res.send(adminLoginPage());
-  if (!pool) return res.redirect('/admin/edm');
+  if (!pool) return res.redirect(ADMIN_PATH + '/edm');
   let ids = req.body.ids || [];
   if (!Array.isArray(ids)) ids = [ids];
   const { rows: approved } = await pool.query(`select id,full_name,job_title,division,start_date,updated_at from submissions where status='approved' order by start_date asc nulls last, full_name asc`);
@@ -797,23 +811,40 @@ app.post('/admin/edm', async (req, res) => {
   if (!ids.length) return res.send(renderEdmPage(approved, null, 'Select at least one approved entry.'));
   if (!occasion) return res.send(renderEdmPage(approved, null, 'Please provide an occasion label.'));
   const { rows: hires } = await pool.query(
-    `select full_name,start_date,intro,fun_fact,job_title,division,photo_mime,photo_data from submissions
+    `select id,full_name,start_date,intro,fun_fact,job_title,division,photo_mime,photo_data from submissions
        where id = any($1::uuid[]) and status='approved'
        order by start_date asc nulls last, full_name asc`, [ids]);
   if (!hires.length) return res.send(renderEdmPage(approved, null, 'None of the selected entries are approved.'));
   const html = buildEdmHtml(hires, occasion, (req.body.send_date || '').trim());
   await pool.query('insert into edm_archive (occasion,send_date,hire_names,html) values ($1,$2,$3,$4)',
     [occasion, (req.body.send_date || '').trim() || null, JSON.stringify(hires.map((h) => h.full_name)), html]);
-  res.send(renderEdmPage(approved, { html }));
+  res.send(renderEdmPage(approved, { html }, '', hires.map((h) => h.id)));
+});
+
+// ── Admin: bulk archive (e.g. everyone just included in a generated eDM) ──────
+app.post(ADMIN_PATH + '/archive-batch', async (req, res) => {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  if (!pool) return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('No database connected.'));
+  let ids = req.body.ids || [];
+  if (!Array.isArray(ids)) ids = [ids];
+  if (!ids.length) return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('No entries selected to archive.'));
+  try {
+    const { rowCount } = await pool.query(
+      "update submissions set status='archived',updated_at=now() where id = any($1::uuid[]) and status='approved'", [ids]);
+    res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent(`Archived ${rowCount} joiner(s) — they've moved to the Archived list.`));
+  } catch (e) {
+    console.error(e);
+    res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Bulk archive failed. Please try again.'));
+  }
 });
 
 // ── Admin: archive ───────────────────────────────────────────────────────────
-app.get('/admin/archive', async (req, res) => {
+app.get(ADMIN_PATH + '/archive', async (req, res) => {
   if (!hasAdmin(req)) return res.send(adminLoginPage());
   if (!pool) return res.send(layout({ title: 'Archive', adminNav: true, body: '<div class="card">No database connected.</div>' }));
   const { rows } = await pool.query('select id,occasion,send_date,hire_names,html,created_at from edm_archive order by created_at desc');
   let body = `<p class="muted">A read-only log of every eDM you've generated.</p>`;
-  if (!rows.length) body += `<div class="card"><p class="muted">No eDMs generated yet. Create one in the <a href="/admin/edm">Generate eDM</a> tab.</p></div>`;
+  if (!rows.length) body += `<div class="card"><p class="muted">No eDMs generated yet. Create one in the <a href="${ADMIN_PATH}/edm">Generate eDM</a> tab.</p></div>`;
   else body += rows.map((e) => {
     const names = Array.isArray(e.hire_names) ? e.hire_names : [];
     return `<div class="card"><h3 style="margin:0;color:${C.green}">${esc(e.occasion)}</h3>
