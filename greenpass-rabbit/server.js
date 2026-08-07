@@ -52,6 +52,21 @@ const C = { green: '#2D6A4F', greenDark: '#1B4332', sage: '#95D5B2', sageLight: 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Format a stored 'YYYY-MM-DD' start date for display as DD/MM/YY.
 const fmtDate = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : (s || ''); };
+// Bucket a joining date into a fortnight period: the 1st–15th (H1) or the
+// 16th–end (H2) of its month. Used to generate one eDM per half-month.
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function periodOf(start_date) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(start_date || ''));
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const h1 = d <= 15;
+  const lastDay = new Date(y, mo, 0).getDate();
+  return {
+    key: `${m[1]}-${m[2]}-${h1 ? 'H1' : 'H2'}`,
+    sort: `${m[1]}${m[2]}${h1 ? '1' : '2'}`,
+    label: `${h1 ? '1–15' : '16–' + lastDay} ${MONTHS[mo - 1]} ${y}`,
+  };
+}
 const hasAdmin = (req) => {
   const m = /(?:^|;\s*)gp_admin=([^;]+)/.exec(req.headers.cookie || '');
   return m && decodeURIComponent(m[1]) === ADMIN_PASSWORD;
@@ -759,8 +774,33 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
     body += `<div class="card"><p class="muted">No approved entries yet. Approve some submissions in the <a href="${ADMIN_PATH}">Review</a> tab first.</p></div>`;
     return layout({ title: 'Generate eDM 🌿', adminNav: true, body });
   }
-  const checks = approved.map((a) => `<label style="display:flex;gap:10px;align-items:center;border:1px solid ${C.sage};border-radius:12px;padding:8px 12px;margin-bottom:8px;font-weight:400">
-    <input type="checkbox" name="ids" value="${a.id}" checked> <img class="avatar" style="width:36px;height:36px" src="/api/photo/${a.id}?v=${a.updated_at ? new Date(a.updated_at).getTime() : ''}"> <span><b>${esc(a.full_name)}</b><br><span class="muted">${esc(a.job_title)} · ${esc(a.division)}${a.start_date ? ' · 📅 ' + esc(fmtDate(a.start_date)) : ''}</span></span></label>`).join('');
+  // Group the approved candidates into fortnight periods so HR can send one eDM
+  // for the 1st–15th joiners and a later one for the 16th–end joiners.
+  const buckets = new Map();
+  const undated = [];
+  for (const a of approved) {
+    const p = periodOf(a.start_date);
+    if (!p) { undated.push(a); continue; }
+    if (!buckets.has(p.key)) buckets.set(p.key, { key: p.key, label: p.label, sort: p.sort, items: [] });
+    buckets.get(p.key).items.push(a);
+  }
+  const periods = [...buckets.values()].sort((x, y) => (x.sort < y.sort ? -1 : 1));
+  const candLabel = (a, key) => `<label style="display:flex;gap:10px;align-items:center;border:1px solid ${C.sage};border-radius:12px;padding:8px 12px;margin-bottom:8px;font-weight:400">
+    <input type="checkbox" name="ids" value="${a.id}" data-period="${key}" checked> <img class="avatar" style="width:36px;height:36px" src="/api/photo/${a.id}?v=${a.updated_at ? new Date(a.updated_at).getTime() : ''}"> <span><b>${esc(a.full_name)}</b><br><span class="muted">${esc(a.job_title)} · ${esc(a.division)}${a.start_date ? ' · 📅 ' + esc(fmtDate(a.start_date)) : ''}</span></span></label>`;
+  let checks = '';
+  if (periods.length > 1 || (periods.length === 1 && undated.length)) {
+    checks += `<div style="margin-bottom:10px"><div class="muted" style="font-weight:800;color:${C.green};margin-bottom:6px">Quick-select by joining period</div>`
+      + periods.map((p) => `<button type="button" class="btn sec" style="margin:0 6px 6px 0" onclick="gpPickPeriod('${p.key}','${esc('New Joiners · ' + p.label)}')">📅 ${esc(p.label)} (${p.items.length})</button>`).join('')
+      + `<button type="button" class="btn sec" style="margin:0 6px 6px 0" onclick="gpPickAll()">Select all</button></div>`;
+  }
+  for (const p of periods) {
+    checks += `<div class="muted" style="font-weight:800;color:${C.green};margin:12px 0 6px">📅 Joined ${esc(p.label)}</div>`;
+    checks += p.items.map((a) => candLabel(a, p.key)).join('');
+  }
+  if (undated.length) {
+    checks += `<div class="muted" style="font-weight:800;margin:12px 0 6px">No joining date yet</div>`;
+    checks += undated.map((a) => candLabel(a, '')).join('');
+  }
   body += `<div class="grid two"><div class="card"><h2 style="margin-top:0;color:${C.green}">1 · Choose &amp; label</h2>
     <form method="post" action="${ADMIN_PATH}/edm">
       ${checks}
@@ -814,6 +854,14 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
     body += `<p class="muted">Select joiners and click <b>Generate eDM</b> — the formatted email will appear here.</p>`;
   }
   body += `</div></div>`;
+  body += `<script>
+    function gpPickPeriod(key, occasionLabel){
+      var boxes = document.querySelectorAll('input[name=ids]');
+      for(var i=0;i<boxes.length;i++){ boxes[i].checked = (boxes[i].getAttribute('data-period') === key); }
+      var occ = document.querySelector('input[name=occasion]'); if(occ && occasionLabel) occ.value = occasionLabel;
+    }
+    function gpPickAll(){ var boxes = document.querySelectorAll('input[name=ids]'); for(var i=0;i<boxes.length;i++) boxes[i].checked = true; }
+  </script>`;
   return layout({ title: 'Generate eDM 🌿', adminNav: true, body });
 }
 

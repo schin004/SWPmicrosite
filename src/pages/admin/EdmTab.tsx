@@ -2,6 +2,18 @@ import { useState } from 'react';
 import html2canvas from 'html2canvas';
 import { generateEdm, updateSubmission, type Submission } from '../../api';
 
+// Bucket a joining date into a fortnight period: 1st–15th (H1) or 16th–end (H2)
+// of its month, so HR can send one eDM per half-month.
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function periodOf(startDate: string | null): { key: string; sort: string; label: string } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(startDate || ''));
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const h1 = d <= 15;
+  const lastDay = new Date(y, mo, 0).getDate();
+  return { key: `${m[1]}-${m[2]}-${h1 ? 'H1' : 'H2'}`, sort: `${m[1]}${m[2]}${h1 ? '1' : '2'}`, label: `${h1 ? '1–15' : '16–' + lastDay} ${MONTHS[mo - 1]} ${y}` };
+}
+
 export default function EdmTab({ submissions, reload }: { submissions: Submission[]; reload: () => Promise<void> }) {
   const approved = submissions.filter((s) => s.status === 'approved');
   const [selected, setSelected] = useState<Set<number>>(new Set(approved.map((s) => s.id)));
@@ -102,6 +114,35 @@ export default function EdmTab({ submissions, reload }: { submissions: Submissio
     }
   }
 
+  // Group approved candidates into fortnight periods (1st–15th / 16th–end).
+  const buckets = new Map<string, { key: string; label: string; sort: string; items: Submission[] }>();
+  const undated: Submission[] = [];
+  for (const s of approved) {
+    const pd = periodOf(s.start_date);
+    if (!pd) { undated.push(s); continue; }
+    if (!buckets.has(pd.key)) buckets.set(pd.key, { ...pd, items: [] });
+    buckets.get(pd.key)!.items.push(s);
+  }
+  const periods = [...buckets.values()].sort((a, b) => (a.sort < b.sort ? -1 : 1));
+
+  function pickPeriod(items: Submission[], label: string) {
+    setSelected(new Set(items.map((s) => s.id)));
+    setOccasion('New Joiners · ' + label);
+  }
+
+  const renderCandidate = (s: Submission) => (
+    <li key={s.id}>
+      <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-sage/50 bg-white px-3 py-2 hover:bg-sage-light/60">
+        <input type="checkbox" className="h-4 w-4 accent-forest" checked={selected.has(s.id)} onChange={() => toggle(s.id)} />
+        {s.photo_path && <img src={s.photo_path} alt="" className="h-9 w-9 rounded-full border border-sage object-cover" />}
+        <span className="min-w-0">
+          <span className="block truncate font-bold text-forest">{s.full_name}</span>
+          <span className="block truncate text-xs text-forest/60">{s.job_title} · {s.division}</span>
+        </span>
+      </label>
+    </li>
+  );
+
   if (approved.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-sage/60 bg-white/50 px-4 py-8 text-center text-forest/60">
@@ -117,27 +158,31 @@ export default function EdmTab({ submissions, reload }: { submissions: Submissio
         <div className="gp-card p-5">
           <h2 className="text-lg font-extrabold text-forest">1 · Choose who to include</h2>
           <p className="mt-1 text-sm text-forest/60">{selected.size} of {approved.length} approved joiners selected.</p>
-          <ul className="mt-3 space-y-2">
-            {approved.map((s) => (
-              <li key={s.id}>
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-sage/50 bg-white px-3 py-2 hover:bg-sage-light/60">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-forest"
-                    checked={selected.has(s.id)}
-                    onChange={() => toggle(s.id)}
-                  />
-                  {s.photo_path && (
-                    <img src={s.photo_path} alt="" className="h-9 w-9 rounded-full border border-sage object-cover" />
-                  )}
-                  <span className="min-w-0">
-                    <span className="block truncate font-bold text-forest">{s.full_name}</span>
-                    <span className="block truncate text-xs text-forest/60">{s.job_title} · {s.division}</span>
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          {(periods.length > 1 || (periods.length === 1 && undated.length > 0)) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="w-full text-xs font-extrabold text-forest">Quick-select by joining period</span>
+              {periods.map((p) => (
+                <button key={p.key} className="gp-btn-secondary text-xs" onClick={() => pickPeriod(p.items, p.label)}>
+                  📅 {p.label} ({p.items.length})
+                </button>
+              ))}
+              <button className="gp-btn-secondary text-xs" onClick={() => setSelected(new Set(approved.map((s) => s.id)))}>
+                Select all
+              </button>
+            </div>
+          )}
+          {periods.map((p) => (
+            <div key={p.key}>
+              <p className="mb-1 mt-3 text-xs font-extrabold text-forest">📅 Joined {p.label}</p>
+              <ul className="space-y-2">{p.items.map(renderCandidate)}</ul>
+            </div>
+          ))}
+          {undated.length > 0 && (
+            <div>
+              <p className="mb-1 mt-3 text-xs font-extrabold text-forest/70">No joining date yet</p>
+              <ul className="space-y-2">{undated.map(renderCandidate)}</ul>
+            </div>
+          )}
         </div>
 
         <div className="gp-card space-y-3 p-5">
