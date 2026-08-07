@@ -987,7 +987,9 @@ function buildEdmHtml(hires, occasion, sendDate) {
 
   return `<!-- GreenPass eDM -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};padding:24px 0;"><tr><td align="center">
+  <!--[if mso]><table role="presentation" align="center" width="700" cellpadding="0" cellspacing="0" border="0"><tr><td width="700"><![endif]-->
   <table role="presentation" width="700" cellpadding="0" cellspacing="0" border="0" style="width:700px;min-width:700px;max-width:700px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
+    <tr><td style="padding:0;font-size:0;line-height:0;"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="700" height="1" alt="" style="display:block;width:700px;height:1px;border:0;line-height:0;font-size:0;"></td></tr>
     <tr><td style="background-color:${DARK};padding:10px 24px;text-align:center;font-size:17px;letter-spacing:7px;">🌿🌸🦋🌳☀️🍃</td></tr>
     <tr><td style="background-color:${GREEN};padding:28px 24px 30px 24px;text-align:center;">
       <p style="margin:0;font-family:${FONT};font-size:13px;letter-spacing:2px;color:#95d5b2;text-transform:uppercase;">National Parks Board</p>
@@ -1008,7 +1010,9 @@ function buildEdmHtml(hires, occasion, sendDate) {
       <p style="margin:0 0 12px 0;font-size:18px;letter-spacing:5px;">🌻🌿🦋🌳🍃🌷</p>
       <p style="margin:0;font-family:${FONT};font-size:16px;font-style:italic;color:#ffffff;">Growing together, one green space at a time. 🌳</p>
       <p style="margin:10px 0 0 0;font-family:${FONT};font-size:12px;color:#95d5b2;">National Parks Board (NParks), Singapore &middot; Making Singapore our City in Nature</p></td></tr>
-  </table></td></tr></table>`;
+  </table>
+  <!--[if mso]></td></tr></table><![endif]-->
+  </td></tr></table>`;
 }
 
 // ── Demo seed (solid-colour avatar PNGs, no dependencies) ────────────────────
