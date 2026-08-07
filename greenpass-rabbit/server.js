@@ -825,11 +825,11 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
           if(!window.html2canvas){ msg.textContent=' — image library did not load; try the screenshot method instead.'; return; }
           var html=document.getElementById('raw').value;
           var holder=document.createElement('div');
-          holder.style.cssText='position:fixed;left:-10000px;top:0;width:740px;background:#F8F4E3';
+          holder.style.cssText='position:fixed;left:-10000px;top:0;width:940px;background:#F8F4E3';
           holder.innerHTML=html;
           document.body.appendChild(holder);
           btn.disabled=true; msg.textContent=' — generating image…';
-          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:740,windowWidth:740,useCORS:true}).then(function(canvas){
+          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:940,windowWidth:940,useCORS:true}).then(function(canvas){
             canvas.toBlob(function(blob){
               var a=document.createElement('a');
               a.href=URL.createObjectURL(blob);
@@ -987,9 +987,9 @@ function buildEdmHtml(hires, occasion, sendDate) {
 
   return `<!-- GreenPass eDM -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};padding:24px 0;"><tr><td align="center">
-  <!--[if mso]><table role="presentation" align="center" width="700" cellpadding="0" cellspacing="0" border="0"><tr><td width="700"><![endif]-->
-  <table role="presentation" width="700" cellpadding="0" cellspacing="0" border="0" style="width:700px;min-width:700px;max-width:700px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
-    <tr><td style="padding:0;font-size:0;line-height:0;"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="700" height="1" alt="" style="display:block;width:700px;height:1px;border:0;line-height:0;font-size:0;"></td></tr>
+  <!--[if mso]><table role="presentation" align="center" width="900" cellpadding="0" cellspacing="0" border="0"><tr><td width="900"><![endif]-->
+  <table role="presentation" width="900" cellpadding="0" cellspacing="0" border="0" style="width:900px;min-width:900px;max-width:900px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
+    <tr><td style="padding:0;font-size:0;line-height:0;"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="900" height="1" alt="" style="display:block;width:900px;height:1px;border:0;line-height:0;font-size:0;"></td></tr>
     <tr><td style="background-color:${DARK};padding:10px 24px;text-align:center;font-size:17px;letter-spacing:7px;">🌿🌸🦋🌳☀️🍃</td></tr>
     <tr><td style="background-color:${GREEN};padding:28px 24px 30px 24px;text-align:center;">
       <p style="margin:0;font-family:${FONT};font-size:13px;letter-spacing:2px;color:#95d5b2;text-transform:uppercase;">National Parks Board</p>
