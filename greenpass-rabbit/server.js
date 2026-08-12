@@ -813,7 +813,7 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
     body += `<iframe class="preview" srcdoc="${esc(generated.html)}"></iframe>
       <div style="margin:12px 0 2px 0"><button class="btn" type="button" onclick="gpSavePng(this)">⬇ Save as PNG image</button>
         <span class="muted" id="pngmsg"></span></div>
-      <p class="muted" style="margin-top:2px">Downloads the whole eDM as one image. In Outlook use <b>Insert → Pictures</b>; if it looks wide, drag a corner handle to fit — the full width is captured, nothing is cut off.</p>
+      <p class="muted" style="margin-top:2px">Downloads the whole eDM as one high-resolution image (about 1800px wide) so it stays large for recipients. In Outlook: <b>maximise the compose window first</b>, then <b>Insert → Pictures</b>. If it looks too wide while composing, that's only the narrow compose view — recipients always get the full image at its proper size. Don't drag the corner to shrink it: Outlook strips manual resizes, so a shrunk image just reverts to full size on the recipient's screen.</p>
       <details><summary>Or copy the raw HTML</summary>
       <textarea id="raw" readonly style="height:150px;font-family:monospace;font-size:12px;margin-top:8px" onfocus="this.select()">${esc(generated.html)}</textarea>
       <button class="btn sec" type="button" onclick="navigator.clipboard.writeText(document.getElementById('raw').value);this.textContent='✓ Copied!'">Copy HTML to clipboard</button>
@@ -829,7 +829,7 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
           holder.innerHTML=html;
           document.body.appendChild(holder);
           btn.disabled=true; msg.textContent=' — generating image…';
-          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:1,width:940,windowWidth:940,useCORS:true}).then(function(canvas){
+          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:940,windowWidth:940,useCORS:true}).then(function(canvas){
             canvas.toBlob(function(blob){
               var a=document.createElement('a');
               a.href=URL.createObjectURL(blob);

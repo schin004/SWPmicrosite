@@ -96,7 +96,7 @@ export default function EdmTab({ submissions, reload }: { submissions: Submissio
     holder.innerHTML = html;
     document.body.appendChild(holder);
     try {
-      const canvas = await html2canvas(holder, { backgroundColor: '#F8F4E3', scale: 1, width: 940, windowWidth: 940, useCORS: true });
+      const canvas = await html2canvas(holder, { backgroundColor: '#F8F4E3', scale: 2, width: 940, windowWidth: 940, useCORS: true });
       canvas.toBlob((blob) => {
         if (!blob) return;
         const a = document.createElement('a');
