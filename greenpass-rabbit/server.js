@@ -813,7 +813,7 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
     body += `<iframe class="preview" srcdoc="${esc(generated.html)}"></iframe>
       <div style="margin:12px 0 2px 0"><button class="btn" type="button" onclick="gpSavePng(this)">⬇ Save as PNG image</button>
         <span class="muted" id="pngmsg"></span></div>
-      <p class="muted" style="margin-top:2px">Downloads the whole eDM as one high-resolution image (about 1800px wide) so it stays large for recipients. In Outlook: <b>maximise the compose window first</b>, then <b>Insert → Pictures</b>. If it looks too wide while composing, that's only the narrow compose view — recipients always get the full image at its proper size. Don't drag the corner to shrink it: Outlook strips manual resizes, so a shrunk image just reverts to full size on the recipient's screen.</p>
+      <p class="muted" style="margin-top:2px">Downloads the whole eDM as one wide landscape image (joiners are laid out two per row) so it fills the width of the reading pane instead of running down as a narrow strip. In Outlook: <b>maximise the compose window first</b>, then <b>Insert → Pictures</b>, and leave it at full size — don't drag the corner to shrink it. Recipients always receive the complete image at its proper size.</p>
       <details><summary>Or copy the raw HTML</summary>
       <textarea id="raw" readonly style="height:150px;font-family:monospace;font-size:12px;margin-top:8px" onfocus="this.select()">${esc(generated.html)}</textarea>
       <button class="btn sec" type="button" onclick="navigator.clipboard.writeText(document.getElementById('raw').value);this.textContent='✓ Copied!'">Copy HTML to clipboard</button>
@@ -825,11 +825,11 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
           if(!window.html2canvas){ msg.textContent=' — image library did not load; try the screenshot method instead.'; return; }
           var html=document.getElementById('raw').value;
           var holder=document.createElement('div');
-          holder.style.cssText='position:fixed;left:-10000px;top:0;width:940px;background:#F8F4E3';
+          holder.style.cssText='position:fixed;left:-10000px;top:0;width:1040px;background:#F8F4E3';
           holder.innerHTML=html;
           document.body.appendChild(holder);
           btn.disabled=true; msg.textContent=' — generating image…';
-          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:940,windowWidth:940,useCORS:true}).then(function(canvas){
+          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:1040,windowWidth:1040,useCORS:true}).then(function(canvas){
             canvas.toBlob(function(blob){
               var a=document.createElement('a');
               a.href=URL.createObjectURL(blob);
@@ -945,51 +945,63 @@ function buildEdmHtml(hires, occasion, sendDate) {
   const GREEN = '#2D6A4F', DARK = '#1B4332', SAGE = '#95D5B2', SAGE_BG = '#E8F5E9', CREAM = '#F8F4E3';
   const ACCENTS = ['#2D6A4F', '#6B4226', '#40916C', '#1B4332'];
   const FONT = 'Arial,Helvetica,sans-serif';
+  const WIDTH = 1000; // landscape canvas — cards are laid out two per row
 
-  const cards = hires.map((h, i) => {
+  // One joiner "spotlight" card (used inside a 2-column grid cell).
+  const cardHtml = (h, i) => {
     const accent = ACCENTS[i % ACCENTS.length];
     const bg = i % 2 === 0 ? '#FFFFFF' : '#F3FAF4';
     const img = photoDataUri(h);
-    // Whole photo shown as a left-hand rectangle (no circular crop). Both max
-    // dimensions are capped with width/height auto, so the image always keeps
-    // its true proportions — it can never be stretched, squashed, or run
-    // overly long, whatever aspect ratio the new hire uploads.
+    // Whole photo shown as a left-hand rectangle (no circular crop), max
+    // dimensions capped with width/height auto so it always keeps its true
+    // proportions — never stretched or squashed whatever the uploaded ratio.
     const photoCell = img
-      ? `<img src="${img}" alt="${esc(h.full_name)}" style="max-width:120px;max-height:150px;width:auto;height:auto;display:block;border:3px solid ${accent};border-radius:8px;" />`
-      : `<div style="width:120px;height:120px;background-color:${accent};border-radius:8px;"></div>`;
+      ? `<img src="${img}" alt="${esc(h.full_name)}" style="max-width:110px;max-height:140px;width:auto;height:auto;display:block;border:3px solid ${accent};border-radius:8px;" />`
+      : `<div style="width:110px;height:110px;background-color:${accent};border-radius:8px;"></div>`;
     const funFact = h.fun_fact
-      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 0 0;background-color:${SAGE_BG};border-radius:10px;">
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 0 0;background-color:${SAGE_BG};border-radius:10px;">
            <tr><td width="6" style="background-color:${accent};font-size:0;line-height:0;border-radius:10px 0 0 10px;">&nbsp;</td>
-           <td style="padding:9px 13px;font-family:${FONT};font-size:13px;font-style:italic;color:#33553f;">🌟 <b>Fun fact:</b> ${esc(h.fun_fact)}</td></tr>
+           <td style="padding:8px 12px;font-family:${FONT};font-size:13px;font-style:italic;color:#33553f;">🌟 <b>Fun fact:</b> ${esc(h.fun_fact)}</td></tr>
          </table>`
       : '';
-    const card = `
+    return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};border:1px solid #dcece2;border-radius:16px;">
         <tr><td colspan="2" style="background-color:${accent};height:8px;line-height:8px;font-size:0;border-radius:16px 16px 0 0;">&nbsp;</td></tr>
         <tr>
-          <td valign="top" width="150" style="padding:18px 8px 18px 18px;">${photoCell}</td>
-          <td valign="top" style="padding:18px 18px 18px 6px;">
-            <p style="margin:0;font-family:${FONT};font-size:20px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:7px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:4px 13px;border-radius:14px;font-family:${FONT};font-size:13px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
-            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;&nbsp;·&nbsp;&nbsp;📅 Joined from ${esc(fmtDate(h.start_date))}</p>
-            <p style="margin:11px 0 0 0;font-family:${FONT};font-size:14px;line-height:1.55;color:#333333;">${esc(h.intro)}</p>
+          <td valign="top" width="128" style="padding:16px 6px 16px 16px;">${photoCell}</td>
+          <td valign="top" style="padding:16px 16px 16px 6px;">
+            <p style="margin:0;font-family:${FONT};font-size:19px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:7px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:4px 12px;border-radius:14px;font-family:${FONT};font-size:12px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
+            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:12px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;·&nbsp;📅 Joined from ${esc(fmtDate(h.start_date))}</p>
+            <p style="margin:10px 0 0 0;font-family:${FONT};font-size:14px;line-height:1.5;color:#333333;">${esc(h.intro)}</p>
             ${funFact}
           </td>
         </tr>
       </table>`;
-    const divider = i < hires.length - 1
-      ? `<tr><td style="padding:4px 0;text-align:center;font-size:14px;letter-spacing:8px;color:${SAGE};">🍃 🍃 🍃</td></tr>`
-      : '';
-    return `<tr><td style="padding:8px 22px;">${card}</td></tr>${divider}`;
-  }).join('\n');
+  };
+
+  // Lay the cards out two per row so the whole eDM is landscape (wider than
+  // tall) and uses horizontal space instead of running down as a long strip.
+  const cell = (h, i) => `<td width="50%" valign="top" style="padding:9px 11px;">${cardHtml(h, i)}</td>`;
+  let cardRows = '';
+  for (let i = 0; i < hires.length; i += 2) {
+    const left = cell(hires[i], i);
+    const right = i + 1 < hires.length
+      ? cell(hires[i + 1], i + 1)
+      : `<td width="50%" style="padding:9px 11px;font-size:0;line-height:0;">&nbsp;</td>`;
+    cardRows += `<tr>${left}${right}</tr>`;
+  }
+  const cards = `<tr><td style="padding:6px 12px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tbody>${cardRows}</tbody></table>
+    </td></tr>`;
 
   const dateLine = sendDate ? `<p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#d8f3dc;">📅 ${esc(sendDate)}</p>` : '';
 
   return `<!-- GreenPass eDM -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};padding:24px 0;"><tr><td align="center">
-  <!--[if mso]><table role="presentation" align="center" width="900" cellpadding="0" cellspacing="0" border="0"><tr><td width="900"><![endif]-->
-  <table role="presentation" width="900" cellpadding="0" cellspacing="0" border="0" style="width:900px;min-width:900px;max-width:900px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
-    <tr><td style="padding:0;font-size:0;line-height:0;"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="900" height="1" alt="" style="display:block;width:900px;height:1px;border:0;line-height:0;font-size:0;"></td></tr>
+  <!--[if mso]><table role="presentation" align="center" width="${WIDTH}" cellpadding="0" cellspacing="0" border="0"><tr><td width="${WIDTH}"><![endif]-->
+  <table role="presentation" width="${WIDTH}" cellpadding="0" cellspacing="0" border="0" style="width:${WIDTH}px;min-width:${WIDTH}px;max-width:${WIDTH}px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
+    <tr><td style="padding:0;font-size:0;line-height:0;"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="${WIDTH}" height="1" alt="" style="display:block;width:${WIDTH}px;height:1px;border:0;line-height:0;font-size:0;"></td></tr>
     <tr><td style="background-color:${DARK};padding:10px 24px;text-align:center;font-size:17px;letter-spacing:7px;">🌿🌸🦋🌳☀️🍃</td></tr>
     <tr><td style="background-color:${GREEN};padding:28px 24px 30px 24px;text-align:center;">
       <p style="margin:0;font-family:${FONT};font-size:13px;letter-spacing:2px;color:#95d5b2;text-transform:uppercase;">National Parks Board</p>
