@@ -34,12 +34,17 @@ const pool = DATABASE_URL
       connectionString: DATABASE_URL,
       ssl: useSsl ? { rejectUnauthorized: false } : false,
       max: 5,
+      connectionTimeoutMillis: 10000,
     })
   : null;
 
 if (!pool) {
   console.warn('[server] DATABASE_URL is not set — /api endpoints will error until a database is attached.');
 }
+// Neon closes idle connections; the pg Pool emits 'error' on the idle client
+// when that happens. Left unhandled it crashes the process — swallow it so the
+// pool just reconnects on the next query.
+if (pool) pool.on('error', (err) => console.error('[pool] idle client error (ignored):', err.message));
 
 // ── Schema: create tables on startup (idempotent) ────────────────────────────
 async function ensureSchema() {
@@ -694,7 +699,15 @@ if (fs.existsSync(distDir)) {
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
+// Start listening immediately so health checks / the tunnel can always reach us
+// even if the database is slow. Schema setup and optional seeding run in the
+// background afterwards and retry on the next request if the DB is unreachable.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  app.listen(PORT, () => {
+    console.log(`\n🌿 GreenPass running on http://localhost:${PORT}`);
+    if (!DATABASE_URL) console.log('   ⚠  DATABASE_URL not set — attach a database to persist data.');
+    if (!process.env.ANTHROPIC_API_KEY) console.log('   ⚠  ANTHROPIC_API_KEY not set — AI moderation will mark entries for manual review.');
+  });
   ensureSchema()
     .then(async () => {
       if (process.env.SEED_DEMO === '1') {
@@ -702,14 +715,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         console.log('[seed]', r.seeded ? `inserted ${r.count} demo submissions` : `skipped (${r.reason})`);
       }
     })
-    .catch((err) => console.error('[server] schema init failed:', err.message))
-    .finally(() => {
-      app.listen(PORT, () => {
-        console.log(`\n🌿 GreenPass running on http://localhost:${PORT}`);
-        if (!DATABASE_URL) console.log('   ⚠  DATABASE_URL not set — attach a database to persist data.');
-        if (!process.env.ANTHROPIC_API_KEY) console.log('   ⚠  ANTHROPIC_API_KEY not set — AI moderation will mark entries for manual review.');
-      });
-    });
+    .catch((err) => console.error('[server] schema init failed (will retry on next request):', err.message));
 }
 
 export { buildEdmHtml, makeSeedPng, ensureSchema, seedIfEmpty, pool };

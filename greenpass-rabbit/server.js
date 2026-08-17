@@ -40,10 +40,15 @@ ADMIN_PATH = ADMIN_PATH.replace(/\/+$/, '') || '/admin';
 const DATABASE_URL = process.env.DATABASE_URL;
 const useSsl = process.env.PGSSL !== 'disable';
 const pool = DATABASE_URL
-  ? new pg.Pool({ connectionString: DATABASE_URL, ssl: useSsl ? { rejectUnauthorized: false } : false, max: 5 })
+  ? new pg.Pool({ connectionString: DATABASE_URL, ssl: useSsl ? { rejectUnauthorized: false } : false, max: 5, connectionTimeoutMillis: 10000 })
   : null;
 
 if (!pool) console.warn('[server] DATABASE_URL not set — data will not persist.');
+// Neon (and most managed Postgres) close idle connections. The pg Pool emits an
+// 'error' on the idle client when that happens; if left unhandled it crashes the
+// whole process (taking the web server down with it). Swallow it — the pool just
+// opens a fresh connection on the next query.
+if (pool) pool.on('error', (err) => console.error('[pool] idle client error (ignored):', err.message));
 
 // ── Colour palette (green & nature theme) ────────────────────────────────────
 const C = { green: '#2D6A4F', greenDark: '#1B4332', sage: '#95D5B2', sageLight: '#E8F5E9', cream: '#F8F4E3', earth: '#6B4226' };
@@ -1055,11 +1060,15 @@ async function seedIfEmpty() {
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
+// Start listening IMMEDIATELY so the platform's health checks and the Cloudflare
+// tunnel can always reach us — even if the database is slow to connect. Schema
+// setup (and optional seeding) runs in the background afterwards; if the DB is
+// briefly unreachable it retries on the next request instead of blocking boot.
+app.listen(PORT, () => {
+  console.log(`🌿 GreenPass (single-file) running on http://localhost:${PORT}`);
+  if (!DATABASE_URL) console.log('   ⚠  DATABASE_URL not set — attach a database to persist data.');
+  if (!process.env.ANTHROPIC_API_KEY) console.log('   ⚠  ANTHROPIC_API_KEY not set — AI moderation marks entries for manual review.');
+});
 ensureSchema()
   .then(() => (process.env.SEED_DEMO === '1' ? seedIfEmpty() : null))
-  .catch((err) => console.error('[server] startup error:', err.message))
-  .finally(() => app.listen(PORT, () => {
-    console.log(`🌿 GreenPass (single-file) running on http://localhost:${PORT}`);
-    if (!DATABASE_URL) console.log('   ⚠  DATABASE_URL not set — attach a database to persist data.');
-    if (!process.env.ANTHROPIC_API_KEY) console.log('   ⚠  ANTHROPIC_API_KEY not set — AI moderation marks entries for manual review.');
-  }));
+  .catch((err) => console.error('[server] schema/seed error (will retry on next request):', err.message));
