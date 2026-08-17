@@ -825,11 +825,11 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
           if(!window.html2canvas){ msg.textContent=' — image library did not load; try the screenshot method instead.'; return; }
           var html=document.getElementById('raw').value;
           var holder=document.createElement('div');
-          holder.style.cssText='position:fixed;left:-10000px;top:0;width:1040px;background:#F8F4E3';
+          holder.style.cssText='position:fixed;left:-10000px;top:0;width:940px;background:#F8F4E3';
           holder.innerHTML=html;
           document.body.appendChild(holder);
           btn.disabled=true; msg.textContent=' — generating image…';
-          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:1040,windowWidth:1040,useCORS:true}).then(function(canvas){
+          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:940,windowWidth:940,useCORS:true}).then(function(canvas){
             canvas.toBlob(function(blob){
               var a=document.createElement('a');
               a.href=URL.createObjectURL(blob);
@@ -945,7 +945,7 @@ function buildEdmHtml(hires, occasion, sendDate) {
   const GREEN = '#2D6A4F', DARK = '#1B4332', SAGE = '#95D5B2', SAGE_BG = '#E8F5E9', CREAM = '#F8F4E3';
   const ACCENTS = ['#2D6A4F', '#6B4226', '#40916C', '#1B4332'];
   const FONT = 'Arial,Helvetica,sans-serif';
-  const WIDTH = 1000; // landscape canvas — cards are laid out two per row
+  const WIDTH = 900; // landscape canvas — cards two per row; narrower = renders bigger in Outlook
 
   // One joiner "spotlight" card (used inside a 2-column grid cell).
   const cardHtml = (h, i) => {

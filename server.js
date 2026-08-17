@@ -495,7 +495,7 @@ function renderEdm(hires, occasion, sendDate, esc, photoUri) {
   const ACCENTS = ['#2D6A4F', '#6B4226', '#40916C', '#1B4332'];
   const FONT = "Arial,Helvetica,sans-serif";
 
-  const WIDTH = 1000; // landscape canvas — cards are laid out two per row
+  const WIDTH = 900; // landscape canvas — cards two per row; narrower = renders bigger in Outlook
 
   // One joiner "spotlight" card (used inside a 2-column grid cell).
   const cardHtml = (h, i) => {
