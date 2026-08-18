@@ -830,11 +830,11 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
           if(!window.html2canvas){ msg.textContent=' — image library did not load; try the screenshot method instead.'; return; }
           var html=document.getElementById('raw').value;
           var holder=document.createElement('div');
-          holder.style.cssText='position:fixed;left:-10000px;top:0;width:940px;background:#F8F4E3';
+          holder.style.cssText='position:fixed;left:-10000px;top:0;width:1120px;background:#F8F4E3';
           holder.innerHTML=html;
           document.body.appendChild(holder);
           btn.disabled=true; msg.textContent=' — generating image…';
-          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:940,windowWidth:940,useCORS:true}).then(function(canvas){
+          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:1120,windowWidth:1120,useCORS:true}).then(function(canvas){
             canvas.toBlob(function(blob){
               var a=document.createElement('a');
               a.href=URL.createObjectURL(blob);
@@ -950,7 +950,7 @@ function buildEdmHtml(hires, occasion, sendDate) {
   const GREEN = '#2D6A4F', DARK = '#1B4332', SAGE = '#95D5B2', SAGE_BG = '#E8F5E9', CREAM = '#F8F4E3';
   const ACCENTS = ['#2D6A4F', '#6B4226', '#40916C', '#1B4332'];
   const FONT = 'Arial,Helvetica,sans-serif';
-  const WIDTH = 900; // landscape canvas — cards two per row; narrower = renders bigger in Outlook
+  const WIDTH = 1080; // landscape canvas — cards two per row, wider so text renders larger
 
   // One joiner "spotlight" card (used inside a 2-column grid cell).
   const cardHtml = (h, i) => {
@@ -961,24 +961,24 @@ function buildEdmHtml(hires, occasion, sendDate) {
     // dimensions capped with width/height auto so it always keeps its true
     // proportions — never stretched or squashed whatever the uploaded ratio.
     const photoCell = img
-      ? `<img src="${img}" alt="${esc(h.full_name)}" style="max-width:110px;max-height:140px;width:auto;height:auto;display:block;border:3px solid ${accent};border-radius:8px;" />`
-      : `<div style="width:110px;height:110px;background-color:${accent};border-radius:8px;"></div>`;
+      ? `<img src="${img}" alt="${esc(h.full_name)}" style="max-width:140px;max-height:180px;width:auto;height:auto;display:block;border:3px solid ${accent};border-radius:8px;" />`
+      : `<div style="width:140px;height:140px;background-color:${accent};border-radius:8px;"></div>`;
     const funFact = h.fun_fact
-      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 0 0;background-color:${SAGE_BG};border-radius:10px;">
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:11px 0 0 0;background-color:${SAGE_BG};border-radius:10px;">
            <tr><td width="6" style="background-color:${accent};font-size:0;line-height:0;border-radius:10px 0 0 10px;">&nbsp;</td>
-           <td style="padding:8px 12px;font-family:${FONT};font-size:13px;font-style:italic;color:#33553f;">🌟 <b>Fun fact:</b> ${esc(h.fun_fact)}</td></tr>
+           <td style="padding:10px 14px;font-family:${FONT};font-size:15px;font-style:italic;color:#33553f;">🌟 <b>Fun fact:</b> ${esc(h.fun_fact)}</td></tr>
          </table>`
       : '';
     return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};border:1px solid #dcece2;border-radius:16px;">
         <tr><td colspan="2" style="background-color:${accent};height:8px;line-height:8px;font-size:0;border-radius:16px 16px 0 0;">&nbsp;</td></tr>
         <tr>
-          <td valign="top" width="128" style="padding:16px 6px 16px 16px;">${photoCell}</td>
-          <td valign="top" style="padding:16px 16px 16px 6px;">
-            <p style="margin:0;font-family:${FONT};font-size:19px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:7px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:4px 12px;border-radius:14px;font-family:${FONT};font-size:12px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
-            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:12px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;·&nbsp;📅 Joined from ${esc(fmtDate(h.start_date))}</p>
-            <p style="margin:10px 0 0 0;font-family:${FONT};font-size:14px;line-height:1.5;color:#333333;">${esc(h.intro)}</p>
+          <td valign="top" width="162" style="padding:18px 8px 18px 18px;">${photoCell}</td>
+          <td valign="top" style="padding:18px 18px 18px 8px;">
+            <p style="margin:0;font-family:${FONT};font-size:23px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:5px 14px;border-radius:14px;font-family:${FONT};font-size:14px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
+            <p style="margin:9px 0 0 0;font-family:${FONT};font-size:14px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;·&nbsp;📅 Joined from ${esc(fmtDate(h.start_date))}</p>
+            <p style="margin:11px 0 0 0;font-family:${FONT};font-size:17px;line-height:1.5;color:#333333;">${esc(h.intro)}</p>
             ${funFact}
           </td>
         </tr>
@@ -987,13 +987,13 @@ function buildEdmHtml(hires, occasion, sendDate) {
 
   // Lay the cards out two per row so the whole eDM is landscape (wider than
   // tall) and uses horizontal space instead of running down as a long strip.
-  const cell = (h, i) => `<td width="50%" valign="top" style="padding:9px 11px;">${cardHtml(h, i)}</td>`;
+  const cell = (h, i) => `<td width="50%" valign="top" style="padding:10px 12px;">${cardHtml(h, i)}</td>`;
   let cardRows = '';
   for (let i = 0; i < hires.length; i += 2) {
     const left = cell(hires[i], i);
     const right = i + 1 < hires.length
       ? cell(hires[i + 1], i + 1)
-      : `<td width="50%" style="padding:9px 11px;font-size:0;line-height:0;">&nbsp;</td>`;
+      : `<td width="50%" style="padding:10px 12px;font-size:0;line-height:0;">&nbsp;</td>`;
     cardRows += `<tr>${left}${right}</tr>`;
   }
   const cards = `<tr><td style="padding:6px 12px;">
@@ -1017,9 +1017,9 @@ function buildEdmHtml(hires, occasion, sendDate) {
     <tr><td style="padding:24px 22px 4px 22px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};border:1px solid #ece3c3;border-radius:14px;">
         <tr><td valign="middle" width="58" style="padding:14px 0 14px 16px;font-size:30px;">🌳</td>
-        <td style="padding:14px 18px;font-family:${FONT};font-size:15px;line-height:1.6;color:#3a4a40;">We're delighted to welcome our newest colleagues to the NParks family! Take a moment to say hello and get to know them below — let's give them a warm, leafy welcome. 🌿</td></tr>
+        <td style="padding:14px 18px;font-family:${FONT};font-size:17px;line-height:1.6;color:#3a4a40;">We're delighted to welcome our newest colleagues to the NParks family! Take a moment to say hello and get to know them below — let's give them a warm, leafy welcome. 🌿</td></tr>
       </table></td></tr>
-    <tr><td style="padding:18px 24px 2px 24px;text-align:center;"><p style="margin:0;font-family:${FONT};font-size:21px;font-weight:bold;color:${GREEN};">🌱 Meet our newest colleagues 🌱</p></td></tr>
+    <tr><td style="padding:18px 24px 2px 24px;text-align:center;"><p style="margin:0;font-family:${FONT};font-size:24px;font-weight:bold;color:${GREEN};">🌱 Meet our newest colleagues 🌱</p></td></tr>
     ${cards}
     <tr><td style="height:12px;line-height:12px;font-size:0;">&nbsp;</td></tr>
     <tr><td style="background-color:${SAGE};height:10px;line-height:10px;font-size:0;">&nbsp;</td></tr>
