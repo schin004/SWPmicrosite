@@ -952,7 +952,7 @@ function buildEdmHtml(hires, occasion, sendDate) {
   const FONT = 'Arial,Helvetica,sans-serif';
   const WIDTH = 1120; // single wide column — one full-width card per row
 
-  // One joiner "spotlight" card (used inside a 2-column grid cell).
+  // One joiner "spotlight" card (a full-width row in the single column).
   const cardHtml = (h, i) => {
     const accent = ACCENTS[i % ACCENTS.length];
     const bg = i % 2 === 0 ? '#FFFFFF' : '#F3FAF4';
