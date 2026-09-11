@@ -818,7 +818,7 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
     body += `<iframe class="preview" srcdoc="${esc(generated.html)}"></iframe>
       <div style="margin:12px 0 2px 0"><button class="btn" type="button" onclick="gpSavePng(this)">⬇ Save as PNG image</button>
         <span class="muted" id="pngmsg"></span></div>
-      <p class="muted" style="margin-top:2px">Downloads the whole eDM as one wide landscape image (joiners are laid out two per row) so it fills the width of the reading pane instead of running down as a narrow strip. In Outlook: <b>maximise the compose window first</b>, then <b>Insert → Pictures</b>, and leave it at full size — don't drag the corner to shrink it. Recipients always receive the complete image at its proper size.</p>
+      <p class="muted" style="margin-top:2px">Downloads the whole eDM as one wide single-column image so it fills the width of the reading pane. In Outlook: <b>maximise the compose window first</b>, then <b>Insert → Pictures</b>, and leave it at full size — don't drag the corner to shrink it. Recipients always receive the complete image at its proper size.</p>
       <details><summary>Or copy the raw HTML</summary>
       <textarea id="raw" readonly style="height:150px;font-family:monospace;font-size:12px;margin-top:8px" onfocus="this.select()">${esc(generated.html)}</textarea>
       <button class="btn sec" type="button" onclick="navigator.clipboard.writeText(document.getElementById('raw').value);this.textContent='✓ Copied!'">Copy HTML to clipboard</button>
@@ -830,11 +830,11 @@ function renderEdmPage(approved, generated = null, error = '', archiveIds = []) 
           if(!window.html2canvas){ msg.textContent=' — image library did not load; try the screenshot method instead.'; return; }
           var html=document.getElementById('raw').value;
           var holder=document.createElement('div');
-          holder.style.cssText='position:fixed;left:-10000px;top:0;width:1120px;background:#F8F4E3';
+          holder.style.cssText='position:fixed;left:-10000px;top:0;width:1160px;background:#F8F4E3';
           holder.innerHTML=html;
           document.body.appendChild(holder);
           btn.disabled=true; msg.textContent=' — generating image…';
-          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:1120,windowWidth:1120,useCORS:true}).then(function(canvas){
+          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:1160,windowWidth:1160,useCORS:true}).then(function(canvas){
             canvas.toBlob(function(blob){
               var a=document.createElement('a');
               a.href=URL.createObjectURL(blob);
@@ -943,14 +943,14 @@ function photoDataUri(row) {
 }
 // Engaging, park-noticeboard-style eDM: two-tone header with a nature emoji
 // band, a warm intro callout, and each new hire as a "spotlight" card with a
-// cycling accent colour (accent top bar + photo ring + role pill), a
-// highlighted fun-fact callout, leafy dividers, and a playful footer.
-// Still 100% table-based with all-inline CSS for Outlook compatibility.
+// cycling accent colour (accent top bar + photo + role pill) and a highlighted
+// fun-fact callout. Cards stack ONE PER ROW as a single wide column so each
+// card is as wide as possible. 100% table-based, all-inline CSS for Outlook.
 function buildEdmHtml(hires, occasion, sendDate) {
   const GREEN = '#2D6A4F', DARK = '#1B4332', SAGE = '#95D5B2', SAGE_BG = '#E8F5E9', CREAM = '#F8F4E3';
   const ACCENTS = ['#2D6A4F', '#6B4226', '#40916C', '#1B4332'];
   const FONT = 'Arial,Helvetica,sans-serif';
-  const WIDTH = 1080; // landscape canvas — cards two per row, wider so text renders larger
+  const WIDTH = 1120; // single wide column — one full-width card per row
 
   // One joiner "spotlight" card (used inside a 2-column grid cell).
   const cardHtml = (h, i) => {
@@ -985,20 +985,8 @@ function buildEdmHtml(hires, occasion, sendDate) {
       </table>`;
   };
 
-  // Lay the cards out two per row so the whole eDM is landscape (wider than
-  // tall) and uses horizontal space instead of running down as a long strip.
-  const cell = (h, i) => `<td width="50%" valign="top" style="padding:10px 12px;">${cardHtml(h, i)}</td>`;
-  let cardRows = '';
-  for (let i = 0; i < hires.length; i += 2) {
-    const left = cell(hires[i], i);
-    const right = i + 1 < hires.length
-      ? cell(hires[i + 1], i + 1)
-      : `<td width="50%" style="padding:10px 12px;font-size:0;line-height:0;">&nbsp;</td>`;
-    cardRows += `<tr>${left}${right}</tr>`;
-  }
-  const cards = `<tr><td style="padding:6px 12px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tbody>${cardRows}</tbody></table>
-    </td></tr>`;
+  // One card per row, each spanning the full width of the eDM (single column).
+  const cards = hires.map((h, i) => `<tr><td style="padding:9px 22px;">${cardHtml(h, i)}</td></tr>`).join('');
 
   const dateLine = sendDate ? `<p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#d8f3dc;">📅 ${esc(sendDate)}</p>` : '';
 

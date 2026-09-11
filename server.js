@@ -500,7 +500,7 @@ function renderEdm(hires, occasion, sendDate, esc, photoUri) {
   const ACCENTS = ['#2D6A4F', '#6B4226', '#40916C', '#1B4332'];
   const FONT = "Arial,Helvetica,sans-serif";
 
-  const WIDTH = 1080; // landscape canvas — cards two per row, wider so text renders larger
+  const WIDTH = 1120; // single wide column — one full-width card per row
 
   // One joiner "spotlight" card (used inside a 2-column grid cell).
   const cardHtml = (h, i) => {
@@ -535,20 +535,8 @@ function renderEdm(hires, occasion, sendDate, esc, photoUri) {
       </table>`;
   };
 
-  // Lay the cards out two per row so the whole eDM is landscape (wider than
-  // tall) and uses horizontal space instead of running down as a long strip.
-  const cell = (h, i) => `<td width="50%" valign="top" style="padding:10px 12px;">${cardHtml(h, i)}</td>`;
-  let cardRows = '';
-  for (let i = 0; i < hires.length; i += 2) {
-    const left = cell(hires[i], i);
-    const right = i + 1 < hires.length
-      ? cell(hires[i + 1], i + 1)
-      : `<td width="50%" style="padding:10px 12px;font-size:0;line-height:0;">&nbsp;</td>`;
-    cardRows += `<tr>${left}${right}</tr>`;
-  }
-  const cards = `<tr><td style="padding:6px 12px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tbody>${cardRows}</tbody></table>
-    </td></tr>`;
+  // One card per row, each spanning the full width of the eDM (single column).
+  const cards = hires.map((h, i) => `<tr><td style="padding:9px 22px;">${cardHtml(h, i)}</td></tr>`).join('');
 
   const dateLine = sendDate ? `<p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#d8f3dc;">📅 ${esc(sendDate)}</p>` : '';
 
