@@ -192,7 +192,7 @@ export default function Submit({
                   {preview ? 'Choose a different photo' : 'Upload photo'}
                 </button>
                 <p className="mt-1.5 text-xs text-forest/60">
-                  Please share a photo of yourself for your staff introduction! Make sure it's a solo shot with your face clearly visible — no sunglasses or headgear, and dressed in suitable attire. JPG or PNG, up to 5MB. The preview shows exactly how your photo will look — not happy with it? Just choose a different file.
+                  Please upload a <b>clear, sharp photo</b> of yourself for your staff introduction. Use a <b>head-and-shoulders shot (top half of your body only — not a full-body photo)</b>, with your face clearly visible, no sunglasses or headgear, and dressed in suitable attire. JPG or PNG, up to 5MB. The preview shows exactly how your photo will look — not happy with it? Just choose a different file.
                   {amend && ' Leave it as-is to keep your current photo.'}
                 </p>
               </div>
@@ -212,8 +212,8 @@ export default function Submit({
               <Leaf className="h-4 w-4 text-forest" /> Personal introduction <span className="text-red-500">*</span>
             </label>
             <p className="mb-2 text-xs text-forest-dark/70">
-              We will appreciate it if you can provide a brief write-up (not more than 100 words) using the below as a guide,
-              and include information which you are comfortable to share with NParks colleagues. We may make slight changes where needed.
+              We will appreciate it if you can provide a brief write-up (not more than 100 words), <b>written as a short paragraph — please do not use bullet points</b>. Use the questions below as a guide,
+              and include information you are comfortable to share with NParks colleagues. We may make slight changes where needed.
             </p>
             <ul className="mb-2 list-disc pl-5 text-xs text-forest-dark/70">
               <li>Which company/industry (e.g. public sector) you come from?</li>
@@ -283,7 +283,6 @@ function Confirmation({ name, amend }: { name: string; amend: boolean }) {
             : 'Your introduction has been sent to the team. Welcome to NParks — we’re so glad you’re here.'}{' '}
           Keep an eye on your inbox for a warm welcome from your new colleagues.
         </p>
-        <p className="mt-4 text-sm font-semibold text-forest/70">Growing together, one green space at a time. 🌳</p>
         <Link to="/" className="gp-btn-primary mt-8">
           Back to home
         </Link>

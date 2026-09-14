@@ -527,7 +527,7 @@ function renderEdm(hires, occasion, sendDate, esc, photoUri) {
           <td valign="top" style="padding:18px 18px 18px 8px;">
             <p style="margin:0;font-family:${FONT};font-size:23px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:5px 14px;border-radius:14px;font-family:${FONT};font-size:14px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
-            <p style="margin:9px 0 0 0;font-family:${FONT};font-size:14px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;·&nbsp;📅 Joined from ${esc(fmtDate(h.start_date))}</p>
+            <p style="margin:9px 0 0 0;font-family:${FONT};font-size:14px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;·&nbsp;📅 Joined on ${esc(fmtDate(h.start_date))}</p>
             <p style="margin:11px 0 0 0;font-family:${FONT};font-size:17px;line-height:1.5;color:#333333;">${esc(h.intro)}</p>
             ${funFact}
           </td>
@@ -574,8 +574,7 @@ function renderEdm(hires, occasion, sendDate, esc, photoUri) {
         <tr>
           <td style="background-color:${GREEN};padding:26px 24px;text-align:center;">
             <p style="margin:0 0 12px 0;font-size:18px;letter-spacing:5px;">🌻🌿🦋🌳🍃🌷</p>
-            <p style="margin:0;font-family:${FONT};font-size:16px;font-style:italic;color:#ffffff;">Growing together, one green space at a time. 🌳</p>
-            <p style="margin:10px 0 0 0;font-family:${FONT};font-size:12px;color:#95d5b2;">National Parks Board (NParks), Singapore &middot; Making Singapore our City in Nature</p>
+            <p style="margin:0;font-family:${FONT};font-size:13px;color:#95d5b2;">National Parks Board (NParks), Singapore &middot; Making Singapore our City in Nature</p>
           </td>
         </tr>
       </table>

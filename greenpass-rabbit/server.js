@@ -30,6 +30,9 @@ app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'nparks-admin').trim();
+// Password new joiners must enter before they can open the submission form.
+// Set JOINER_PASSWORD in the Rabbit service env to change it.
+const JOINER_PASSWORD = (process.env.JOINER_PASSWORD || 'NPARKS2026').trim();
 // HR console lives at this path. It is NOT linked anywhere on the public site,
 // so new joiners never see it — HR reaches it by typing the URL. Set ADMIN_PATH
 // in the Rabbit service env to a hard-to-guess value (e.g. /hr-console-7h3k2) to
@@ -75,6 +78,10 @@ function periodOf(start_date) {
 const hasAdmin = (req) => {
   const m = /(?:^|;\s*)gp_admin=([^;]+)/.exec(req.headers.cookie || '');
   return m && decodeURIComponent(m[1]) === ADMIN_PASSWORD;
+};
+const hasJoiner = (req) => {
+  const m = /(?:^|;\s*)gp_joiner=([^;]+)/.exec(req.headers.cookie || '');
+  return m && decodeURIComponent(m[1]) === JOINER_PASSWORD;
 };
 
 // ── Schema ─────────────────────────────────────────────────────────────────
@@ -244,7 +251,7 @@ function layout({ title, body, adminNav = false }) {
 <svg class="foliage" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40 V22 Q60 6 120 22 Q180 4 240 22 Q300 8 360 22 Q420 3 480 22 Q540 9 600 22 Q660 4 720 22 Q780 8 840 22 Q900 5 960 22 Q1020 9 1080 22 Q1140 6 1200 22 V40 Z" fill="currentColor"/></svg>
 </header>
 <main>${body}</main>
-<footer>GreenPass · Growing together, one green space at a time. 🌳</footer>
+<footer>GreenPass · National Parks Board, Singapore 🌿</footer>
 </body></html>`;
 }
 
@@ -284,7 +291,7 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
           </div>
           <div style="flex:1">
             <input type="file" name="photo" accept="image/jpeg,image/png" onchange="gpPreview(this)">
-            <p class="muted" style="margin-top:8px">Please share a photo of yourself for your staff introduction — a solo shot with your face clearly visible, no sunglasses or headgear, dressed in suitable attire. The preview shows exactly how it will look. Leave this empty to keep your current photo.</p>
+            <p class="muted" style="margin-top:8px">Please upload a <b>clear, sharp photo</b> of yourself for your staff introduction. Use a <b>head-and-shoulders shot (top half of your body only — not a full-body photo)</b>, with your face clearly visible, no sunglasses or headgear, and dressed in suitable attire. The preview shows exactly how it will look. Leave this empty to keep your current photo.</p>
           </div>
         </div></div>`
     : `<div class="field"><label>Profile photo (JPG/PNG, max 5MB) <span class="req">*</span></label>
@@ -295,7 +302,7 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
           </div>
           <div style="flex:1">
             <input type="file" name="photo" accept="image/jpeg,image/png" required onchange="gpPreview(this)">
-            <p class="muted" style="margin-top:8px">Please share a photo of yourself for your staff introduction! Make sure it's a solo shot with your face clearly visible — no sunglasses or headgear, and dressed in suitable attire. Once you choose a photo, a preview appears here — not happy with it? Just choose another file.</p>
+            <p class="muted" style="margin-top:8px">Please upload a <b>clear, sharp photo</b> of yourself for your staff introduction. Use a <b>head-and-shoulders shot (top half of your body only — not a full-body photo)</b>, with your face clearly visible, no sunglasses or headgear, and dressed in suitable attire. Once you choose a photo, a preview appears here — not happy with it? Just choose another file.</p>
           </div>
         </div></div>`;
   return layout({ title: amend ? 'Amend your introduction 🌱' : "We're so glad you're here 🌱", body: `
@@ -308,7 +315,7 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
         ${emailField}
         ${photoField}
         <div class="field"><label>Personal introduction <span class="req">*</span></label>
-          <p class="muted" style="margin:0 0 8px">We will appreciate it if you can provide a brief write-up (not more than 100 words) using the below as a guide, and include information which you are comfortable to share with NParks colleagues. We may make slight changes where needed.</p>
+          <p class="muted" style="margin:0 0 8px">We will appreciate it if you can provide a brief write-up (not more than 100 words), <b>written as a short paragraph — please do not use bullet points</b>. Use the questions below as a guide, and include information you are comfortable to share with NParks colleagues. We may make slight changes where needed.</p>
           <ul class="muted" style="margin:0 0 8px;padding-left:18px"><li>Which company/industry (e.g. public sector) you come from?</li><li>What hobbies do you have?</li><li>Why do you join NParks?</li></ul>
           <textarea name="intro" required oninput="var w=this.value.trim()?this.value.trim().split(/\\s+/).length:0;var c=document.getElementById('wc');c.textContent=w+' / 100 words';c.style.color=w>100?'#b45309':'';" placeholder="Share a short introduction about yourself for your NParks colleagues.">${esc(values.intro)}</textarea>
           <p class="muted" id="wc">0 / 100 words</p></div>
@@ -321,9 +328,36 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
       (function(){var t=document.querySelector('textarea[name=intro]');if(t)t.dispatchEvent(new Event('input'));})();
     </script>` });
 }
-app.get('/submit', (_req, res) => res.send(submitPage()));
+// ── New-joiner access gate ───────────────────────────────────────────────────
+// New joiners must enter the shared access password before they can open (or
+// submit) the introduction form. The gate is not shown to HR (their console is
+// separate) and does not affect the public landing page.
+function joinerGatePage({ error = '', next = '/submit' } = {}) {
+  return layout({ title: 'New joiner access 🌱', body: `
+    ${error ? `<div class="err">${esc(error)}</div>` : ''}
+    <div class="card" style="max-width:460px;margin:10px auto">
+      <p class="muted">Welcome! Please enter the new-joiner access password provided by NParks HR to continue to your introduction form.</p>
+      <form method="post" action="/unlock">
+        <input type="hidden" name="next" value="${esc(next)}">
+        <div class="field"><label>Access password</label><input type="password" name="password" autofocus required></div>
+        <button class="btn" type="submit">Continue 🌿</button>
+      </form>
+    </div>` });
+}
+app.post('/unlock', (req, res) => {
+  const next = (req.body.next || '/submit').startsWith('/') ? req.body.next : '/submit';
+  if ((req.body.password || '') !== JOINER_PASSWORD) return res.send(joinerGatePage({ error: 'Incorrect password. Please try again, or check with NParks HR.', next }));
+  res.set('Set-Cookie', `gp_joiner=${encodeURIComponent(JOINER_PASSWORD)}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`);
+  res.redirect(next);
+});
+
+app.get('/submit', (req, res) => {
+  if (!hasJoiner(req)) return res.send(joinerGatePage({ next: '/submit' }));
+  res.send(submitPage());
+});
 
 app.post('/submit', (req, res) => {
+  if (!hasJoiner(req)) return res.send(joinerGatePage({ error: 'Please enter the access password first.', next: '/submit' }));
   upload.single('photo')(req, res, async (err) => {
     const amend = req.body.amend === '1';
     // Re-render the right form (new or amend) with an error message.
@@ -406,8 +440,12 @@ function amendLookupPage({ error = '', email = '' } = {}) {
       </form>
     </div>` });
 }
-app.get('/amend', (_req, res) => res.send(amendLookupPage()));
+app.get('/amend', (req, res) => {
+  if (!hasJoiner(req)) return res.send(joinerGatePage({ next: '/amend' }));
+  res.send(amendLookupPage());
+});
 app.post('/amend', async (req, res) => {
+  if (!hasJoiner(req)) return res.send(joinerGatePage({ error: 'Please enter the access password first.', next: '/amend' }));
   if (!pool) return res.status(503).send(amendLookupPage({ error: 'Database is not configured yet. Please try again shortly.' }));
   const mail = (req.body.email || '').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).send(amendLookupPage({ error: 'Please enter a valid email address.', email: mail }));
@@ -427,7 +465,6 @@ app.get('/submit/thanks', (req, res) => {
       <div style="font-size:44px">🌿</div>
       <h2 style="color:${C.green}">Welcome to NParks — we're so glad you're here.</h2>
       <p class="muted">${updated ? 'Your entry has been updated and sent back to the team for review.' : 'Your introduction has been sent to the team.'} Keep an eye on your inbox for a warm welcome from your new colleagues.</p>
-      <p style="color:${C.green};font-weight:800">Growing together, one green space at a time. 🌳</p>
       <a class="btn" href="/">Back to home</a>
     </div>` }));
 });
@@ -624,7 +661,7 @@ function cardHtml(s) {
 
   let hrFields, actions;
   if (s.status === 'rejected' || s.status === 'archived') {
-    const details = `${jt || dv ? `${jt || '—'} · ${dv || '—'}` : 'No job details added.'}${s.start_date ? ` · 📅 Joined from ${esc(fmtDate(s.start_date))}` : ''}`;
+    const details = `${jt || dv ? `${jt || '—'} · ${dv || '—'}` : 'No job details added.'}${s.start_date ? ` · 📅 Joined on ${esc(fmtDate(s.start_date))}` : ''}`;
     hrFields = `<div class="hrbox"><span class="tag hr">✎ Added by HR</span> <span class="muted">Not submitted by the new joiner</span><p class="muted" style="margin:8px 0 0">${details}</p></div>`;
     actions = s.status === 'archived'
       ? `<form method="post" action="${ADMIN_PATH}/update" class="actions"><input type="hidden" name="id" value="${s.id}">
@@ -644,7 +681,7 @@ function cardHtml(s) {
             <div><label>Job Title</label><input type="text" name="job_title" value="${jt}" placeholder="e.g. Park Manager"></div>
             <div><label>Division / Branch</label><input type="text" name="division" value="${dv}" placeholder="e.g. Parks Division"></div>
           </div>
-          <div class="field" style="margin:12px 0 0"><label>Joined from (start date)</label><input type="date" name="start_date" value="${esc(s.start_date)}"></div>
+          <div class="field" style="margin:12px 0 0"><label>Joined on (start date)</label><input type="date" name="start_date" value="${esc(s.start_date)}"></div>
         </div>
         <div class="actions">
           ${s.status === 'awaiting-hr-review' ? `<button class="btn" name="action" value="approve">✓ Approve</button>` : ''}
@@ -670,7 +707,7 @@ function cardHtml(s) {
   const ver = s.updated_at ? new Date(s.updated_at).getTime() : '';
   return `<div class="card">
     <div class="row"><img class="thumb" src="/api/photo/${s.id}?v=${ver}" alt="${esc(s.full_name)}">
-      <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Joined from ' + esc(fmtDate(s.start_date)) : '📅 Joining date — to be added by HR'}</p>${s.email ? `<p class="muted" style="margin:2px 0 0">📧 ${esc(s.email)}</p>` : ''}</div></div>
+      <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Joined on ' + esc(fmtDate(s.start_date)) : '📅 Joining date — to be added by HR'}</p>${s.email ? `<p class="muted" style="margin:2px 0 0">📧 ${esc(s.email)}</p>` : ''}</div></div>
     ${photoEditor(s)}
     <p style="margin:12px 0 0">${esc(s.intro)}</p>
     ${s.fun_fact ? `<p style="color:${C.earth};font-style:italic;margin:8px 0 0">🌼 Fun fact: ${esc(s.fun_fact)}</p>` : ''}
@@ -977,7 +1014,7 @@ function buildEdmHtml(hires, occasion, sendDate) {
           <td valign="top" style="padding:18px 18px 18px 8px;">
             <p style="margin:0;font-family:${FONT};font-size:23px;font-weight:bold;color:${GREEN};">${esc(h.full_name)}</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:5px 14px;border-radius:14px;font-family:${FONT};font-size:14px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
-            <p style="margin:9px 0 0 0;font-family:${FONT};font-size:14px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;·&nbsp;📅 Joined from ${esc(fmtDate(h.start_date))}</p>
+            <p style="margin:9px 0 0 0;font-family:${FONT};font-size:14px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;·&nbsp;📅 Joined on ${esc(fmtDate(h.start_date))}</p>
             <p style="margin:11px 0 0 0;font-family:${FONT};font-size:17px;line-height:1.5;color:#333333;">${esc(h.intro)}</p>
             ${funFact}
           </td>
@@ -1013,8 +1050,7 @@ function buildEdmHtml(hires, occasion, sendDate) {
     <tr><td style="background-color:${SAGE};height:10px;line-height:10px;font-size:0;">&nbsp;</td></tr>
     <tr><td style="background-color:${GREEN};padding:26px 24px;text-align:center;">
       <p style="margin:0 0 12px 0;font-size:18px;letter-spacing:5px;">🌻🌿🦋🌳🍃🌷</p>
-      <p style="margin:0;font-family:${FONT};font-size:16px;font-style:italic;color:#ffffff;">Growing together, one green space at a time. 🌳</p>
-      <p style="margin:10px 0 0 0;font-family:${FONT};font-size:12px;color:#95d5b2;">National Parks Board (NParks), Singapore &middot; Making Singapore our City in Nature</p></td></tr>
+      <p style="margin:0;font-family:${FONT};font-size:13px;color:#95d5b2;">National Parks Board (NParks), Singapore &middot; Making Singapore our City in Nature</p></td></tr>
   </table>
   <!--[if mso]></td></tr></table><![endif]-->
   </td></tr></table>`;

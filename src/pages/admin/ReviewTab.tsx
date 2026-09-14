@@ -181,7 +181,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
             <>
               <h3 className="truncate text-lg font-extrabold text-forest">{sub.full_name}</h3>
               <p className="text-sm text-forest/60">
-                {sub.start_date ? `Joined from ${fmtDate(sub.start_date)}` : '📅 Joining date — to be added by HR'}
+                {sub.start_date ? `Joined on ${fmtDate(sub.start_date)}` : '📅 Joining date — to be added by HR'}
               </p>
               {sub.email && <p className="truncate text-sm text-forest/60">📧 {sub.email}</p>}
             </>
@@ -258,7 +258,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
         {sub.status === 'rejected' || sub.status === 'archived' ? (
           <p className="text-sm text-forest/60">
             {sub.job_title || division ? `${sub.job_title ?? '—'} · ${sub.division ?? '—'}` : 'No job details added.'}
-            {sub.start_date && ` · 📅 Joined from ${fmtDate(sub.start_date)}`}
+            {sub.start_date && ` · 📅 Joined on ${fmtDate(sub.start_date)}`}
           </p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
@@ -281,7 +281,7 @@ function SubmissionCard({ sub, reload }: { sub: Submission; reload: () => Promis
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-bold text-forest">Joined from (start date)</label>
+              <label className="mb-1 block text-xs font-bold text-forest">Joined on (start date)</label>
               <input
                 type="date"
                 className="gp-input py-1.5"
