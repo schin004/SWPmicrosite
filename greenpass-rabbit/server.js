@@ -22,6 +22,7 @@ import multer from 'multer';
 import pg from 'pg';
 import zlib from 'node:zlib';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -53,6 +54,93 @@ if (!pool) console.warn('[server] DATABASE_URL not set — data will not persist
 // opens a fresh connection on the next query.
 if (pool) pool.on('error', (err) => console.error('[pool] idle client error (ignored):', err.message));
 
+// ── Email + OTP authentication (two-factor) ──────────────────────────────────
+// Both the HR console and the new-joiner form require two factors: (1) the
+// shared password, then (2) a one-time code emailed to the person. The code is
+// generated, sent AND verified by an external OTP service (configured via the
+// OTP_* env vars below) — this app never sees or stores the code. Sessions are
+// short, HMAC-signed tokens kept in HttpOnly cookies.
+
+// Comma-separated allowlist of HR email addresses allowed into the console.
+// If left empty, any email may sign in (still behind the password + OTP).
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
+  .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+
+// Secret used to sign session cookies. Set SESSION_SECRET in the Rabbit env so
+// logins survive redeploys; otherwise we derive a stable-ish fallback.
+const SESSION_SECRET = process.env.SESSION_SECRET
+  || crypto.createHash('sha256').update('gp|' + ADMIN_PASSWORD + '|' + JOINER_PASSWORD).digest('hex');
+
+// External OTP service — "full OTP service": it generates + emails the code
+// (send) and checks the code the user types (verify). Everything is configured
+// here via env vars so it can match your provider without code changes.
+const OTP = {
+  sendUrl: (process.env.OTP_SEND_URL || '').trim(),
+  verifyUrl: (process.env.OTP_VERIFY_URL || '').trim(),
+  sendMethod: (process.env.OTP_SEND_METHOD || 'POST').trim().toUpperCase(),
+  verifyMethod: (process.env.OTP_VERIFY_METHOD || 'POST').trim().toUpperCase(),
+  apiKey: process.env.OTP_API_KEY || '',
+  authHeader: (process.env.OTP_AUTH_HEADER || 'Authorization').trim(),
+  // Prefix for the key, e.g. 'Bearer'. Set OTP_AUTH_SCHEME='' for a bare key
+  // (e.g. an x-api-key header that takes the key with no prefix).
+  authScheme: process.env.OTP_AUTH_SCHEME === undefined ? 'Bearer' : process.env.OTP_AUTH_SCHEME.trim(),
+  emailField: (process.env.OTP_EMAIL_FIELD || 'email').trim(),   // body field for the recipient email
+  codeField: (process.env.OTP_CODE_FIELD || 'otp').trim(),       // body field for the code (verify)
+  extra: (() => { try { return process.env.OTP_EXTRA_JSON ? JSON.parse(process.env.OTP_EXTRA_JSON) : {}; } catch { console.warn('[otp] OTP_EXTRA_JSON is not valid JSON — ignored'); return {}; } })(),
+  successField: (process.env.OTP_VERIFY_SUCCESS_FIELD || '').trim(), // optional: JSON field that signals a valid code
+};
+const otpEnabled = Boolean(OTP.sendUrl && OTP.verifyUrl);
+if (!otpEnabled) console.warn('[otp] OTP_SEND_URL / OTP_VERIFY_URL not set — login falls back to password only (no OTP) until configured.');
+
+function otpHeaders() {
+  const h = { 'content-type': 'application/json', accept: 'application/json' };
+  if (OTP.apiKey) h[OTP.authHeader] = OTP.authScheme ? `${OTP.authScheme} ${OTP.apiKey}` : OTP.apiKey;
+  return h;
+}
+// Ask the OTP service to generate + email a code to this address.
+async function otpSend(email) {
+  if (!otpEnabled) return true; // not configured yet → treat as pass (password-only)
+  const res = await fetch(OTP.sendUrl, { method: OTP.sendMethod, headers: otpHeaders(), body: JSON.stringify({ [OTP.emailField]: email, ...OTP.extra }) });
+  if (!res.ok) throw new Error(`OTP send failed (HTTP ${res.status})`);
+  return true;
+}
+// Ask the OTP service whether the code the user typed is valid.
+async function otpVerify(email, code) {
+  if (!otpEnabled) return true;
+  let res;
+  try { res = await fetch(OTP.verifyUrl, { method: OTP.verifyMethod, headers: otpHeaders(), body: JSON.stringify({ [OTP.emailField]: email, [OTP.codeField]: code, ...OTP.extra }) }); }
+  catch (e) { console.warn('[otp] verify request failed:', e.message); return false; }
+  if (!res.ok) return false; // many providers return 4xx for a wrong/expired code
+  // Success detection: a configured field wins; else look for a common
+  // status/valid/success field; else accept any 2xx response.
+  let data = null; try { data = await res.json(); } catch {}
+  const truthy = (v) => v === true || ['true', 'ok', 'success', 'successful', 'verified', 'valid', 'approved', '1', 'yes'].includes(String(v).trim().toLowerCase());
+  if (OTP.successField) return truthy(data && data[OTP.successField]);
+  if (data && typeof data === 'object') {
+    for (const k of ['success', 'valid', 'verified', 'status', 'result']) if (k in data) return truthy(data[k]);
+  }
+  return true;
+}
+
+// ── Signed session cookies (HMAC-SHA256) ─────────────────────────────────────
+const b64u = (buf) => Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64uDec = (s) => Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString();
+function signToken(payload, ttlMs) {
+  const p = b64u(JSON.stringify({ ...payload, exp: Date.now() + ttlMs }));
+  const sig = b64u(crypto.createHmac('sha256', SESSION_SECRET).update(p).digest());
+  return `${p}.${sig}`;
+}
+function verifyToken(token) {
+  if (!token || token.indexOf('.') < 0) return null;
+  const [p, sig] = token.split('.');
+  const expect = b64u(crypto.createHmac('sha256', SESSION_SECRET).update(p).digest());
+  if (!sig || sig.length !== expect.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
+  try { const d = JSON.parse(b64uDec(p)); return (d && d.exp && d.exp > Date.now()) ? d : null; } catch { return null; }
+}
+const cookieVal = (req, name) => { const m = new RegExp('(?:^|;\\s*)' + name + '=([^;]+)').exec(req.headers.cookie || ''); return m ? decodeURIComponent(m[1]) : null; };
+const setCookie = (res, name, value, maxAgeSec) => res.append('Set-Cookie', `${name}=${encodeURIComponent(value)}; HttpOnly; Path=/; Max-Age=${maxAgeSec}; SameSite=Lax`);
+const clearCookie = (res, name) => res.append('Set-Cookie', `${name}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`);
+
 // ── Colour palette (green & nature theme) ────────────────────────────────────
 const C = { green: '#2D6A4F', greenDark: '#1B4332', sage: '#95D5B2', sageLight: '#E8F5E9', cream: '#F8F4E3', earth: '#6B4226' };
 
@@ -75,14 +163,9 @@ function periodOf(start_date) {
     label: `${h1 ? '1–15' : '16–' + lastDay} ${MONTHS[mo - 1]} ${y}`,
   };
 }
-const hasAdmin = (req) => {
-  const m = /(?:^|;\s*)gp_admin=([^;]+)/.exec(req.headers.cookie || '');
-  return m && decodeURIComponent(m[1]) === ADMIN_PASSWORD;
-};
-const hasJoiner = (req) => {
-  const m = /(?:^|;\s*)gp_joiner=([^;]+)/.exec(req.headers.cookie || '');
-  return m && decodeURIComponent(m[1]) === JOINER_PASSWORD;
-};
+const hasAdmin = (req) => { const d = verifyToken(cookieVal(req, 'gp_admin')); return !!(d && d.role === 'admin'); };
+const hasJoiner = (req) => { const d = verifyToken(cookieVal(req, 'gp_joiner')); return !!(d && d.role === 'joiner'); };
+const joinerEmail = (req) => { const d = verifyToken(cookieVal(req, 'gp_joiner')); return (d && d.email) || ''; };
 
 // ── Schema ─────────────────────────────────────────────────────────────────
 async function ensureSchema() {
@@ -328,36 +411,77 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
       (function(){var t=document.querySelector('textarea[name=intro]');if(t)t.dispatchEvent(new Event('input'));})();
     </script>` });
 }
-// ── New-joiner access gate ───────────────────────────────────────────────────
-// New joiners must enter the shared access password before they can open (or
-// submit) the introduction form. The gate is not shown to HR (their console is
-// separate) and does not affect the public landing page.
-function joinerGatePage({ error = '', next = '/submit' } = {}) {
-  return layout({ title: 'New joiner access 🌱', body: `
+// ── Shared one-time-code (OTP) page ──────────────────────────────────────────
+// Used by both the joiner gate and the HR login as the second factor.
+function otpPage({ action, email, next = '', resendAction, error = '' }) {
+  return layout({ title: 'Enter your code 🔑', body: `
     ${error ? `<div class="err">${esc(error)}</div>` : ''}
-    <div class="card" style="max-width:460px;margin:10px auto">
-      <p class="muted">Welcome! Please enter the new-joiner access password provided by NParks HR to continue to your introduction form.</p>
-      <form method="post" action="/unlock">
-        <input type="hidden" name="next" value="${esc(next)}">
-        <div class="field"><label>Access password</label><input type="password" name="password" autofocus required></div>
-        <button class="btn" type="submit">Continue 🌿</button>
+    <div class="card" style="max-width:480px;margin:10px auto">
+      <p class="muted">We've emailed a one-time code to <b>${esc(email)}</b>. Enter it below to continue — the code expires shortly.</p>
+      <form method="post" action="${action}">
+        ${next ? `<input type="hidden" name="next" value="${esc(next)}">` : ''}
+        <div class="field"><label>One-time code</label><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" autofocus required placeholder="Enter the code"></div>
+        <button class="btn" type="submit">Verify &amp; continue ✓</button>
+      </form>
+      <form method="post" action="${resendAction}" style="margin-top:10px">
+        ${next ? `<input type="hidden" name="next" value="${esc(next)}">` : ''}
+        <button class="btn sec" type="submit">Resend code</button>
       </form>
     </div>` });
 }
-app.post('/unlock', (req, res) => {
+
+// ── New-joiner access gate (shared password + emailed OTP) ───────────────────
+// New joiners enter the shared access password and their email; we email them a
+// one-time code; once verified they can open (and submit) the introduction
+// form. Not shown to HR, and the public landing page stays open.
+function joinerGatePage({ error = '', email = '', next = '/submit' } = {}) {
+  return layout({ title: 'New joiner access 🌱', body: `
+    ${error ? `<div class="err">${esc(error)}</div>` : ''}
+    <div class="card" style="max-width:480px;margin:10px auto">
+      <p class="muted">Welcome! To open your introduction form, enter the shared access password (from NParks HR) and your email address. We'll email you a one-time code to confirm it's you.</p>
+      <form method="post" action="/unlock">
+        <input type="hidden" name="next" value="${esc(next)}">
+        <div class="field"><label>Access password</label><input type="password" name="password" autofocus required></div>
+        <div class="field"><label>Your email address</label><input type="email" name="email" value="${esc(email)}" required placeholder="e.g. yourname@gmail.com"></div>
+        <button class="btn" type="submit">Send me a code 🌿</button>
+      </form>
+    </div>` });
+}
+app.post('/unlock', async (req, res) => {
   const next = (req.body.next || '/submit').startsWith('/') ? req.body.next : '/submit';
-  if ((req.body.password || '') !== JOINER_PASSWORD) return res.send(joinerGatePage({ error: 'Incorrect password. Please try again, or check with NParks HR.', next }));
-  res.set('Set-Cookie', `gp_joiner=${encodeURIComponent(JOINER_PASSWORD)}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`);
+  const email = (req.body.email || '').trim();
+  if ((req.body.password || '') !== JOINER_PASSWORD) return res.send(joinerGatePage({ error: 'Incorrect access password. Please try again, or check with NParks HR.', email, next }));
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.send(joinerGatePage({ error: 'Please enter a valid email address.', email, next }));
+  try { await otpSend(email); }
+  catch (e) { console.warn('[otp] joiner send:', e.message); return res.send(joinerGatePage({ error: 'Sorry, we could not send a code right now. Please try again in a moment.', email, next })); }
+  if (!otpEnabled) { setCookie(res, 'gp_joiner', signToken({ role: 'joiner', email }, 30 * 864e5), 30 * 86400); return res.redirect(next); }
+  setCookie(res, 'gp_j_pending', signToken({ email, next }, 15 * 60e3), 15 * 60);
+  res.send(otpPage({ action: '/verify-otp', email, next, resendAction: '/unlock-resend' }));
+});
+app.post('/verify-otp', async (req, res) => {
+  const pend = verifyToken(cookieVal(req, 'gp_j_pending'));
+  if (!pend) return res.send(joinerGatePage({ error: 'Your session timed out. Please start again.', next: '/submit' }));
+  const next = (pend.next || '/submit').startsWith('/') ? pend.next : '/submit';
+  const ok = await otpVerify(pend.email, (req.body.code || '').trim());
+  if (!ok) return res.send(otpPage({ action: '/verify-otp', email: pend.email, next, error: 'That code was not valid or has expired. Please try again, or resend a new code.', resendAction: '/unlock-resend' }));
+  clearCookie(res, 'gp_j_pending');
+  setCookie(res, 'gp_joiner', signToken({ role: 'joiner', email: pend.email }, 30 * 864e5), 30 * 86400);
   res.redirect(next);
+});
+app.post('/unlock-resend', async (req, res) => {
+  const pend = verifyToken(cookieVal(req, 'gp_j_pending'));
+  if (!pend) return res.send(joinerGatePage({ error: 'Your session timed out. Please start again.', next: '/submit' }));
+  try { await otpSend(pend.email); } catch (e) { return res.send(otpPage({ action: '/verify-otp', email: pend.email, next: pend.next, error: 'Could not resend the code. Please try again shortly.', resendAction: '/unlock-resend' })); }
+  res.send(otpPage({ action: '/verify-otp', email: pend.email, next: pend.next, resendAction: '/unlock-resend' }));
 });
 
 app.get('/submit', (req, res) => {
   if (!hasJoiner(req)) return res.send(joinerGatePage({ next: '/submit' }));
-  res.send(submitPage());
+  res.send(submitPage({ values: { email: joinerEmail(req) } }));
 });
 
 app.post('/submit', (req, res) => {
-  if (!hasJoiner(req)) return res.send(joinerGatePage({ error: 'Please enter the access password first.', next: '/submit' }));
+  if (!hasJoiner(req)) return res.send(joinerGatePage({ error: 'Please sign in with the access password and a one-time code first.', next: '/submit' }));
   upload.single('photo')(req, res, async (err) => {
     const amend = req.body.amend === '1';
     // Re-render the right form (new or amend) with an error message.
@@ -445,7 +569,7 @@ app.get('/amend', (req, res) => {
   res.send(amendLookupPage());
 });
 app.post('/amend', async (req, res) => {
-  if (!hasJoiner(req)) return res.send(joinerGatePage({ error: 'Please enter the access password first.', next: '/amend' }));
+  if (!hasJoiner(req)) return res.send(joinerGatePage({ error: 'Please sign in with the access password and a one-time code first.', next: '/amend' }));
   if (!pool) return res.status(503).send(amendLookupPage({ error: 'Database is not configured yet. Please try again shortly.' }));
   const mail = (req.body.email || '').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).send(amendLookupPage({ error: 'Please enter a valid email address.', email: mail }));
@@ -495,25 +619,47 @@ app.get('/vendor/html2canvas.js', (_req, res) => {
   }
 });
 
-// ── Admin auth ───────────────────────────────────────────────────────────────
-function adminLoginPage(error = '') {
+// ── Admin auth (shared password + emailed OTP, restricted to an allowlist) ───
+function adminLoginPage({ error = '', email = '' } = {}) {
   return layout({ title: 'HR Admin Login', body: `
     ${error ? `<div class="err">${esc(error)}</div>` : ''}
-    <div class="card" style="max-width:420px;margin:10px auto">
-      <p class="muted">Enter the shared HR password to continue.</p>
+    <div class="card" style="max-width:440px;margin:10px auto">
+      <p class="muted">Enter the shared HR password and your work email. We'll email you a one-time code to finish signing in.</p>
       <form method="post" action="${ADMIN_PATH}/login">
         <div class="field"><label>Admin password</label><input type="password" name="password" autofocus required></div>
-        <button class="btn" type="submit">Log in 🌿</button>
+        <div class="field"><label>Your email address</label><input type="email" name="email" value="${esc(email)}" required placeholder="you@nparks.gov.sg"></div>
+        <button class="btn" type="submit">Send me a code 🌿</button>
       </form>
     </div>` });
 }
-app.post(ADMIN_PATH + '/login', (req, res) => {
-  if ((req.body.password || '') !== ADMIN_PASSWORD) return res.send(adminLoginPage('Incorrect password. Please try again.'));
-  res.set('Set-Cookie', `gp_admin=${encodeURIComponent(ADMIN_PASSWORD)}; HttpOnly; Path=/; Max-Age=43200; SameSite=Lax`);
+app.post(ADMIN_PATH + '/login', async (req, res) => {
+  const email = (req.body.email || '').trim();
+  if ((req.body.password || '') !== ADMIN_PASSWORD) return res.send(adminLoginPage({ error: 'Incorrect password. Please try again.', email }));
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.send(adminLoginPage({ error: 'Please enter a valid email address.', email }));
+  if (ADMIN_EMAILS.length && !ADMIN_EMAILS.includes(email.toLowerCase())) return res.send(adminLoginPage({ error: 'This email is not authorised for the HR console. Please contact your GreenPass administrator.', email }));
+  try { await otpSend(email); }
+  catch (e) { console.warn('[otp] admin send:', e.message); return res.send(adminLoginPage({ error: 'Could not send a code right now. Please try again shortly.', email })); }
+  if (!otpEnabled) { setCookie(res, 'gp_admin', signToken({ role: 'admin', email }, 12 * 3600e3), 12 * 3600); return res.redirect(ADMIN_PATH); }
+  setCookie(res, 'gp_a_pending', signToken({ email }, 15 * 60e3), 15 * 60);
+  res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email, resendAction: ADMIN_PATH + '/resend' }));
+});
+app.post(ADMIN_PATH + '/verify-otp', async (req, res) => {
+  const pend = verifyToken(cookieVal(req, 'gp_a_pending'));
+  if (!pend) return res.send(adminLoginPage({ error: 'Your login timed out. Please sign in again.' }));
+  const ok = await otpVerify(pend.email, (req.body.code || '').trim());
+  if (!ok) return res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, error: 'That code was not valid or has expired. Please try again, or resend a new code.', resendAction: ADMIN_PATH + '/resend' }));
+  clearCookie(res, 'gp_a_pending');
+  setCookie(res, 'gp_admin', signToken({ role: 'admin', email: pend.email }, 12 * 3600e3), 12 * 3600);
   res.redirect(ADMIN_PATH);
 });
+app.post(ADMIN_PATH + '/resend', async (req, res) => {
+  const pend = verifyToken(cookieVal(req, 'gp_a_pending'));
+  if (!pend) return res.send(adminLoginPage({ error: 'Your login timed out. Please sign in again.' }));
+  try { await otpSend(pend.email); } catch { return res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, error: 'Could not resend the code. Please try again shortly.', resendAction: ADMIN_PATH + '/resend' })); }
+  res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, resendAction: ADMIN_PATH + '/resend' }));
+});
 app.get(ADMIN_PATH + '/logout', (_req, res) => {
-  res.set('Set-Cookie', 'gp_admin=; HttpOnly; Path=/; Max-Age=0');
+  clearCookie(res, 'gp_admin'); clearCookie(res, 'gp_a_pending');
   res.redirect(ADMIN_PATH);
 });
 
