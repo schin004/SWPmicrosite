@@ -415,7 +415,6 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
           <ul class="muted" style="margin:0 0 8px;padding-left:18px"><li>Which company/industry (e.g. public sector) you come from?</li><li>What hobbies do you have?</li><li>Why do you join NParks?</li></ul>
           <textarea name="intro" required oninput="var w=this.value.trim()?this.value.trim().split(/\\s+/).length:0;var c=document.getElementById('wc');c.textContent=w+' / 100 words';c.style.color=w>100?'#b45309':'';" placeholder="Share a short introduction about yourself for your NParks colleagues.">${esc(values.intro)}</textarea>
           <p class="muted" id="wc">0 / 100 words</p></div>
-        <div class="field"><label>Fun fact (optional)</label><input type="text" name="fun_fact" value="${esc(values.fun_fact)}" placeholder="One fun fact about yourself 🌼"></div>
         <button class="btn" type="submit">${amend ? 'Save my changes 🌿' : 'Send my introduction 🌿'}</button>
       </form>
     </div>
@@ -881,7 +880,6 @@ function cardHtml(s) {
       <div class="field"><label>Full name (as per NRIC)</label><input type="text" name="full_name" value="${esc(s.full_name)}"></div>
       <div class="field"><label>Email</label><input type="email" name="email" value="${esc(s.email)}"></div>
       <div class="field"><label>Introduction</label><textarea name="intro">${esc(s.intro)}</textarea></div>
-      <div class="field"><label>Fun fact</label><input type="text" name="fun_fact" value="${esc(s.fun_fact)}"></div>
       <button class="btn sec" type="submit">Save changes</button>
     </form></details>`;
 
@@ -891,7 +889,6 @@ function cardHtml(s) {
       <div><h3 style="margin:0;color:${C.green}">${esc(s.full_name)}</h3><p class="muted" style="margin:2px 0 0">${s.start_date ? 'Joined on ' + esc(fmtDate(s.start_date)) : '📅 Joining date — to be added by HR'}</p>${s.email ? `<p class="muted" style="margin:2px 0 0">📧 ${esc(s.email)}</p>` : ''}</div></div>
     ${photoEditor(s)}
     <p style="margin:12px 0 0">${esc(s.intro)}</p>
-    ${s.fun_fact ? `<p style="color:${C.earth};font-style:italic;margin:8px 0 0">🌼 Fun fact: ${esc(s.fun_fact)}</p>` : ''}
     <div class="modbox">${moderationTag(s.ai_status)} <span class="muted">AI moderation${conf}</span><p style="margin:6px 0 0">${esc(s.ai_reason)}</p>${photoNote}</div>
     ${hrFields}${actions}${editForm}
   </div>`;
@@ -1181,12 +1178,6 @@ function buildEdmHtml(hires, occasion, sendDate) {
     const photoCell = img
       ? `<img src="${img}" alt="${esc(h.full_name)}" style="max-width:140px;max-height:180px;width:auto;height:auto;display:block;border:3px solid ${accent};border-radius:8px;" />`
       : `<div style="width:140px;height:140px;background-color:${accent};border-radius:8px;"></div>`;
-    const funFact = h.fun_fact
-      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:11px 0 0 0;background-color:${SAGE_BG};border-radius:10px;">
-           <tr><td width="6" style="background-color:${accent};font-size:0;line-height:0;border-radius:10px 0 0 10px;">&nbsp;</td>
-           <td style="padding:10px 14px;font-family:${FONT};font-size:15px;font-style:italic;color:#33553f;">🌟 <b>Fun fact:</b> ${esc(h.fun_fact)}</td></tr>
-         </table>`
-      : '';
     return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};border:1px solid #dcece2;border-radius:16px;">
         <tr><td colspan="2" style="background-color:${accent};height:8px;line-height:8px;font-size:0;border-radius:16px 16px 0 0;">&nbsp;</td></tr>
@@ -1197,7 +1188,6 @@ function buildEdmHtml(hires, occasion, sendDate) {
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0 0;"><tr><td style="background-color:${accent};color:#ffffff;padding:5px 14px;border-radius:14px;font-family:${FONT};font-size:14px;font-weight:bold;">${esc(h.job_title)}</td></tr></table>
             <p style="margin:9px 0 0 0;font-family:${FONT};font-size:14px;color:#5b6b60;">🌳 ${esc(h.division)}&nbsp;·&nbsp;📅 Joined on ${esc(fmtDate(h.start_date))}</p>
             <p style="margin:11px 0 0 0;font-family:${FONT};font-size:17px;line-height:1.5;color:#333333;">${esc(h.intro)}</p>
-            ${funFact}
           </td>
         </tr>
       </table>`;
