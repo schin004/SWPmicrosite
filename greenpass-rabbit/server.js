@@ -56,9 +56,12 @@ if (pool) pool.on('error', (err) => console.error('[pool] idle client error (ign
 
 // ── Email + OTP authentication (two-factor) ──────────────────────────────────
 // Both the HR console and the new-joiner form require two factors: (1) the
-// shared password, then (2) a one-time code emailed to the person. The code is
-// generated, sent AND verified by an external OTP service (configured via the
-// OTP_* env vars below) — this app never sees or stores the code. Sessions are
+// shared password, then (2) a one-time code emailed to the person. GreenPass
+// GENERATES and VERIFIES the code itself; an external email sender (e.g.
+// Postman.gov.sg's transactional email API, configured via the OTP_* env vars
+// below) is used ONLY to deliver the code. A salted hash of the code is kept in
+// a short-lived, HMAC-signed cookie — nothing about the code is stored in the
+// database, and it works across restarts and multiple instances. Sessions are
 // short, HMAC-signed tokens kept in HttpOnly cookies.
 
 // Comma-separated allowlist of HR email addresses allowed into the console.
@@ -71,55 +74,65 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
 const SESSION_SECRET = process.env.SESSION_SECRET
   || crypto.createHash('sha256').update('gp|' + ADMIN_PASSWORD + '|' + JOINER_PASSWORD).digest('hex');
 
-// External OTP service — "full OTP service": it generates + emails the code
-// (send) and checks the code the user types (verify). Everything is configured
-// here via env vars so it can match your provider without code changes.
+// External EMAIL SENDER (send-only). GreenPass generates + verifies the code;
+// this service just delivers it. Defaults match Postman.gov.sg's transactional
+// email API: POST {recipient, subject, body} with an "Authorization: Bearer
+// <key>" header. All field names are overridable via env vars so another sender
+// (SendGrid, SES, etc.) can be used without code changes.
 const OTP = {
-  sendUrl: (process.env.OTP_SEND_URL || '').trim(),
-  verifyUrl: (process.env.OTP_VERIFY_URL || '').trim(),
-  sendMethod: (process.env.OTP_SEND_METHOD || 'POST').trim().toUpperCase(),
-  verifyMethod: (process.env.OTP_VERIFY_METHOD || 'POST').trim().toUpperCase(),
+  sendUrl: (process.env.OTP_SEND_URL || '').trim(),                        // e.g. https://api.postman.gov.sg/v1/transactional/email/send
   apiKey: process.env.OTP_API_KEY || '',
   authHeader: (process.env.OTP_AUTH_HEADER || 'Authorization').trim(),
-  // Prefix for the key, e.g. 'Bearer'. Set OTP_AUTH_SCHEME='' for a bare key
-  // (e.g. an x-api-key header that takes the key with no prefix).
+  // Prefix for the key. Default 'Bearer' (Postman: "Authorization: Bearer <key>").
+  // Set OTP_AUTH_SCHEME='' for a bare key (e.g. an x-api-key header).
   authScheme: process.env.OTP_AUTH_SCHEME === undefined ? 'Bearer' : process.env.OTP_AUTH_SCHEME.trim(),
-  emailField: (process.env.OTP_EMAIL_FIELD || 'email').trim(),   // body field for the recipient email
-  codeField: (process.env.OTP_CODE_FIELD || 'otp').trim(),       // body field for the code (verify)
+  recipientField: (process.env.OTP_RECIPIENT_FIELD || 'recipient').trim(), // body field for the email address
+  subjectField: (process.env.OTP_SUBJECT_FIELD || 'subject').trim(),
+  bodyField: (process.env.OTP_BODY_FIELD || 'body').trim(),
+  fromField: (process.env.OTP_FROM_FIELD || 'from').trim(),
+  from: (process.env.OTP_FROM || '').trim(),                               // optional verified "from" address
+  subject: (process.env.OTP_SUBJECT || 'Your GreenPass one-time code').trim(),
+  // {{otp}} is replaced with the generated code before the email is sent.
+  bodyTemplate: process.env.OTP_BODY_TEMPLATE
+    || 'Your GreenPass one-time code is {{otp}}. It expires in 10 minutes. If you did not request this, please ignore this email.',
   extra: (() => { try { return process.env.OTP_EXTRA_JSON ? JSON.parse(process.env.OTP_EXTRA_JSON) : {}; } catch { console.warn('[otp] OTP_EXTRA_JSON is not valid JSON — ignored'); return {}; } })(),
-  successField: (process.env.OTP_VERIFY_SUCCESS_FIELD || '').trim(), // optional: JSON field that signals a valid code
+  ttlMin: Math.max(2, Number(process.env.OTP_TTL_MIN || 10)),              // how long a code stays valid
+  maxAttempts: Math.max(1, Number(process.env.OTP_MAX_ATTEMPTS || 5)),     // wrong-code tries before a restart is forced
 };
-const otpEnabled = Boolean(OTP.sendUrl && OTP.verifyUrl);
-if (!otpEnabled) console.warn('[otp] OTP_SEND_URL / OTP_VERIFY_URL not set — login falls back to password only (no OTP) until configured.');
+const otpEnabled = Boolean(OTP.sendUrl);
+if (!otpEnabled) console.warn('[otp] OTP_SEND_URL not set — login falls back to password only (no emailed code) until configured.');
 
 function otpHeaders() {
   const h = { 'content-type': 'application/json', accept: 'application/json' };
   if (OTP.apiKey) h[OTP.authHeader] = OTP.authScheme ? `${OTP.authScheme} ${OTP.apiKey}` : OTP.apiKey;
   return h;
 }
-// Ask the OTP service to generate + email a code to this address.
-async function otpSend(email) {
-  if (!otpEnabled) return true; // not configured yet → treat as pass (password-only)
-  const res = await fetch(OTP.sendUrl, { method: OTP.sendMethod, headers: otpHeaders(), body: JSON.stringify({ [OTP.emailField]: email, ...OTP.extra }) });
-  if (!res.ok) throw new Error(`OTP send failed (HTTP ${res.status})`);
-  return true;
-}
-// Ask the OTP service whether the code the user typed is valid.
-async function otpVerify(email, code) {
-  if (!otpEnabled) return true;
-  let res;
-  try { res = await fetch(OTP.verifyUrl, { method: OTP.verifyMethod, headers: otpHeaders(), body: JSON.stringify({ [OTP.emailField]: email, [OTP.codeField]: code, ...OTP.extra }) }); }
-  catch (e) { console.warn('[otp] verify request failed:', e.message); return false; }
-  if (!res.ok) return false; // many providers return 4xx for a wrong/expired code
-  // Success detection: a configured field wins; else look for a common
-  // status/valid/success field; else accept any 2xx response.
-  let data = null; try { data = await res.json(); } catch {}
-  const truthy = (v) => v === true || ['true', 'ok', 'success', 'successful', 'verified', 'valid', 'approved', '1', 'yes'].includes(String(v).trim().toLowerCase());
-  if (OTP.successField) return truthy(data && data[OTP.successField]);
-  if (data && typeof data === 'object') {
-    for (const k of ['success', 'valid', 'verified', 'status', 'result']) if (k in data) return truthy(data[k]);
+// Random 6-digit code, and a salted hash of it we can safely keep in the cookie
+// (the cookie payload is readable by the browser, so the plain code never goes
+// in it — only this keyed hash, which also can't be forged without the secret).
+const genCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+const hashCode = (email, code) => crypto.createHmac('sha256', SESSION_SECRET).update('otp|' + String(email).toLowerCase() + '|' + String(code).trim()).digest('hex');
+// Generate a fresh code, email it via the external sender, and return its hash.
+async function issueOtp(email) {
+  const code = genCode();
+  if (otpEnabled) {
+    const body = {
+      [OTP.recipientField]: email,
+      [OTP.subjectField]: OTP.subject,
+      [OTP.bodyField]: OTP.bodyTemplate.replace(/\{\{\s*otp\s*\}\}/gi, code),
+      ...(OTP.from ? { [OTP.fromField]: OTP.from } : {}),
+      ...OTP.extra,
+    };
+    const res = await fetch(OTP.sendUrl, { method: 'POST', headers: otpHeaders(), body: JSON.stringify(body) });
+    if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error(`send failed (HTTP ${res.status}) ${t.slice(0, 180)}`); }
   }
-  return true;
+  return hashCode(email, code);
+}
+// Constant-time check of the submitted code against the hash in the pending cookie.
+function checkOtp(pend, submitted) {
+  if (!pend || !pend.codeHash) return false;
+  const h = hashCode(pend.email, submitted);
+  try { return crypto.timingSafeEqual(Buffer.from(h), Buffer.from(pend.codeHash)); } catch { return false; }
 }
 
 // ── Signed session cookies (HMAC-SHA256) ─────────────────────────────────────
@@ -452,26 +465,37 @@ app.post('/unlock', async (req, res) => {
   const email = (req.body.email || '').trim();
   if ((req.body.password || '') !== JOINER_PASSWORD) return res.send(joinerGatePage({ error: 'Incorrect access password. Please try again, or check with NParks HR.', email, next }));
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.send(joinerGatePage({ error: 'Please enter a valid email address.', email, next }));
-  try { await otpSend(email); }
-  catch (e) { console.warn('[otp] joiner send:', e.message); return res.send(joinerGatePage({ error: 'Sorry, we could not send a code right now. Please try again in a moment.', email, next })); }
+  // OTP not configured yet → password-only (no lockout).
   if (!otpEnabled) { setCookie(res, 'gp_joiner', signToken({ role: 'joiner', email }, 30 * 864e5), 30 * 86400); return res.redirect(next); }
-  setCookie(res, 'gp_j_pending', signToken({ email, next }, 15 * 60e3), 15 * 60);
+  let codeHash;
+  try { codeHash = await issueOtp(email); }
+  catch (e) { console.warn('[otp] joiner send:', e.message); return res.send(joinerGatePage({ error: 'Sorry, we could not send a code right now. Please try again in a moment.', email, next })); }
+  setCookie(res, 'gp_j_pending', signToken({ email, next, codeHash, attempts: 0 }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
   res.send(otpPage({ action: '/verify-otp', email, next, resendAction: '/unlock-resend' }));
 });
-app.post('/verify-otp', async (req, res) => {
+app.post('/verify-otp', (req, res) => {
   const pend = verifyToken(cookieVal(req, 'gp_j_pending'));
   if (!pend) return res.send(joinerGatePage({ error: 'Your session timed out. Please start again.', next: '/submit' }));
   const next = (pend.next || '/submit').startsWith('/') ? pend.next : '/submit';
-  const ok = await otpVerify(pend.email, (req.body.code || '').trim());
-  if (!ok) return res.send(otpPage({ action: '/verify-otp', email: pend.email, next, error: 'That code was not valid or has expired. Please try again, or resend a new code.', resendAction: '/unlock-resend' }));
-  clearCookie(res, 'gp_j_pending');
-  setCookie(res, 'gp_joiner', signToken({ role: 'joiner', email: pend.email }, 30 * 864e5), 30 * 86400);
-  res.redirect(next);
+  if (checkOtp(pend, req.body.code)) {
+    clearCookie(res, 'gp_j_pending');
+    setCookie(res, 'gp_joiner', signToken({ role: 'joiner', email: pend.email }, 30 * 864e5), 30 * 86400);
+    return res.redirect(next);
+  }
+  const attempts = (pend.attempts || 0) + 1;
+  if (attempts >= OTP.maxAttempts) {
+    clearCookie(res, 'gp_j_pending');
+    return res.send(joinerGatePage({ error: 'Too many incorrect codes. Please start again to get a new code.', email: pend.email, next }));
+  }
+  setCookie(res, 'gp_j_pending', signToken({ email: pend.email, next, codeHash: pend.codeHash, attempts }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
+  res.send(otpPage({ action: '/verify-otp', email: pend.email, next, error: `That code was not correct. Please try again (${OTP.maxAttempts - attempts} attempt(s) left), or resend a new code.`, resendAction: '/unlock-resend' }));
 });
 app.post('/unlock-resend', async (req, res) => {
   const pend = verifyToken(cookieVal(req, 'gp_j_pending'));
   if (!pend) return res.send(joinerGatePage({ error: 'Your session timed out. Please start again.', next: '/submit' }));
-  try { await otpSend(pend.email); } catch (e) { return res.send(otpPage({ action: '/verify-otp', email: pend.email, next: pend.next, error: 'Could not resend the code. Please try again shortly.', resendAction: '/unlock-resend' })); }
+  let codeHash;
+  try { codeHash = await issueOtp(pend.email); } catch (e) { return res.send(otpPage({ action: '/verify-otp', email: pend.email, next: pend.next, error: 'Could not resend the code. Please try again shortly.', resendAction: '/unlock-resend' })); }
+  setCookie(res, 'gp_j_pending', signToken({ email: pend.email, next: pend.next, codeHash, attempts: 0 }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
   res.send(otpPage({ action: '/verify-otp', email: pend.email, next: pend.next, resendAction: '/unlock-resend' }));
 });
 
@@ -637,25 +661,36 @@ app.post(ADMIN_PATH + '/login', async (req, res) => {
   if ((req.body.password || '') !== ADMIN_PASSWORD) return res.send(adminLoginPage({ error: 'Incorrect password. Please try again.', email }));
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.send(adminLoginPage({ error: 'Please enter a valid email address.', email }));
   if (ADMIN_EMAILS.length && !ADMIN_EMAILS.includes(email.toLowerCase())) return res.send(adminLoginPage({ error: 'This email is not authorised for the HR console. Please contact your GreenPass administrator.', email }));
-  try { await otpSend(email); }
-  catch (e) { console.warn('[otp] admin send:', e.message); return res.send(adminLoginPage({ error: 'Could not send a code right now. Please try again shortly.', email })); }
+  // OTP not configured yet → password-only (no lockout).
   if (!otpEnabled) { setCookie(res, 'gp_admin', signToken({ role: 'admin', email }, 12 * 3600e3), 12 * 3600); return res.redirect(ADMIN_PATH); }
-  setCookie(res, 'gp_a_pending', signToken({ email }, 15 * 60e3), 15 * 60);
+  let codeHash;
+  try { codeHash = await issueOtp(email); }
+  catch (e) { console.warn('[otp] admin send:', e.message); return res.send(adminLoginPage({ error: 'Could not send a code right now. Please try again shortly.', email })); }
+  setCookie(res, 'gp_a_pending', signToken({ email, codeHash, attempts: 0 }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
   res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email, resendAction: ADMIN_PATH + '/resend' }));
 });
-app.post(ADMIN_PATH + '/verify-otp', async (req, res) => {
+app.post(ADMIN_PATH + '/verify-otp', (req, res) => {
   const pend = verifyToken(cookieVal(req, 'gp_a_pending'));
   if (!pend) return res.send(adminLoginPage({ error: 'Your login timed out. Please sign in again.' }));
-  const ok = await otpVerify(pend.email, (req.body.code || '').trim());
-  if (!ok) return res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, error: 'That code was not valid or has expired. Please try again, or resend a new code.', resendAction: ADMIN_PATH + '/resend' }));
-  clearCookie(res, 'gp_a_pending');
-  setCookie(res, 'gp_admin', signToken({ role: 'admin', email: pend.email }, 12 * 3600e3), 12 * 3600);
-  res.redirect(ADMIN_PATH);
+  if (checkOtp(pend, req.body.code)) {
+    clearCookie(res, 'gp_a_pending');
+    setCookie(res, 'gp_admin', signToken({ role: 'admin', email: pend.email }, 12 * 3600e3), 12 * 3600);
+    return res.redirect(ADMIN_PATH);
+  }
+  const attempts = (pend.attempts || 0) + 1;
+  if (attempts >= OTP.maxAttempts) {
+    clearCookie(res, 'gp_a_pending');
+    return res.send(adminLoginPage({ error: 'Too many incorrect codes. Please sign in again to get a new code.', email: pend.email }));
+  }
+  setCookie(res, 'gp_a_pending', signToken({ email: pend.email, codeHash: pend.codeHash, attempts }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
+  res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, error: `That code was not correct. Please try again (${OTP.maxAttempts - attempts} attempt(s) left), or resend a new code.`, resendAction: ADMIN_PATH + '/resend' }));
 });
 app.post(ADMIN_PATH + '/resend', async (req, res) => {
   const pend = verifyToken(cookieVal(req, 'gp_a_pending'));
   if (!pend) return res.send(adminLoginPage({ error: 'Your login timed out. Please sign in again.' }));
-  try { await otpSend(pend.email); } catch { return res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, error: 'Could not resend the code. Please try again shortly.', resendAction: ADMIN_PATH + '/resend' })); }
+  let codeHash;
+  try { codeHash = await issueOtp(pend.email); } catch { return res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, error: 'Could not resend the code. Please try again shortly.', resendAction: ADMIN_PATH + '/resend' })); }
+  setCookie(res, 'gp_a_pending', signToken({ email: pend.email, codeHash, attempts: 0 }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
   res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, resendAction: ADMIN_PATH + '/resend' }));
 });
 app.get(ADMIN_PATH + '/logout', (_req, res) => {
