@@ -23,11 +23,33 @@ import pg from 'pg';
 import zlib from 'node:zlib';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const app = express();
+// Behind Rabbit/Cloudflare, which terminate TLS and forward over HTTP — trust the
+// proxy so req.protocol/req.secure reflect the real https client connection.
+app.set('trust proxy', true);
+app.disable('x-powered-by');
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
+
+// ── Security headers (applied to every response) ─────────────────────────────
+app.use((_req, res, next) => {
+  res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('X-Frame-Options', 'SAMEORIGIN');
+  res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.set('Cross-Origin-Opener-Policy', 'same-origin');
+  // The pages use inline <script>/<style> and inline event handlers, so script/
+  // style need 'unsafe-inline'; everything else is locked to same-origin, with
+  // data: allowed for the inline images/favicon and embedded eDM photos.
+  res.set('Content-Security-Policy',
+    "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; "
+    + "img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
+    + "connect-src 'self'; form-action 'self'");
+  next();
+});
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'nparks-admin').trim();
@@ -42,9 +64,24 @@ let ADMIN_PATH = (process.env.ADMIN_PATH || '/admin').trim();
 if (!ADMIN_PATH.startsWith('/')) ADMIN_PATH = '/' + ADMIN_PATH;
 ADMIN_PATH = ADMIN_PATH.replace(/\/+$/, '') || '/admin';
 const DATABASE_URL = process.env.DATABASE_URL;
-const useSsl = process.env.PGSSL !== 'disable';
+// TLS for the database connection. Secure by default: the server certificate is
+// verified against the system trust store (Neon and most managed Postgres chain
+// to a public CA, so this just works). Options:
+//   PGSSL=disable        → no TLS (local Postgres only)
+//   PGSSL_CA / PGSSL_CA_FILE → pin a provider CA (PEM content, or a file path)
+//   PGSSL_INSECURE=1     → last-resort, discouraged: skip certificate verification
+function dbSsl() {
+  if (process.env.PGSSL === 'disable') return false;
+  const ca = process.env.PGSSL_CA || (process.env.PGSSL_CA_FILE ? fs.readFileSync(process.env.PGSSL_CA_FILE, 'utf8') : undefined);
+  if (ca) return { ca, rejectUnauthorized: true };
+  if (process.env.PGSSL_INSECURE === '1') {
+    console.warn('[server] PGSSL_INSECURE=1 — database TLS certificate verification is DISABLED. Set PGSSL_CA instead for production.');
+    return { rejectUnauthorized: false };
+  }
+  return { rejectUnauthorized: true };
+}
 const pool = DATABASE_URL
-  ? new pg.Pool({ connectionString: DATABASE_URL, ssl: useSsl ? { rejectUnauthorized: false } : false, max: 5, connectionTimeoutMillis: 10000 })
+  ? new pg.Pool({ connectionString: DATABASE_URL, ssl: dbSsl(), max: 5, connectionTimeoutMillis: 10000 })
   : null;
 
 if (!pool) console.warn('[server] DATABASE_URL not set — data will not persist.');
@@ -151,8 +188,12 @@ function verifyToken(token) {
   try { const d = JSON.parse(b64uDec(p)); return (d && d.exp && d.exp > Date.now()) ? d : null; } catch { return null; }
 }
 const cookieVal = (req, name) => { const m = new RegExp('(?:^|;\\s*)' + name + '=([^;]+)').exec(req.headers.cookie || ''); return m ? decodeURIComponent(m[1]) : null; };
-const setCookie = (res, name, value, maxAgeSec) => res.append('Set-Cookie', `${name}=${encodeURIComponent(value)}; HttpOnly; Path=/; Max-Age=${maxAgeSec}; SameSite=Lax`);
-const clearCookie = (res, name) => res.append('Set-Cookie', `${name}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`);
+// Session/OTP cookies are Secure by default (sent only over HTTPS). Set
+// COOKIE_SECURE=0 only to test over plain http on a non-localhost host.
+const COOKIE_SECURE = process.env.COOKIE_SECURE !== '0';
+const cookieFlags = (maxAgeSec) => `HttpOnly; Path=/; Max-Age=${maxAgeSec}; SameSite=Lax${COOKIE_SECURE ? '; Secure' : ''}`;
+const setCookie = (res, name, value, maxAgeSec) => res.append('Set-Cookie', `${name}=${encodeURIComponent(value)}; ${cookieFlags(maxAgeSec)}`);
+const clearCookie = (res, name) => res.append('Set-Cookie', `${name}=; ${cookieFlags(0)}`);
 
 // ── Colour palette (green & nature theme) ────────────────────────────────────
 const C = { green: '#2D6A4F', greenDark: '#1B4332', sage: '#95D5B2', sageLight: '#E8F5E9', cream: '#F8F4E3', earth: '#6B4226' };
@@ -270,9 +311,21 @@ function checkPhoto(buffer) {
   } catch { return { status: 'manual-review', reason: 'Photo could not be inspected — please visually verify before approving.' }; }
 }
 
+// Verify a buffer really is a JPEG or PNG by its magic bytes — the client-sent
+// Content-Type is trivially spoofable and must never be trusted. Returns the
+// real MIME type, or null if the bytes are not an accepted image.
+function sniffImageType(buf) {
+  if (!buf || buf.length < 4) return null;
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';  // \x89PNG
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';                    // JPEG SOI
+  return null;
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
+  // First-pass check on the declared type; the authoritative check is the
+  // magic-byte sniff (sniffImageType) run on the uploaded buffer before storing.
   fileFilter: (_req, file, cb) => (['image/jpeg', 'image/png'].includes(file.mimetype) ? cb(null, true) : cb(new Error('Only JPG and PNG images are accepted.'))),
 });
 
@@ -373,11 +426,11 @@ function submitPage({ error = '', values = {}, amend = false, photoUrl = null } 
     ? `<p class="muted">Update anything you'd like to change below, then save. Your amended introduction will go back to the HR team for a quick review. <b>Job title, division and start date are added by HR.</b></p>`
     : `<p class="muted">Our bi-monthly new joiner announcement will include a self-introduction from each new joiner, shared with NParks colleagues via email. Take this opportunity to tell your new colleagues a little about yourself! Your introduction will be included in a warm welcome email after a quick review by HR.<br>Note that your job title, division, and start date will be added by HR, so you don't need to include those.</p>
        <p class="muted" style="background:${C.sageLight};border-radius:10px;padding:10px 12px"><b>Already submitted before?</b> You can <a href="/amend">amend your existing introduction</a> instead of starting again.</p>`;
-  const emailField = amend
-    ? `<div class="field"><label>Email address</label><input type="email" name="email" value="${esc(values.email)}" readonly style="background:#eef3ef">
-        <p class="muted" style="margin-top:4px">This is the email you submitted with. To use a different one, start a new introduction instead.</p></div>`
-    : `<div class="field"><label>Email address <span class="req">*</span></label><input type="email" name="email" required value="${esc(values.email)}" placeholder="e.g. yourname@gmail.com">
-        <p class="muted" style="margin-top:4px">We use this only to find your submission if you need to edit it later — it won't be shared in the welcome email or shown to your colleagues.</p></div>`;
+  // Email is fixed to the signed-in (OTP-verified) address — it is the joiner's
+  // identity and cannot be changed in the form; the server ignores any value
+  // posted here and always uses the session email.
+  const emailField = `<div class="field"><label>Email address</label><input type="email" name="email" value="${esc(values.email)}" readonly style="background:#eef3ef">
+        <p class="muted" style="margin-top:4px">You're signed in with this email (verified by your one-time code), and your introduction is saved under it. It won't be shared in the welcome email or shown to your colleagues. To use a different email, log out and sign in again with that address.</p></div>`;
   const photoField = amend
     ? `<div class="field"><label>Profile photo (JPG/PNG, max 5MB)</label>
         <div class="row">
@@ -507,36 +560,45 @@ app.post('/submit', (req, res) => {
   if (!hasJoiner(req)) return res.send(joinerGatePage({ error: 'Please sign in with the access password and a one-time code first.', next: '/submit' }));
   upload.single('photo')(req, res, async (err) => {
     const amend = req.body.amend === '1';
-    // Re-render the right form (new or amend) with an error message.
+    // Identity is the OTP-verified email in the session — NEVER an email posted
+    // in the form. This stops a signed-in joiner from reading or amending anyone
+    // else's submission by typing a different address.
+    const mail = (joinerEmail(req) || '').trim();
+    // Re-render the form with an error message.
     const fail = async (message, status = 400) => {
       let photoUrl = null;
-      const mail = (req.body.email || '').trim();
-      if (amend && pool && mail) {
-        const ex = await pool.query('select id from submissions where lower(email)=lower($1) order by created_at desc limit 1', [mail]);
+      if (pool && mail) {
+        const ex = await pool.query("select id from submissions where lower(email)=lower($1) and status <> 'approved' order by created_at desc limit 1", [mail]);
         photoUrl = ex.rows.length ? `/api/photo/${ex.rows[0].id}` : null;
       }
-      return res.status(status).send(submitPage({ error: message, values: req.body, amend, photoUrl }));
+      return res.status(status).send(submitPage({ error: message, values: { ...req.body, email: mail }, amend, photoUrl }));
     };
 
     if (err) return fail(err.message);
     if (!pool) return fail('Database is not configured yet. Please try again shortly.', 503);
-    const { full_name, email, intro, fun_fact } = req.body;
-    if (!full_name || !email || !intro) return fail('Full name, email address and introduction are all required.');
-    const mail = (email || '').trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail('Please enter a valid email address.');
+    const { full_name, intro, fun_fact } = req.body;
+    if (!full_name || !intro) return fail('Full name and introduction are both required.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail('Your session is missing a valid email. Please sign in again.');
 
     try {
       const name = full_name.trim();
 
-      // Find this person's existing entry (matched by email) that HR has NOT yet
-      // approved. If found, we UPDATE it in place — a photo is optional here
-      // (leave it out to keep the current one). If not found, this is a brand-new
-      // submission and a photo is required. Approved entries are left untouched.
+      // Find THIS joiner's existing entry (their own session email) that HR has
+      // NOT yet approved. If found, we UPDATE it in place — a photo is optional
+      // here (leave it out to keep the current one). If not found, this is a
+      // brand-new submission and a photo is required. Approved entries untouched.
       const existing = await pool.query(
         `select id from submissions where lower(email) = lower($1) and status <> 'approved'
          order by created_at desc limit 1`, [mail]);
       const isEdit = existing.rows.length > 0;
       if (!req.file && !isEdit) return fail('A profile photo is required.');
+
+      // Authoritative image check: trust the bytes, not the client Content-Type.
+      let photoMime = null;
+      if (req.file) {
+        photoMime = sniffImageType(req.file.buffer);
+        if (!photoMime) return fail('That file is not a valid JPG or PNG image. Please upload a real photo.');
+      }
 
       const ai = await moderateText(intro);
       const photo = req.file ? checkPhoto(req.file.buffer) : null;
@@ -548,7 +610,7 @@ app.post('/submit', (req, res) => {
                ai_status=$5, ai_confidence=$6, ai_reason=$7, photo_status=$8, photo_reason=$9,
                photo_mime=$10, photo_data=$11, orig_photo_mime=null, orig_photo_data=null, updated_at=now() where id=$12`,
             [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
-             photo.status, photo.reason, req.file.mimetype, req.file.buffer, existing.rows[0].id],
+             photo.status, photo.reason, photoMime, req.file.buffer, existing.rows[0].id],
           );
         } else {
           // No new photo — keep the existing one, update everything else.
@@ -564,7 +626,7 @@ app.post('/submit', (req, res) => {
       const { rows } = await pool.query(
         `insert into submissions (full_name,email,intro,fun_fact,status,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,photo_mime,photo_data)
          values ($1,$2,$3,$4,'awaiting-hr-review',$5,$6,$7,$8,$9,$10,$11) returning full_name`,
-        [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, photo.status, photo.reason, req.file.mimetype, req.file.buffer],
+        [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, photo.status, photo.reason, photoMime, req.file.buffer],
       );
       res.redirect(`/submit/thanks?name=${encodeURIComponent(rows[0].full_name)}`);
     } catch (e) {
@@ -579,9 +641,9 @@ function amendLookupPage({ error = '', email = '' } = {}) {
   return layout({ title: 'Amend your introduction 🌱', body: `
     ${error ? `<div class="err">${esc(error)}</div>` : ''}
     <div class="card" style="max-width:520px;margin:0 auto">
-      <p class="muted">Enter the email address you used when you first submitted, and we'll bring up your introduction so you can make changes. You can amend any time before HR approves your entry.</p>
+      <p class="muted">We'll bring up the introduction saved under your signed-in email so you can make changes. You can amend any time before HR approves your entry.</p>
       <form method="post" action="/amend">
-        <div class="field"><label>Email address <span class="req">*</span></label><input type="email" name="email" required value="${esc(email)}" placeholder="e.g. yourname@gmail.com"></div>
+        <div class="field"><label>Email address</label><input type="email" name="email" value="${esc(email)}" readonly style="background:#eef3ef"></div>
         <button class="btn" type="submit">Find my introduction</button>
         <a class="btn sec" href="/submit" style="margin-left:8px">Start a new one instead</a>
       </form>
@@ -589,16 +651,17 @@ function amendLookupPage({ error = '', email = '' } = {}) {
 }
 app.get('/amend', (req, res) => {
   if (!hasJoiner(req)) return res.send(joinerGatePage({ next: '/amend' }));
-  res.send(amendLookupPage());
+  res.send(amendLookupPage({ email: joinerEmail(req) }));
 });
 app.post('/amend', async (req, res) => {
   if (!hasJoiner(req)) return res.send(joinerGatePage({ error: 'Please sign in with the access password and a one-time code first.', next: '/amend' }));
-  if (!pool) return res.status(503).send(amendLookupPage({ error: 'Database is not configured yet. Please try again shortly.' }));
-  const mail = (req.body.email || '').trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).send(amendLookupPage({ error: 'Please enter a valid email address.', email: mail }));
+  if (!pool) return res.status(503).send(amendLookupPage({ error: 'Database is not configured yet. Please try again shortly.', email: joinerEmail(req) }));
+  // Look up strictly by the signed-in (OTP-verified) email — never a posted one.
+  const mail = (joinerEmail(req) || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).send(amendLookupPage({ error: 'Your session is missing a valid email. Please sign in again.', email: mail }));
   const { rows } = await pool.query(
     `select id, full_name, email, intro, fun_fact, status from submissions where lower(email) = lower($1) order by created_at desc limit 1`, [mail]);
-  if (!rows.length) return res.status(404).send(amendLookupPage({ error: "We couldn't find a submission for that email address. If you haven't submitted yet, please start a new introduction.", email: mail }));
+  if (!rows.length) return res.status(404).send(amendLookupPage({ error: "We couldn't find a submission under your email address. If you haven't submitted yet, please start a new introduction.", email: mail }));
   const s = rows[0];
   if (s.status === 'approved') return res.status(400).send(amendLookupPage({ error: 'Your introduction has already been approved by HR, so it can no longer be edited here. Please contact HR if something needs to change.', email: mail }));
   res.send(submitPage({ amend: true, values: { full_name: s.full_name, email: s.email, intro: s.intro, fun_fact: s.fun_fact || '' }, photoUrl: `/api/photo/${s.id}` }));
@@ -620,11 +683,17 @@ app.get('/submit/thanks', (req, res) => {
 app.get('/api/photo/:id', async (req, res) => {
   if (!pool) return res.status(503).send('No database');
   try {
-    const { rows } = await pool.query('select photo_mime, photo_data from submissions where id=$1', [req.params.id]);
+    const { rows } = await pool.query('select email, photo_mime, photo_data from submissions where id=$1', [req.params.id]);
     if (!rows.length || !rows[0].photo_data) return res.status(404).send('Not found');
-    res.set('Content-Type', rows[0].photo_mime || 'image/jpeg');
-    res.set('Cache-Control', 'public, max-age=86400');
-    res.send(rows[0].photo_data);
+    const row = rows[0];
+    // Authorization: HR admins may view any photo; a signed-in joiner may view
+    // ONLY the photo on their own submission (matched to their OTP-verified
+    // email). Everyone else gets 404 — don't reveal that the row exists.
+    const owner = hasJoiner(req) && row.email && (joinerEmail(req) || '').toLowerCase() === String(row.email).toLowerCase();
+    if (!hasAdmin(req) && !owner) return res.status(404).send('Not found');
+    res.set('Content-Type', row.photo_mime === 'image/png' ? 'image/png' : 'image/jpeg');
+    res.set('Cache-Control', 'private, no-store');
+    res.send(row.photo_data);
   } catch { res.status(400).send('Bad request'); }
 });
 
@@ -960,6 +1029,9 @@ app.post(ADMIN_PATH + '/photo', (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).json({ error: 'Missing submission id.' });
     if (!req.file) return res.status(400).json({ error: 'No image was received.' });
+    // Trust the bytes, not the client Content-Type.
+    const photoMime = sniffImageType(req.file.buffer);
+    if (!photoMime) return res.status(400).json({ error: 'That file is not a valid JPG or PNG image.' });
     try {
       const photo = checkPhoto(req.file.buffer);
       // Keep a one-time snapshot of the joiner's original photo (coalesce: only
@@ -970,7 +1042,7 @@ app.post(ADMIN_PATH + '/photo', (req, res) => {
            orig_photo_data = coalesce(orig_photo_data, photo_data),
            photo_mime=$1, photo_data=$2, photo_status=$3, photo_reason=$4, updated_at=now()
          where id=$5`,
-        [req.file.mimetype, req.file.buffer, photo.status, photo.reason, id]);
+        [photoMime, req.file.buffer, photo.status, photo.reason, id]);
       if (!rowCount) return res.status(404).json({ error: 'Submission not found.' });
       res.json({ ok: true });
     } catch (e) {
