@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// GreenPass — single-file, server-rendered edition (for Rabbit Deploy)
+// NParks New Hire Introduction — single-file, server-rendered edition (for Rabbit Deploy)
 //
 // This is the whole app in ONE Node/Express file — no build step, no separate
 // front-end bundle. Every page is rendered as HTML on the server; forms submit
@@ -93,7 +93,7 @@ if (pool) pool.on('error', (err) => console.error('[pool] idle client error (ign
 
 // ── Email + OTP authentication (two-factor) ──────────────────────────────────
 // Both the HR console and the new-joiner form require two factors: (1) the
-// shared password, then (2) a one-time code emailed to the person. GreenPass
+// shared password, then (2) a one-time code emailed to the person. The app
 // GENERATES and VERIFIES the code itself; an external email sender (e.g.
 // Postman.gov.sg's transactional email API, configured via the OTP_* env vars
 // below) is used ONLY to deliver the code. A salted hash of the code is kept in
@@ -111,7 +111,7 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
 const SESSION_SECRET = process.env.SESSION_SECRET
   || crypto.createHash('sha256').update('gp|' + ADMIN_PASSWORD + '|' + JOINER_PASSWORD).digest('hex');
 
-// External EMAIL SENDER (send-only). GreenPass generates + verifies the code;
+// External EMAIL SENDER (send-only). The app generates + verifies the code;
 // this service just delivers it. Defaults match Postman.gov.sg's transactional
 // email API: POST {recipient, subject, body} with an "Authorization: Bearer
 // <key>" header. All field names are overridable via env vars so another sender
@@ -128,10 +128,10 @@ const OTP = {
   bodyField: (process.env.OTP_BODY_FIELD || 'body').trim(),
   fromField: (process.env.OTP_FROM_FIELD || 'from').trim(),
   from: (process.env.OTP_FROM || '').trim(),                               // optional verified "from" address
-  subject: (process.env.OTP_SUBJECT || 'Your GreenPass one-time code').trim(),
+  subject: (process.env.OTP_SUBJECT || 'Your NParks New Hire Introduction one-time code').trim(),
   // {{otp}} is replaced with the generated code before the email is sent.
   bodyTemplate: process.env.OTP_BODY_TEMPLATE
-    || 'Your GreenPass one-time code is {{otp}}. It expires in 10 minutes. If you did not request this, please ignore this email.',
+    || 'Your NParks New Hire Introduction one-time code is {{otp}}. It expires in 10 minutes. If you did not request this, please ignore this email.',
   extra: (() => { try { return process.env.OTP_EXTRA_JSON ? JSON.parse(process.env.OTP_EXTRA_JSON) : {}; } catch { console.warn('[otp] OTP_EXTRA_JSON is not valid JSON — ignored'); return {}; } })(),
   ttlMin: Math.max(2, Number(process.env.OTP_TTL_MIN || 10)),              // how long a code stays valid
   maxAttempts: Math.max(1, Number(process.env.OTP_MAX_ATTEMPTS || 5)),     // wrong-code tries before a restart is forced
@@ -336,7 +336,7 @@ function layout({ title, body, adminNav = false }) {
     ? `<nav class="nav"><a href="${ADMIN_PATH}">Review</a><a href="${ADMIN_PATH}/edm">Generate eDM</a><a href="${ADMIN_PATH}/archive">Archive</a><a href="${ADMIN_PATH}/logout">Log out</a></nav>`
     : `<nav class="nav"><a href="/">Home</a><a href="/submit">New joiner</a></nav>`;
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} · GreenPass</title>
+<title>${esc(title)} · NParks New Hire Introduction</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232D6A4F'/%3E%3Cpath d='M50 12C24 12 12 26 12 48c0 2 1 3 3 3 22 0 36-13 36-39z' fill='%2395D5B2'/%3E%3C/svg%3E">
 <style>
   *{box-sizing:border-box}
@@ -400,7 +400,7 @@ function layout({ title, body, adminNav = false }) {
 <svg class="foliage" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40 V22 Q60 6 120 22 Q180 4 240 22 Q300 8 360 22 Q420 3 480 22 Q540 9 600 22 Q660 4 720 22 Q780 8 840 22 Q900 5 960 22 Q1020 9 1080 22 Q1140 6 1200 22 V40 Z" fill="currentColor"/></svg>
 </header>
 <main>${body}</main>
-<footer>GreenPass · National Parks Board, Singapore 🌿</footer>
+<footer>NParks New Hire Introduction · National Parks Board, Singapore 🌿</footer>
 </body></html>`;
 }
 
@@ -412,7 +412,7 @@ function moderationTag(status) {
 
 // ── Public: landing ──────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {
-  res.send(layout({ title: 'Welcome to GreenPass 🌿', body: `
+  res.send(layout({ title: 'NParks New Hire Introduction 🌿', body: `
     <p class="muted" style="font-size:16px;max-width:640px">Our warm welcome for every new member of the NParks family. Share a short introduction and it will be included in a friendly welcome email to your new colleagues.</p>
     <div style="margin-top:18px">
       <div class="card" style="max-width:560px"><h2 style="color:${C.green};margin-top:0">I'm a new joiner 🌱</h2><p class="muted">Share a little about yourself so we can introduce you to your new colleagues. It only takes a couple of minutes.</p>
@@ -728,7 +728,7 @@ app.post(ADMIN_PATH + '/login', async (req, res) => {
   const email = (req.body.email || '').trim();
   if ((req.body.password || '') !== ADMIN_PASSWORD) return res.send(adminLoginPage({ error: 'Incorrect password. Please try again.', email }));
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.send(adminLoginPage({ error: 'Please enter a valid email address.', email }));
-  if (ADMIN_EMAILS.length && !ADMIN_EMAILS.includes(email.toLowerCase())) return res.send(adminLoginPage({ error: 'This email is not authorised for the HR console. Please contact your GreenPass administrator.', email }));
+  if (ADMIN_EMAILS.length && !ADMIN_EMAILS.includes(email.toLowerCase())) return res.send(adminLoginPage({ error: 'This email is not authorised for the HR console. Please contact the site administrator.', email }));
   // OTP not configured yet → password-only (no lockout).
   if (!otpEnabled) { setCookie(res, 'gp_admin', signToken({ role: 'admin', email }, 12 * 3600e3), 12 * 3600); return res.redirect(ADMIN_PATH); }
   let codeHash;
@@ -771,7 +771,7 @@ const AI_DISCLAIMER = `<div class="banner"><span>🤝</span><div><b>AI moderatio
 // ── Admin: review submissions ────────────────────────────────────────────────
 app.get(ADMIN_PATH, async (req, res) => {
   if (!hasAdmin(req)) return res.send(adminLoginPage());
-  if (!pool) return res.send(layout({ title: 'GreenPass HR Console', adminNav: true, body: `${AI_DISCLAIMER}<div class="card">No database connected.</div>` }));
+  if (!pool) return res.send(layout({ title: 'NParks New Hire Introduction — HR Console', adminNav: true, body: `${AI_DISCLAIMER}<div class="card">No database connected.</div>` }));
   const { rows } = await pool.query(`select id,full_name,email,start_date,intro,fun_fact,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,updated_at,(orig_photo_data is not null) as has_orig from submissions order by created_at desc`);
   const groups = [
     ['awaiting-hr-review', 'Awaiting HR Review', 'Add job details and approve, or reject.'],
@@ -797,7 +797,7 @@ app.get(ADMIN_PATH, async (req, res) => {
     content += `<div class="grid two">` + items.map(cardHtml).join('') + `</div>`;
   }
   const body = `<div class="adminwrap">${sidebar}<div class="admincontent">${content}</div></div>` + PHOTO_EDITOR_JS;
-  res.send(layout({ title: 'GreenPass HR Console 🌿', adminNav: true, body }));
+  res.send(layout({ title: 'NParks New Hire Introduction — HR Console 🌿', adminNav: true, body }));
 });
 
 // Client-side canvas photo editor shared by every card on the review page.
@@ -1270,7 +1270,7 @@ function buildEdmHtml(hires, occasion, sendDate) {
 
   const dateLine = sendDate ? `<p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#d8f3dc;">📅 ${esc(sendDate)}</p>` : '';
 
-  return `<!-- GreenPass eDM -->
+  return `<!-- NParks New Hire Introduction eDM -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};padding:24px 0;"><tr><td align="center">
   <!--[if mso]><table role="presentation" align="center" width="${WIDTH}" cellpadding="0" cellspacing="0" border="0"><tr><td width="${WIDTH}"><![endif]-->
   <table role="presentation" width="${WIDTH}" cellpadding="0" cellspacing="0" border="0" style="width:${WIDTH}px;min-width:${WIDTH}px;max-width:${WIDTH}px;background-color:#ffffff;border-radius:18px;overflow:hidden;">
@@ -1332,7 +1332,7 @@ async function seedIfEmpty() {
 // setup (and optional seeding) runs in the background afterwards; if the DB is
 // briefly unreachable it retries on the next request instead of blocking boot.
 app.listen(PORT, () => {
-  console.log(`🌿 GreenPass (single-file) running on http://localhost:${PORT}`);
+  console.log(`🌿 NParks New Hire Introduction (single-file) running on http://localhost:${PORT}`);
   if (!DATABASE_URL) console.log('   ⚠  DATABASE_URL not set — attach a database to persist data.');
   if (!process.env.ANTHROPIC_API_KEY) console.log('   ⚠  ANTHROPIC_API_KEY not set — AI moderation marks entries for manual review.');
 });
