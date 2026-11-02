@@ -1,0 +1,1629 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NParks New Hire Introduction — Technical &amp; Continuity Guide</title><meta name="description" content="Architecture, workflow, logic and full source for the New Hire Introduction portal."><style>
+:root{--green:#2D6A4F;--dark:#1B4332;--sage:#95D5B2;--sagebg:#E8F5E9;--cream:#F8F4E3;--earth:#6B4226;--ink:#1f2a24;--muted:#5b6b60}
+*{box-sizing:border-box}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);line-height:1.55;background:#eef2ee}
+.page{max-width:900px;margin:0 auto;background:#fff;padding:0 0 60px}
+.cover{background:linear-gradient(150deg,var(--dark),var(--green));color:#fff;padding:60px 56px 52px;position:relative;overflow:hidden}
+.cover .leafrow{position:absolute;right:28px;top:26px;font-size:30px;letter-spacing:6px;opacity:.9}
+.cover .kicker{font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--sage);font-weight:700}
+.cover h1{font-size:40px;margin:14px 0 8px;line-height:1.1}
+.cover .sub{font-size:18px;color:#d8f3dc;max-width:620px}
+.cover .meta{margin-top:26px;font-size:13px;color:#cfe9d8;border-top:1px solid rgba(255,255,255,.25);padding-top:16px;max-width:620px}
+.wrap{padding:36px 56px}
+h2{color:var(--green);font-size:25px;border-bottom:3px solid var(--sage);padding-bottom:7px;margin:42px 0 16px}
+h3{color:var(--dark);font-size:19px;margin:28px 0 8px}
+h4{color:var(--earth);font-size:15px;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+p,li{font-size:15px}
+a{color:var(--green)}
+code{background:#eef3ef;border:1px solid #d6e5dc;border-radius:5px;padding:1px 6px;font-family:'Consolas','SF Mono',Menlo,monospace;font-size:13px;color:#14402e;word-break:break-word}
+ol,ul{padding-left:22px}
+ol li,ul li{margin:5px 0}
+.toc{background:var(--sagebg);border:1px solid var(--sage);border-radius:12px;padding:16px 22px;margin:24px 0}
+.toc h3{margin:0 0 8px;color:var(--green)}
+.toc ol{margin:0;columns:2;column-gap:32px}
+.toc a{text-decoration:none;font-weight:600}
+figure{margin:18px 0 26px;border:1px solid #d6e5dc;border-radius:12px;overflow:hidden;background:#fbfdfb;box-shadow:0 4px 16px -10px rgba(0,0,0,.3)}
+figure img{display:block;width:100%}
+figcaption{font-size:13px;color:var(--muted);padding:9px 14px;background:#f2f7f3;border-top:1px solid #e0ebe4}
+.callout{border-left:5px solid var(--green);background:var(--sagebg);border-radius:0 10px 10px 0;padding:12px 18px;margin:16px 0;font-size:14.5px}
+.callout.warn{border-left-color:#c98a1b;background:#fff7e6}
+.callout.danger{border-left-color:#b02a2a;background:#fcebeb}
+.callout.tip{border-left-color:#2563a8;background:#eaf2fb}
+.callout b{color:var(--dark)}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:13.5px}
+th,td{border:1px solid #d6e5dc;padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--green);color:#fff;font-weight:600}
+tr:nth-child(even) td{background:#f6faf7}
+.steps{counter-reset:step;list-style:none;padding:0}
+.steps>li{counter-increment:step;position:relative;padding:4px 0 16px 46px;margin:0}
+.steps>li::before{content:counter(step);position:absolute;left:0;top:0;width:32px;height:32px;background:var(--green);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.steps>li b{color:var(--dark)}
+.emailbox{border:1px dashed var(--green);border-radius:10px;background:#fcfffd;padding:18px 20px;margin:14px 0;font-size:14px}
+.emailbox .hl{color:#b02a2a;font-weight:700}
+pre{background:#0f2019;color:#d7f0e2;border-radius:10px;padding:16px 18px;overflow:auto;font-family:'Consolas','SF Mono',Menlo,monospace;font-size:11.5px;line-height:1.5;border:1px solid #16342a}
+pre.code-annex{max-height:none}
+.pill{display:inline-block;background:var(--sagebg);color:var(--green);border:1px solid var(--sage);border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700}
+.statusflow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0;font-size:13px;font-weight:700}
+.statusflow .s{background:var(--sagebg);border:1px solid var(--sage);color:var(--dark);border-radius:8px;padding:6px 12px}
+.statusflow .arrow{color:var(--green)}
+.footer{padding:26px 56px;color:var(--muted);font-size:12px;border-top:1px solid #e0ebe4;text-align:center}
+hr.sec{border:0;border-top:1px dashed #cdddd3;margin:34px 0}
+@media print{body{background:#fff}.page{max-width:none;box-shadow:none}.wrap{padding:24px 10px}.cover{padding:40px 24px}h2{page-break-after:avoid}figure,table,pre{page-break-inside:avoid}.toc ol{columns:2}}
+</style></head><body><div class="page">
+<div class="cover">
+  <div class="leafrow">🌿🛠️🌳</div>
+  <div class="kicker">National Parks Board · Singapore</div>
+  <h1>Technical &amp; Continuity Guide</h1>
+  <div class="sub">How the New Hire Introduction portal is built, how it works, and how to change it safely — so anyone can pick it up later.</div>
+  <div class="meta"><b>Audience:</b> whoever maintains or improves the app (developer / IT).&nbsp; <b>Version:</b> 1.0 &nbsp;·&nbsp; <b>Deployed file:</b> <code>greenpass-rabbit/server.js</code> + <code>package.json</code> &nbsp;·&nbsp; <b>Companion:</b> "HR User Guide".</div>
+</div>
+<div class="wrap">
+
+<div class="toc"><h3>Contents</h3><ol>
+<li><a href="#over">Overview &amp; design goals</a></li>
+<li><a href="#stack">Tech stack &amp; repo layout</a></li>
+<li><a href="#deploy">Deployment (Rabbit)</a></li>
+<li><a href="#env">Environment variables</a></li>
+<li><a href="#schema">Data model (database)</a></li>
+<li><a href="#auth">Authentication &amp; the OTP flow</a></li>
+<li><a href="#lifecycle">Submission lifecycle</a></li>
+<li><a href="#walk">Code walk-through</a></li>
+<li><a href="#security">Security measures (don't regress)</a></li>
+<li><a href="#edmlogic">eDM generation logic</a></li>
+<li><a href="#recipes">How to make common changes</a></li>
+<li><a href="#localdev">Local development &amp; testing</a></li>
+<li><a href="#gotchas">Constraints &amp; gotchas</a></li>
+<li><a href="#annexA">Annex A — full server.js</a></li>
+<li><a href="#annexB">Annex B — package.json</a></li>
+</ol></div>
+
+<h2 id="over">1 · Overview &amp; design goals</h2>
+<p>The portal is a single-file, <b>server-rendered</b> Node/Express web app. Every page is HTML rendered on the server; forms submit with a normal page reload. A little inline JavaScript adds niceties (photo preview, word counter, the canvas photo editor, the "Save as PNG" export) but <b>nothing essential depends on client-side JS</b> — important because it must work inside locked-down government browsers.</p>
+<p>Design goals that shaped it:</p>
+<ul>
+<li><b>One file, no build step.</b> The whole app is <code>server.js</code>. There is no bundler, framework or compile step to maintain — you deploy the file as-is. (Rationale: survivability and easy hand-over.)</li>
+<li><b>Deliverable by copy-paste.</b> The NParks network blocks file downloads, so the file is handed over as pasted text and saved locally. Keeping it to one file makes that practical.</li>
+<li><b>Resilient boot.</b> The web server starts listening <i>immediately</i>; database setup runs in the background and retries, so a slow database never takes the site down.</li>
+<li><b>Two-factor everywhere.</b> Both the new-hire form and the HR console require a shared password <i>and</i> an emailed one-time code.</li>
+</ul>
+<div class="callout tip"><b>Two editions in the repo.</b> The <b>deployed</b> app is the single-file <code>greenpass-rabbit/server.js</code>. The repository also contains a parallel React + Vite + Express edition at the root (<code>server.js</code>, <code>src/</code>) kept roughly in sync for reference. <b>If in doubt, the single-file edition is the source of truth for what is live.</b></p></div>
+
+<h2 id="stack">2 · Tech stack &amp; repo layout</h2>
+<table>
+<tr><th>Piece</th><th>Choice</th></tr>
+<tr><td>Runtime</td><td>Node.js (ES modules, <code>"type":"module"</code>)</td></tr>
+<tr><td>Web framework</td><td>Express 4</td></tr>
+<tr><td>Database</td><td>PostgreSQL via <code>pg</code> (connection string in <code>DATABASE_URL</code>; photos stored as <code>bytea</code>)</td></tr>
+<tr><td>File uploads</td><td><code>multer</code> (memory storage, 5 MB limit)</td></tr>
+<tr><td>AI moderation</td><td>Anthropic Claude API (<code>claude-3-5-haiku</code>) — optional; degrades to "manual review"</td></tr>
+<tr><td>One-time codes</td><td>Generated &amp; verified in-app; delivered by an external email sender (Postman.gov.sg transactional email)</td></tr>
+<tr><td>eDM image export</td><td><code>html2canvas</code> (served locally at <code>/vendor/html2canvas.js</code>)</td></tr>
+<tr><td>Sessions</td><td>HMAC-signed tokens in <code>HttpOnly; Secure; SameSite=Lax</code> cookies (no server-side session store)</td></tr>
+</table>
+<p><b>Deployed files (what you upload to Rabbit):</b></p>
+<ul><li><code>greenpass-rabbit/server.js</code> — the entire application.</li><li><code>greenpass-rabbit/package.json</code> — declares the four dependencies and the <code>start</code> script.</li></ul>
+
+<h2 id="deploy">3 · Deployment (Rabbit)</h2>
+<ol>
+<li>Upload <code>server.js</code> and <code>package.json</code> to the Rabbit service.</li>
+<li>Create/attach a PostgreSQL database — Rabbit sets <code>DATABASE_URL</code> automatically. The app creates its own tables on first run (<code>ensureSchema()</code>), so there is no migration step to run.</li>
+<li>Set the environment variables (next section). At minimum set the two passwords, the OTP send URL + key, <code>ADMIN_EMAILS</code> and <code>SESSION_SECRET</code>.</li>
+<li>Deploy. Rabbit runs <code>npm install</code> then <code>npm start</code> (<code>node server.js</code>).</li>
+</ol>
+<div class="callout"><b>Photos are stored in the database (as <code>bytea</code>), never on disk</b> — so redeploys and container restarts never lose data. Everything persistent lives in Postgres.</div>
+<div class="callout warn"><b>Delivery note:</b> because downloads are blocked on the NParks network, the file is updated by pasting its full contents into a text editor, saving as <code>server.js</code>, and uploading. Keep changes in one file to preserve this workflow.</div>
+
+<h2 id="env">4 · Environment variables</h2>
+<p>All configuration is through environment variables — no secrets live in the code.</p>
+<h4>Core</h4>
+<table>
+<tr><th>Variable</th><th>Default</th><th>Purpose</th></tr>
+<tr><td><code>DATABASE_URL</code></td><td>—</td><td>Postgres connection string (set by Rabbit).</td></tr>
+<tr><td><code>ADMIN_PASSWORD</code></td><td><code>nparks-admin</code></td><td>HR console password. <b>Change this.</b></td></tr>
+<tr><td><code>JOINER_PASSWORD</code></td><td><code>NPARKS2026</code></td><td>Shared access password for new hires.</td></tr>
+<tr><td><code>ADMIN_EMAILS</code></td><td>empty</td><td>Comma-separated allow-list of HR emails. Empty = any email may sign in (still behind password + OTP).</td></tr>
+<tr><td><code>SESSION_SECRET</code></td><td>derived</td><td>Signs session cookies. Set a long random value so logins survive redeploys.</td></tr>
+<tr><td><code>ADMIN_PATH</code></td><td><code>/admin</code></td><td>URL of the HR console. Set to something unguessable (e.g. <code>/hr-console-7h3k2</code>) to hide it further.</td></tr>
+<tr><td><code>ANTHROPIC_API_KEY</code></td><td>—</td><td>Enables AI moderation. If unset, entries are marked "manual review".</td></tr>
+<tr><td><code>SEED_DEMO</code></td><td>—</td><td><code>1</code> loads 3 example submissions on first boot (demo only).</td></tr>
+</table>
+<h4>One-time-code email sender (Postman.gov.sg defaults)</h4>
+<table>
+<tr><th>Variable</th><th>Default</th><th>Purpose</th></tr>
+<tr><td><code>OTP_SEND_URL</code></td><td>empty</td><td>Transactional email endpoint, e.g. <code>https://api.postman.gov.sg/v1/transactional/email/send</code>. <b>If empty, login is password-only</b> (no code) — the safe fallback.</td></tr>
+<tr><td><code>OTP_API_KEY</code></td><td>empty</td><td>API key for the sender.</td></tr>
+<tr><td><code>OTP_FROM</code></td><td>empty</td><td>Optional verified "from" address.</td></tr>
+<tr><td><code>OTP_SUBJECT</code> / <code>OTP_BODY_TEMPLATE</code></td><td>built-in</td><td>Override the code email's subject/body. <code>{{otp}}</code> in the body is replaced with the code.</td></tr>
+<tr><td><code>OTP_TTL_MIN</code> / <code>OTP_MAX_ATTEMPTS</code></td><td>10 / 5</td><td>Code lifetime (minutes) and wrong-try limit before restart.</td></tr>
+<tr><td><code>OTP_AUTH_HEADER</code>, <code>OTP_AUTH_SCHEME</code>, <code>OTP_RECIPIENT_FIELD</code>, <code>OTP_SUBJECT_FIELD</code>, <code>OTP_BODY_FIELD</code>, <code>OTP_FROM_FIELD</code>, <code>OTP_EXTRA_JSON</code></td><td>Postman-shaped</td><td>Field/header names so a different email provider can be used without code changes.</td></tr>
+</table>
+<h4>TLS &amp; cookies</h4>
+<table>
+<tr><th>Variable</th><th>Default</th><th>Purpose</th></tr>
+<tr><td><code>PGSSL</code></td><td>on</td><td><code>disable</code> turns off DB TLS (local Postgres only).</td></tr>
+<tr><td><code>PGSSL_CA</code> / <code>PGSSL_CA_FILE</code></td><td>—</td><td>Pin a provider CA (PEM content, or a file path) for DB TLS verification.</td></tr>
+<tr><td><code>PGSSL_INSECURE</code></td><td>—</td><td><code>1</code> skips DB certificate verification (discouraged, last resort).</td></tr>
+<tr><td><code>COOKIE_SECURE</code></td><td>on</td><td><code>0</code> drops the <code>Secure</code> cookie flag — only for local http testing.</td></tr>
+</table>
+
+<h2 id="schema">5 · Data model (database)</h2>
+<p>Two tables, created automatically by <code>ensureSchema()</code>:</p>
+<h4>submissions</h4>
+<table>
+<tr><th>Column</th><th>Meaning</th></tr>
+<tr><td><code>id</code> (uuid)</td><td>Primary key.</td></tr>
+<tr><td><code>full_name, email, intro, fun_fact</code></td><td>What the new hire submits. (<code>fun_fact</code> is retained in the schema but no longer collected or shown.)</td></tr>
+<tr><td><code>start_date, job_title, division</code></td><td>Added by HR.</td></tr>
+<tr><td><code>status</code></td><td><code>awaiting-hr-review</code> · <code>approved</code> · <code>archived</code> · <code>rejected</code>.</td></tr>
+<tr><td><code>ai_status, ai_confidence, ai_reason</code></td><td>Result of the Claude first-pass check.</td></tr>
+<tr><td><code>photo_mime, photo_data</code></td><td>The current photo (bytes in <code>bytea</code>).</td></tr>
+<tr><td><code>photo_status, photo_reason</code></td><td>Photo check note (always "manual-review" — a prompt to verify).</td></tr>
+<tr><td><code>orig_photo_mime, orig_photo_data</code></td><td>One-time snapshot of the joiner's original photo, kept the first time HR edits it (enables "Revert").</td></tr>
+<tr><td><code>created_at, updated_at</code></td><td>Timestamps.</td></tr>
+</table>
+<h4>edm_archive</h4>
+<table>
+<tr><th>Column</th><th>Meaning</th></tr>
+<tr><td><code>id, occasion, send_date</code></td><td>Label &amp; date of a generated eDM.</td></tr>
+<tr><td><code>hire_names</code> (jsonb)</td><td>Names included in that eDM.</td></tr>
+<tr><td><code>html</code></td><td>The exact HTML generated (for the read-only log).</td></tr>
+</table>
+
+<h2 id="auth">6 · Authentication &amp; the OTP flow</h2>
+<p><b>Two roles, two cookies.</b> A verified new hire holds a <code>gp_joiner</code> cookie; a verified HR officer holds <code>gp_admin</code>. Both are short, HMAC-SHA256-signed tokens (see <code>signToken</code>/<code>verifyToken</code>) carrying the role, the verified email, and an expiry. There is <b>no server-side session store</b> — the signature is the proof.</p>
+<p><b>The code is generated and verified by the app itself</b> — the external service (Postman) only <i>delivers</i> the email. This matters: Postman is a send-only service and cannot check codes. The flow:</p>
+<ol>
+<li>User passes the password + enters their email.</li>
+<li><code>issueOtp()</code> generates a random 6-digit code, asks the sender to email it, and returns a <b>salted hash</b> of the code.</li>
+<li>That hash (not the code) is stored in a short-lived signed "pending" cookie (<code>gp_j_pending</code> / <code>gp_a_pending</code>), along with the email and an attempt counter.</li>
+<li>On submit, <code>checkOtp()</code> re-hashes what the user typed and compares with a constant-time check. Correct → the real session cookie is issued. Wrong → attempt counter increments; after <code>OTP_MAX_ATTEMPTS</code> the pending cookie is cleared and they start again.</li>
+</ol>
+<div class="callout"><b>Why hash the code in the cookie?</b> Cookie contents are readable by the browser, so the plain code must never be put there. The salted HMAC can't be reversed or forged without <code>SESSION_SECRET</code>, and nothing about the code touches the database — so it works across restarts and multiple instances with no shared state.</div>
+<div class="callout tip"><b>Safe fallback:</b> if <code>OTP_SEND_URL</code> is unset, <code>otpEnabled</code> is false and the password alone signs the user in — nobody is locked out while the sender is being configured.</div>
+<p><b>Admin allow-list:</b> HR login additionally checks the email against <code>ADMIN_EMAILS</code> before sending a code. New hires may use any email.</p>
+<p><b>Identity binding (important):</b> a signed-in new hire can only read or edit the submission tied to <i>their own verified email</i>. The <code>/submit</code> and <code>/amend</code> handlers use <code>joinerEmail(req)</code> from the session — never an email from the form body — and <code>/api/photo/:id</code> only serves a photo to an admin or to the owning joiner.</p>
+
+<h2 id="lifecycle">7 · Submission lifecycle</h2>
+<div class="statusflow">
+<span class="s">awaiting-hr-review</span><span class="arrow">— Approve →</span>
+<span class="s">approved</span><span class="arrow">— Archive →</span>
+<span class="s">archived</span>
+</div>
+<ul>
+<li><b>awaiting-hr-review</b> — just submitted (or amended). New hires may still self-amend.</li>
+<li><b>approved</b> — HR has added job details and approved; appears in "Generate eDM".</li>
+<li><b>archived</b> — welcome email already sent; kept on record, excluded from new eDMs.</li>
+<li><b>rejected</b> — not included in any eDM; can be restored to review.</li>
+</ul>
+<p>Re-submitting under the same email updates the existing non-approved row in place (the app matches by email). Approved rows are never silently overwritten.</p>
+
+<h2 id="walk">8 · Code walk-through</h2>
+<p><code>server.js</code> reads top-to-bottom as a sequence of clearly-commented sections. Map:</p>
+<table>
+<tr><th>Section (search the file for the banner comment)</th><th>What it is</th></tr>
+<tr><td><code>Security headers</code></td><td>Express middleware setting HSTS, CSP, X-Frame-Options, etc. on every response.</td></tr>
+<tr><td><code>dbSsl()</code> + pool</td><td>Database connection with secure-by-default TLS; idle-client error handler so a dropped DB connection never crashes the process.</td></tr>
+<tr><td><code>Email + OTP authentication</code></td><td>The <code>OTP</code> config object, <code>issueOtp()</code>, <code>checkOtp()</code>, code generation + hashing.</td></tr>
+<tr><td><code>Signed session cookies</code></td><td><code>signToken</code>/<code>verifyToken</code> and the cookie helpers (Secure flag via <code>cookieFlags</code>).</td></tr>
+<tr><td><code>Helpers</code></td><td><code>esc</code> (HTML-escape), <code>fmtDate</code>, <code>periodOf</code> (fortnight bucketing), <code>hasAdmin/hasJoiner/joinerEmail</code>.</td></tr>
+<tr><td><code>Schema</code></td><td><code>ensureSchema()</code> — creates tables + idempotent migrations.</td></tr>
+<tr><td><code>AI content moderation</code></td><td><code>moderateText()</code> — calls Claude, falls back to "manual review" on any error.</td></tr>
+<tr><td><code>Photo … check</code> + <code>sniffImageType</code></td><td>Reads image dimensions; verifies real JPEG/PNG magic bytes (never trusts the client Content-Type).</td></tr>
+<tr><td><code>Page layout</code></td><td><code>layout()</code> — the shared HTML shell + inline CSS theme. All pages are built by passing a <code>title</code> and <code>body</code>.</td></tr>
+<tr><td>Public routes</td><td><code>/</code>, <code>/submit</code> (+ gate <code>/unlock</code>, <code>/verify-otp</code>), <code>/amend</code>, <code>/submit/thanks</code>, <code>/api/photo/:id</code>.</td></tr>
+<tr><td>Admin routes</td><td><code>ADMIN_PATH</code> login/verify/resend/logout, the Review page, <code>/update</code>, <code>/photo</code>, <code>/edm</code>, archive routes.</td></tr>
+<tr><td><code>eDM HTML builder</code></td><td><code>buildEdmHtml()</code> — Outlook-safe, table-based, all-inline-CSS email.</td></tr>
+<tr><td><code>Demo seed</code> + <code>Boot</code></td><td>Optional sample data; starts listening immediately, then runs schema setup in the background.</td></tr>
+</table>
+
+<h2 id="security">9 · Security measures (please don't regress these)</h2>
+<p>The app was hardened against a specific set of findings. If you refactor, keep these intact:</p>
+<ol>
+<li><b>Identity binding.</b> Submission read/write is keyed to the session's verified email (<code>joinerEmail(req)</code>), never a form field — prevents one joiner editing another's entry.</li>
+<li><b>Secure cookies.</b> Session &amp; OTP cookies are <code>HttpOnly; Secure; SameSite=Lax</code> (Secure toggled only by <code>COOKIE_SECURE=0</code> for local tests).</li>
+<li><b>Photo authorization.</b> <code>/api/photo/:id</code> serves a photo only to an admin or the owning joiner; otherwise 404. Cache is <code>private, no-store</code>.</li>
+<li><b>Security headers.</b> HSTS, CSP (locks scripts/styles/images/forms to same-origin), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, COOP; <code>x-powered-by</code> disabled.</li>
+<li><b>Upload sniffing.</b> Uploads are validated by magic bytes and only the real MIME is stored — a spoofed Content-Type is rejected.</li>
+<li><b>DB TLS verification on by default.</b> <code>rejectUnauthorized:true</code> unless a CA is pinned or explicitly opted out.</li>
+</ol>
+<div class="callout danger"><b>Never</b> reintroduce a hardcoded <code>rejectUnauthorized:false</code>, trust a form-supplied email for authorization, or serve <code>/api/photo</code> without the owner/admin check.</div>
+
+<h2 id="edmlogic">10 · eDM generation logic</h2>
+<p><code>buildEdmHtml(hires, occasion, sendDate)</code> produces an <b>Outlook-safe</b> email: 100% table-based layout, all CSS inline, images embedded as base64 <code>data:</code> URIs (so nothing is fetched when the email is opened), a fixed <code>WIDTH</code> (1120px) single wide column with one "spotlight" card per new hire, and an MSO "ghost table" + transparent-GIF spacer so Outlook holds the width. Joiners are grouped into fortnights by <code>periodOf()</code> for the "quick-select by period" buttons. Each generated eDM's HTML is saved to <code>edm_archive</code>.</p>
+<div class="callout tip"><b>If you change the eDM design,</b> keep it table-based with inline styles and embedded images — modern CSS (flexbox, grid, external stylesheets, web fonts) is unreliable in Outlook. Test by sending a real message to an Outlook inbox, not just the in-app preview.</div>
+
+<h2 id="recipes">11 · How to make common changes</h2>
+<table>
+<tr><th>You want to…</th><th>Do this</th></tr>
+<tr><td>Change a password</td><td>Update <code>ADMIN_PASSWORD</code> / <code>JOINER_PASSWORD</code> env var and redeploy. No code change.</td></tr>
+<tr><td>Add/remove an HR officer</td><td>Edit <code>ADMIN_EMAILS</code> (comma-separated) and redeploy.</td></tr>
+<tr><td>Change the code email wording</td><td>Set <code>OTP_SUBJECT</code> / <code>OTP_BODY_TEMPLATE</code> (keep <code>{{otp}}</code> in the body).</td></tr>
+<tr><td>Hide the admin URL further</td><td>Set <code>ADMIN_PATH</code> to an unguessable path.</td></tr>
+<tr><td>Change new-hire guidance text (photo rules, word limit wording)</td><td>Edit the <code>submitPage()</code> function's HTML.</td></tr>
+<tr><td>Add a field HR fills in</td><td>Add a column in <code>ensureSchema()</code> (use <code>add column if not exists</code>), add the input in <code>cardHtml()</code>, persist it in the <code>/update</code> handler, and render it in <code>buildEdmHtml()</code>.</td></tr>
+<tr><td>Restyle the pages</td><td>Edit the inline CSS inside <code>layout()</code>; colours are the <code>C</code> palette object near the top.</td></tr>
+<tr><td>Swap the email provider</td><td>Point <code>OTP_SEND_URL</code> at the new endpoint and set the <code>OTP_*_FIELD</code> / auth-header vars to match its request shape.</td></tr>
+</table>
+
+<h2 id="localdev">12 · Local development &amp; testing</h2>
+<ol>
+<li><code>cd greenpass-rabbit &amp;&amp; npm install</code>.</li>
+<li>Run a local Postgres and export <code>DATABASE_URL=postgres://…</code> with <code>PGSSL=disable</code> and <code>COOKIE_SECURE=0</code>.</li>
+<li>For the full two-factor flow locally, point <code>OTP_SEND_URL</code> at a tiny mock HTTP server that records the code from the request body; or leave it unset to sign in with password only.</li>
+<li><code>SEED_DEMO=1 npm start</code>, then open <code>http://localhost:3000</code>.</li>
+</ol>
+<p>The project was validated with scripted end-to-end checks driving the real HTTP endpoints (joiner + admin login, wrong-code lockout, resend-invalidates-old, photo ownership 404s, upload sniffing, and the security headers/cookies). When changing auth, DB or upload code, re-run equivalent checks before shipping.</p>
+
+<h2 id="gotchas">13 · Constraints &amp; gotchas</h2>
+<ul>
+<li><b>Downloads are blocked on the NParks network.</b> Update the app by pasting the full file; keep everything in the single file.</li>
+<li><b>Postman is send-only.</b> It delivers the code email; the app must generate and verify codes itself. Don't look for a "verify" endpoint.</li>
+<li><b>Managed Postgres closes idle connections.</b> The pool's <code>error</code> handler swallows that; don't remove it or the process can crash.</li>
+<li><b>Boot order matters.</b> <code>app.listen()</code> runs before schema setup on purpose. Keep schema/seed in the background <code>.then()/.catch()</code> so a slow DB can't block startup (this was the fix for an earlier "upstream timeout").</li>
+<li><b>CSP uses <code>'unsafe-inline'</code></b> for scripts/styles because the pages rely on inline handlers and styles. If you move to external/nonce'd assets you can tighten it.</li>
+</ul>
+
+<hr class="sec">
+<h2 id="annexA">Annex A — Full source: <code>server.js</code></h2>
+<p class="pill">This is the complete deployed application, for reference and recovery.</p>
+<pre class="code-annex">// ─────────────────────────────────────────────────────────────────────────────
+// NParks New Hire Introduction — single-file, server-rendered edition (for Rabbit Deploy)
+//
+// This is the whole app in ONE Node/Express file — no build step, no separate
+// front-end bundle. Every page is rendered as HTML on the server; forms submit
+// normally (page reload), so it works even in locked-down browsers. A little
+// inline JavaScript adds nice-to-haves (photo preview, word counter, copy
+// button) but nothing depends on it.
+//
+// Data — including profile photos (stored as bytea) — lives in the PostgreSQL
+// database read from process.env.DATABASE_URL, which Rabbit Deploy sets
+// automatically when you create/attach a database. Uploaded photos are NOT
+// written to disk, so redeploys never lose anything.
+//
+// Deploy on Rabbit: upload this file plus package.json. Set these service env
+// vars: ANTHROPIC_API_KEY (Claude moderation), ADMIN_PASSWORD (HR login),
+// and optionally SEED_DEMO=1 to load three example submissions on first boot.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import express from 'express';
+import multer from 'multer';
+import pg from 'pg';
+import zlib from 'node:zlib';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const app = express();
+// Behind Rabbit/Cloudflare, which terminate TLS and forward over HTTP — trust the
+// proxy so req.protocol/req.secure reflect the real https client connection.
+app.set('trust proxy', true);
+app.disable('x-powered-by');
+app.use(express.urlencoded({ extended: true, limit: '256kb' }));
+
+// ── Security headers (applied to every response) ─────────────────────────────
+app.use((_req, res, next) =&gt; {
+  res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('X-Frame-Options', 'SAMEORIGIN');
+  res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.set('Cross-Origin-Opener-Policy', 'same-origin');
+  // The pages use inline &lt;script&gt;/&lt;style&gt; and inline event handlers, so script/
+  // style need 'unsafe-inline'; everything else is locked to same-origin, with
+  // data: allowed for the inline images/favicon and embedded eDM photos.
+  res.set('Content-Security-Policy',
+    "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; "
+    + "img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
+    + "connect-src 'self'; form-action 'self'");
+  next();
+});
+
+const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'nparks-admin').trim();
+// Password new joiners must enter before they can open the submission form.
+// Set JOINER_PASSWORD in the Rabbit service env to change it.
+const JOINER_PASSWORD = (process.env.JOINER_PASSWORD || 'NPARKS2026').trim();
+// HR console lives at this path. It is NOT linked anywhere on the public site,
+// so new joiners never see it — HR reaches it by typing the URL. Set ADMIN_PATH
+// in the Rabbit service env to a hard-to-guess value (e.g. /hr-console-7h3k2) to
+// move it off the obvious /admin. Defaults to /admin.
+let ADMIN_PATH = (process.env.ADMIN_PATH || '/admin').trim();
+if (!ADMIN_PATH.startsWith('/')) ADMIN_PATH = '/' + ADMIN_PATH;
+ADMIN_PATH = ADMIN_PATH.replace(/\/+$/, '') || '/admin';
+const DATABASE_URL = process.env.DATABASE_URL;
+// TLS for the database connection. Secure by default: the server certificate is
+// verified against the system trust store (Neon and most managed Postgres chain
+// to a public CA, so this just works). Options:
+//   PGSSL=disable        → no TLS (local Postgres only)
+//   PGSSL_CA / PGSSL_CA_FILE → pin a provider CA (PEM content, or a file path)
+//   PGSSL_INSECURE=1     → last-resort, discouraged: skip certificate verification
+function dbSsl() {
+  if (process.env.PGSSL === 'disable') return false;
+  const ca = process.env.PGSSL_CA || (process.env.PGSSL_CA_FILE ? fs.readFileSync(process.env.PGSSL_CA_FILE, 'utf8') : undefined);
+  if (ca) return { ca, rejectUnauthorized: true };
+  if (process.env.PGSSL_INSECURE === '1') {
+    console.warn('[server] PGSSL_INSECURE=1 — database TLS certificate verification is DISABLED. Set PGSSL_CA instead for production.');
+    return { rejectUnauthorized: false };
+  }
+  return { rejectUnauthorized: true };
+}
+const pool = DATABASE_URL
+  ? new pg.Pool({ connectionString: DATABASE_URL, ssl: dbSsl(), max: 5, connectionTimeoutMillis: 10000 })
+  : null;
+
+if (!pool) console.warn('[server] DATABASE_URL not set — data will not persist.');
+// Neon (and most managed Postgres) close idle connections. The pg Pool emits an
+// 'error' on the idle client when that happens; if left unhandled it crashes the
+// whole process (taking the web server down with it). Swallow it — the pool just
+// opens a fresh connection on the next query.
+if (pool) pool.on('error', (err) =&gt; console.error('[pool] idle client error (ignored):', err.message));
+
+// ── Email + OTP authentication (two-factor) ──────────────────────────────────
+// Both the HR console and the new-joiner form require two factors: (1) the
+// shared password, then (2) a one-time code emailed to the person. The app
+// GENERATES and VERIFIES the code itself; an external email sender (e.g.
+// Postman.gov.sg's transactional email API, configured via the OTP_* env vars
+// below) is used ONLY to deliver the code. A salted hash of the code is kept in
+// a short-lived, HMAC-signed cookie — nothing about the code is stored in the
+// database, and it works across restarts and multiple instances. Sessions are
+// short, HMAC-signed tokens kept in HttpOnly cookies.
+
+// Comma-separated allowlist of HR email addresses allowed into the console.
+// If left empty, any email may sign in (still behind the password + OTP).
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
+  .split(',').map((s) =&gt; s.trim().toLowerCase()).filter(Boolean);
+
+// Secret used to sign session cookies. Set SESSION_SECRET in the Rabbit env so
+// logins survive redeploys; otherwise we derive a stable-ish fallback.
+const SESSION_SECRET = process.env.SESSION_SECRET
+  || crypto.createHash('sha256').update('gp|' + ADMIN_PASSWORD + '|' + JOINER_PASSWORD).digest('hex');
+
+// External EMAIL SENDER (send-only). The app generates + verifies the code;
+// this service just delivers it. Defaults match Postman.gov.sg's transactional
+// email API: POST {recipient, subject, body} with an "Authorization: Bearer
+// &lt;key&gt;" header. All field names are overridable via env vars so another sender
+// (SendGrid, SES, etc.) can be used without code changes.
+const OTP = {
+  sendUrl: (process.env.OTP_SEND_URL || '').trim(),                        // e.g. https://api.postman.gov.sg/v1/transactional/email/send
+  apiKey: process.env.OTP_API_KEY || '',
+  authHeader: (process.env.OTP_AUTH_HEADER || 'Authorization').trim(),
+  // Prefix for the key. Default 'Bearer' (Postman: "Authorization: Bearer &lt;key&gt;").
+  // Set OTP_AUTH_SCHEME='' for a bare key (e.g. an x-api-key header).
+  authScheme: process.env.OTP_AUTH_SCHEME === undefined ? 'Bearer' : process.env.OTP_AUTH_SCHEME.trim(),
+  recipientField: (process.env.OTP_RECIPIENT_FIELD || 'recipient').trim(), // body field for the email address
+  subjectField: (process.env.OTP_SUBJECT_FIELD || 'subject').trim(),
+  bodyField: (process.env.OTP_BODY_FIELD || 'body').trim(),
+  fromField: (process.env.OTP_FROM_FIELD || 'from').trim(),
+  from: (process.env.OTP_FROM || '').trim(),                               // optional verified "from" address
+  subject: (process.env.OTP_SUBJECT || 'Your NParks New Hire Introduction one-time code').trim(),
+  // {{otp}} is replaced with the generated code before the email is sent.
+  bodyTemplate: process.env.OTP_BODY_TEMPLATE
+    || 'Your NParks New Hire Introduction one-time code is {{otp}}. It expires in 10 minutes. If you did not request this, please ignore this email.',
+  extra: (() =&gt; { try { return process.env.OTP_EXTRA_JSON ? JSON.parse(process.env.OTP_EXTRA_JSON) : {}; } catch { console.warn('[otp] OTP_EXTRA_JSON is not valid JSON — ignored'); return {}; } })(),
+  ttlMin: Math.max(2, Number(process.env.OTP_TTL_MIN || 10)),              // how long a code stays valid
+  maxAttempts: Math.max(1, Number(process.env.OTP_MAX_ATTEMPTS || 5)),     // wrong-code tries before a restart is forced
+};
+const otpEnabled = Boolean(OTP.sendUrl);
+if (!otpEnabled) console.warn('[otp] OTP_SEND_URL not set — login falls back to password only (no emailed code) until configured.');
+
+function otpHeaders() {
+  const h = { 'content-type': 'application/json', accept: 'application/json' };
+  if (OTP.apiKey) h[OTP.authHeader] = OTP.authScheme ? `${OTP.authScheme} ${OTP.apiKey}` : OTP.apiKey;
+  return h;
+}
+// Random 6-digit code, and a salted hash of it we can safely keep in the cookie
+// (the cookie payload is readable by the browser, so the plain code never goes
+// in it — only this keyed hash, which also can't be forged without the secret).
+const genCode = () =&gt; String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+const hashCode = (email, code) =&gt; crypto.createHmac('sha256', SESSION_SECRET).update('otp|' + String(email).toLowerCase() + '|' + String(code).trim()).digest('hex');
+// Generate a fresh code, email it via the external sender, and return its hash.
+async function issueOtp(email) {
+  const code = genCode();
+  if (otpEnabled) {
+    const body = {
+      [OTP.recipientField]: email,
+      [OTP.subjectField]: OTP.subject,
+      [OTP.bodyField]: OTP.bodyTemplate.replace(/\{\{\s*otp\s*\}\}/gi, code),
+      ...(OTP.from ? { [OTP.fromField]: OTP.from } : {}),
+      ...OTP.extra,
+    };
+    const res = await fetch(OTP.sendUrl, { method: 'POST', headers: otpHeaders(), body: JSON.stringify(body) });
+    if (!res.ok) { const t = await res.text().catch(() =&gt; ''); throw new Error(`send failed (HTTP ${res.status}) ${t.slice(0, 180)}`); }
+  }
+  return hashCode(email, code);
+}
+// Constant-time check of the submitted code against the hash in the pending cookie.
+function checkOtp(pend, submitted) {
+  if (!pend || !pend.codeHash) return false;
+  const h = hashCode(pend.email, submitted);
+  try { return crypto.timingSafeEqual(Buffer.from(h), Buffer.from(pend.codeHash)); } catch { return false; }
+}
+
+// ── Signed session cookies (HMAC-SHA256) ─────────────────────────────────────
+const b64u = (buf) =&gt; Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64uDec = (s) =&gt; Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString();
+function signToken(payload, ttlMs) {
+  const p = b64u(JSON.stringify({ ...payload, exp: Date.now() + ttlMs }));
+  const sig = b64u(crypto.createHmac('sha256', SESSION_SECRET).update(p).digest());
+  return `${p}.${sig}`;
+}
+function verifyToken(token) {
+  if (!token || token.indexOf('.') &lt; 0) return null;
+  const [p, sig] = token.split('.');
+  const expect = b64u(crypto.createHmac('sha256', SESSION_SECRET).update(p).digest());
+  if (!sig || sig.length !== expect.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
+  try { const d = JSON.parse(b64uDec(p)); return (d &amp;&amp; d.exp &amp;&amp; d.exp &gt; Date.now()) ? d : null; } catch { return null; }
+}
+const cookieVal = (req, name) =&gt; { const m = new RegExp('(?:^|;\\s*)' + name + '=([^;]+)').exec(req.headers.cookie || ''); return m ? decodeURIComponent(m[1]) : null; };
+// Session/OTP cookies are Secure by default (sent only over HTTPS). Set
+// COOKIE_SECURE=0 only to test over plain http on a non-localhost host.
+const COOKIE_SECURE = process.env.COOKIE_SECURE !== '0';
+const cookieFlags = (maxAgeSec) =&gt; `HttpOnly; Path=/; Max-Age=${maxAgeSec}; SameSite=Lax${COOKIE_SECURE ? '; Secure' : ''}`;
+const setCookie = (res, name, value, maxAgeSec) =&gt; res.append('Set-Cookie', `${name}=${encodeURIComponent(value)}; ${cookieFlags(maxAgeSec)}`);
+const clearCookie = (res, name) =&gt; res.append('Set-Cookie', `${name}=; ${cookieFlags(0)}`);
+
+// ── Colour palette (green &amp; nature theme) ────────────────────────────────────
+const C = { green: '#2D6A4F', greenDark: '#1B4332', sage: '#95D5B2', sageLight: '#E8F5E9', cream: '#F8F4E3', earth: '#6B4226' };
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const esc = (s) =&gt; String(s ?? '').replace(/[&amp;&lt;&gt;"']/g, (c) =&gt; ({ '&amp;': '&amp;amp;', '&lt;': '&amp;lt;', '&gt;': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#39;' }[c]));
+// Format a stored 'YYYY-MM-DD' start date for display as DD/MM/YY.
+const fmtDate = (s) =&gt; { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : (s || ''); };
+// Bucket a joining date into a fortnight period: the 1st–15th (H1) or the
+// 16th–end (H2) of its month. Used to generate one eDM per half-month.
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function periodOf(start_date) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(start_date || ''));
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const h1 = d &lt;= 15;
+  const lastDay = new Date(y, mo, 0).getDate();
+  return {
+    key: `${m[1]}-${m[2]}-${h1 ? 'H1' : 'H2'}`,
+    sort: `${m[1]}${m[2]}${h1 ? '1' : '2'}`,
+    label: `${h1 ? '1–15' : '16–' + lastDay} ${MONTHS[mo - 1]} ${y}`,
+  };
+}
+const hasAdmin = (req) =&gt; { const d = verifyToken(cookieVal(req, 'gp_admin')); return !!(d &amp;&amp; d.role === 'admin'); };
+const hasJoiner = (req) =&gt; { const d = verifyToken(cookieVal(req, 'gp_joiner')); return !!(d &amp;&amp; d.role === 'joiner'); };
+const joinerEmail = (req) =&gt; { const d = verifyToken(cookieVal(req, 'gp_joiner')); return (d &amp;&amp; d.email) || ''; };
+
+// ── Schema ─────────────────────────────────────────────────────────────────
+async function ensureSchema() {
+  if (!pool) return;
+  await pool.query(`
+    create extension if not exists pgcrypto;
+    create table if not exists submissions (
+      id uuid primary key default gen_random_uuid(),
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      full_name text not null, email text, start_date text, intro text not null,
+      fun_fact text, status text not null default 'awaiting-hr-review',
+      job_title text, division text,
+      ai_status text, ai_confidence int, ai_reason text,
+      photo_status text, photo_reason text, photo_mime text, photo_data bytea
+    );
+    create table if not exists edm_archive (
+      id uuid primary key default gen_random_uuid(),
+      created_at timestamptz not null default now(),
+      occasion text not null, send_date text,
+      hire_names jsonb not null, html text not null
+    );
+    -- Migrations so databases created by an earlier version of this app pick up
+    -- new columns / relaxed constraints.
+    alter table submissions alter column start_date drop not null;
+    alter table submissions add column if not exists email text;
+    -- Snapshot of the joiner's original photo, kept the first time HR edits the
+    -- photo so it can be reverted later.
+    alter table submissions add column if not exists orig_photo_mime text;
+    alter table submissions add column if not exists orig_photo_data bytea;
+  `);
+}
+
+// ── AI content moderation (Claude) ───────────────────────────────────────────
+const MODERATION_SYSTEM_PROMPT =
+  "You are a content moderation assistant for NParks, a Singapore government agency. " +
+  "Review the following new hire introduction text and check for: (1) inappropriate, " +
+  "offensive, or unprofessional language, (2) personally sensitive information that " +
+  "should not be shared in a mass email (e.g. medical conditions, home addresses, " +
+  "personal phone numbers), (3) content that is off-topic or irrelevant to a " +
+  "professional self-introduction. Return a JSON object with three fields: `status` " +
+  "(one of: 'clear', 'review', 'flagged'), `confidence` (a number from 0-100), and " +
+  "`reason` (a one-sentence plain-English explanation of your decision). Be lenient " +
+  "— flag only genuine concerns, not minor stylistic issues.";
+
+async function moderateText(text) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return { status: 'review', confidence: 0, reason: 'AI moderation is unavailable (no ANTHROPIC_API_KEY configured) — please review this introduction manually.' };
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-3-5-haiku-20241022', max_tokens: 300, system: MODERATION_SYSTEM_PROMPT, messages: [{ role: 'user', content: text }] }),
+    });
+    if (!res.ok) throw new Error(`Claude API returned ${res.status}`);
+    const data = await res.json();
+    const raw = (data.content || []).map((b) =&gt; b.text || '').join('').trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(match ? match[0] : raw);
+    const status = ['clear', 'review', 'flagged'].includes(parsed.status) ? parsed.status : 'review';
+    return { status, confidence: Math.max(0, Math.min(100, Number(parsed.confidence) || 0)), reason: String(parsed.reason || 'No explanation provided.') };
+  } catch (err) {
+    console.warn('[moderation] fallback:', err.message);
+    return { status: 'review', confidence: 0, reason: 'AI moderation could not be completed automatically — please review this introduction manually.' };
+  }
+}
+
+// ── Photo dimension check (PNG + JPEG, no dependencies) ───────────────────────
+function readImageDimensions(buffer) {
+  if (buffer.length &gt; 24 &amp;&amp; buffer.readUInt32BE(0) === 0x89504e47) return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+  if (buffer.length &gt; 4 &amp;&amp; buffer[0] === 0xff &amp;&amp; buffer[1] === 0xd8) {
+    let o = 2;
+    while (o &lt; buffer.length) {
+      if (buffer[o] !== 0xff) { o++; continue; }
+      const marker = buffer[o + 1];
+      if (marker &gt;= 0xc0 &amp;&amp; marker &lt;= 0xcf &amp;&amp; ![0xc4, 0xc8, 0xcc].includes(marker)) return { height: buffer.readUInt16BE(o + 5), width: buffer.readUInt16BE(o + 7) };
+      o += 2 + buffer.readUInt16BE(o + 2);
+    }
+  }
+  return null;
+}
+function checkPhoto(buffer) {
+  try {
+    if (buffer.length &gt; 5 * 1024 * 1024) return { status: 'manual-review', reason: 'Photo exceeds the 5MB limit — please verify.' };
+    const dim = readImageDimensions(buffer);
+    if (!dim) return { status: 'manual-review', reason: 'Could not read image dimensions — please visually verify the photo before approving.' };
+    if (dim.width &lt; 100 || dim.height &lt; 100) return { status: 'manual-review', reason: `Photo is only ${dim.width}x${dim.height}px (below 100x100) — please verify quality.` };
+    return { status: 'manual-review', reason: `Photo is a valid ${dim.width}x${dim.height}px image. Please visually verify it is appropriate before approving.` };
+  } catch { return { status: 'manual-review', reason: 'Photo could not be inspected — please visually verify before approving.' }; }
+}
+
+// Verify a buffer really is a JPEG or PNG by its magic bytes — the client-sent
+// Content-Type is trivially spoofable and must never be trusted. Returns the
+// real MIME type, or null if the bytes are not an accepted image.
+function sniffImageType(buf) {
+  if (!buf || buf.length &lt; 4) return null;
+  if (buf[0] === 0x89 &amp;&amp; buf[1] === 0x50 &amp;&amp; buf[2] === 0x4e &amp;&amp; buf[3] === 0x47) return 'image/png';  // \x89PNG
+  if (buf[0] === 0xff &amp;&amp; buf[1] === 0xd8 &amp;&amp; buf[2] === 0xff) return 'image/jpeg';                    // JPEG SOI
+  return null;
+}
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  // First-pass check on the declared type; the authoritative check is the
+  // magic-byte sniff (sniffImageType) run on the uploaded buffer before storing.
+  fileFilter: (_req, file, cb) =&gt; (['image/jpeg', 'image/png'].includes(file.mimetype) ? cb(null, true) : cb(new Error('Only JPG and PNG images are accepted.'))),
+});
+
+// ── Page layout (inline CSS theme + botanical motif) ─────────────────────────
+function layout({ title, body, adminNav = false }) {
+  const leaf = `&lt;svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true"&gt;&lt;path d="M56 8C24 8 8 26 8 52c0 2 1 4 4 4 26 0 44-16 44-48z" fill="${C.sage}"/&gt;&lt;path d="M14 50C26 38 40 24 52 12" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2.5" stroke-linecap="round"/&gt;&lt;/svg&gt;`;
+  const nav = adminNav
+    ? `&lt;nav class="nav"&gt;&lt;a href="${ADMIN_PATH}"&gt;Review&lt;/a&gt;&lt;a href="${ADMIN_PATH}/edm"&gt;Generate eDM&lt;/a&gt;&lt;a href="${ADMIN_PATH}/archive"&gt;Archive&lt;/a&gt;&lt;a href="${ADMIN_PATH}/logout"&gt;Log out&lt;/a&gt;&lt;/nav&gt;`
+    : `&lt;nav class="nav"&gt;&lt;a href="/"&gt;Home&lt;/a&gt;&lt;a href="/submit"&gt;New joiner&lt;/a&gt;&lt;/nav&gt;`;
+  return `&lt;!DOCTYPE html&gt;&lt;html lang="en"&gt;&lt;head&gt;&lt;meta charset="utf-8"&gt;&lt;meta name="viewport" content="width=device-width,initial-scale=1"&gt;
+&lt;title&gt;${esc(title)} · NParks New Hire Introduction&lt;/title&gt;
+&lt;link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232D6A4F'/%3E%3Cpath d='M50 12C24 12 12 26 12 48c0 2 1 3 3 3 22 0 36-13 36-39z' fill='%2395D5B2'/%3E%3C/svg%3E"&gt;
+&lt;style&gt;
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Nunito','Lato',system-ui,Segoe UI,Roboto,sans-serif;color:${C.greenDark};background:${C.cream};
+    background-image:radial-gradient(circle at 12% 12%,rgba(149,213,178,.25) 0,transparent 30%),radial-gradient(circle at 88% 6%,rgba(45,106,79,.08) 0,transparent 32%),radial-gradient(circle at 80% 88%,rgba(149,213,178,.18) 0,transparent 34%);min-height:100vh}
+  a{color:${C.green}}
+  header.hero{position:relative;overflow:hidden;background:${C.green};color:${C.cream};padding:28px 20px 0}
+  header.hero .inner{max-width:960px;margin:0 auto}
+  header.hero .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;font-size:12px;color:${C.sage}}
+  header.hero h1{margin:10px 0 4px;font-size:30px}
+  header.hero p{margin:0 0 20px;color:#d8f3dc;max-width:620px}
+  header.hero .foliage{display:block;width:100%;height:26px;color:${C.cream}}
+  .nav{max-width:960px;margin:14px auto 0;display:flex;flex-wrap:wrap;gap:14px}
+  .nav a{color:#eafff2;text-decoration:none;font-weight:700;font-size:14px;opacity:.9}
+  .nav a:hover{opacity:1;text-decoration:underline}
+  main{max-width:960px;margin:0 auto;padding:26px 20px 60px}
+  .card{background:#fff;border:1px solid rgba(149,213,178,.6);border-radius:18px;box-shadow:0 6px 22px -8px rgba(45,106,79,.25);padding:22px;margin-bottom:20px}
+  label{display:block;font-weight:700;color:${C.green};margin:0 0 6px;font-size:14px}
+  input[type=text],input[type=date],input[type=password],textarea,select{width:100%;padding:11px 13px;border:1px solid ${C.sage};border-radius:12px;font:inherit;color:${C.greenDark};background:#fff}
+  textarea{min-height:130px;resize:vertical}
+  .field{margin-bottom:18px}
+  .req{color:#c1121f}
+  .btn{display:inline-block;border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:800;cursor:pointer;background:${C.green};color:${C.cream};text-decoration:none}
+  .btn:hover{background:${C.greenDark}}
+  .btn.sec{background:#fff;color:${C.green};border:1px solid rgba(45,106,79,.35)}
+  .btn.danger{background:#fff;color:#b02a2a;border:1px solid #e6b3b3}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .grid{display:grid;gap:18px}
+  @media(min-width:720px){.grid.two{grid-template-columns:1fr 1fr}}
+  .muted{color:rgba(27,67,50,.6);font-size:13px}
+  .tag{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:800}
+  .tag.hr{background:${C.earth};color:${C.cream}}
+  .tag.clear{background:${C.sageLight};color:${C.greenDark};border:1px solid rgba(45,106,79,.25)}
+  .tag.review{background:#fff4d6;color:#8a6d1a;border:1px solid #e7cf86}
+  .tag.flagged{background:#fbe0e0;color:#a02020;border:1px solid #eab3b3}
+  .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid ${C.sage};background:${C.sageLight}}
+  .thumb{width:100px;height:auto;border-radius:8px;border:2px solid ${C.sage};background:${C.sageLight};display:block}
+  .banner{display:flex;gap:10px;align-items:flex-start;background:#fff8e1;border:1px solid #ecd58a;border-radius:14px;padding:12px 14px;color:#7a5c12;font-size:14px;margin-bottom:20px}
+  .section-h{display:flex;align-items:center;gap:10px;margin:26px 0 10px;scroll-margin-top:12px}
+  .section-h h2{margin:0;color:${C.green};font-size:22px}
+  .adminwrap{display:flex;gap:20px;align-items:flex-start}
+  .admincontent{flex:1;min-width:0}
+  .sidebar{position:sticky;top:12px;flex:0 0 200px;background:#fff;border:1px solid rgba(149,213,178,.6);border-radius:14px;box-shadow:0 4px 18px -8px rgba(45,106,79,.25);padding:12px;margin-bottom:20px}
+  .sidebar .sbtitle{font-weight:800;color:${C.green};font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin:2px 6px 8px}
+  .sidebar a{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 11px;border-radius:10px;color:${C.greenDark};text-decoration:none;font-weight:700;font-size:14px;margin-bottom:3px}
+  .sidebar a:hover{background:${C.sageLight}}
+  .sidebar a .n{background:${C.sageLight};color:${C.green};border-radius:999px;padding:1px 9px;font-size:12px;font-weight:800}
+  @media(max-width:760px){.adminwrap{flex-direction:column}.sidebar{position:static;flex:auto;width:100%;display:flex;flex-wrap:wrap;gap:6px;padding:8px}.sidebar .sbtitle{width:100%}.sidebar a{margin:0;flex:1;min-width:130px}}
+  .count{background:${C.sageLight};color:${C.green};font-weight:800;border-radius:999px;padding:2px 10px;font-size:14px}
+  .modbox{background:rgba(248,244,227,.6);border:1px solid rgba(149,213,178,.6);border-radius:12px;padding:11px;margin:12px 0}
+  .hrbox{background:rgba(232,245,233,.55);border:1px solid rgba(45,106,79,.18);border-radius:12px;padding:12px;margin:12px 0}
+  .err{background:#fbe0e0;border:1px solid #eab3b3;color:#a02020;border-radius:12px;padding:11px 14px;font-weight:700;margin-bottom:16px}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;border-top:1px solid rgba(149,213,178,.5);padding-top:14px;margin-top:6px}
+  footer{text-align:center;color:rgba(27,67,50,.5);font-size:13px;padding:0 0 40px}
+  iframe.preview{width:100%;height:520px;border:1px solid ${C.sage};border-radius:12px;background:#fff}
+  .row{display:flex;gap:14px;align-items:flex-start}
+  details summary{cursor:pointer;font-weight:800;color:${C.green};margin-top:8px}
+&lt;/style&gt;&lt;/head&gt;&lt;body&gt;
+&lt;header class="hero"&gt;&lt;div class="inner"&gt;&lt;div class="brand"&gt;${leaf}&lt;span&gt;National Parks Board · Singapore&lt;/span&gt;&lt;/div&gt;
+&lt;h1&gt;${esc(title)}&lt;/h1&gt;${adminNav ? '' : ''}${nav}&lt;/div&gt;
+&lt;svg class="foliage" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden="true"&gt;&lt;path d="M0 40 V22 Q60 6 120 22 Q180 4 240 22 Q300 8 360 22 Q420 3 480 22 Q540 9 600 22 Q660 4 720 22 Q780 8 840 22 Q900 5 960 22 Q1020 9 1080 22 Q1140 6 1200 22 V40 Z" fill="currentColor"/&gt;&lt;/svg&gt;
+&lt;/header&gt;
+&lt;main&gt;${body}&lt;/main&gt;
+&lt;footer&gt;NParks New Hire Introduction · National Parks Board, Singapore 🌿&lt;/footer&gt;
+&lt;/body&gt;&lt;/html&gt;`;
+}
+
+function moderationTag(status) {
+  const s = status || 'review';
+  const label = s === 'clear' ? '✅ Clear' : s === 'flagged' ? '🚫 Flagged' : '⚠️ Review Needed';
+  return `&lt;span class="tag ${s}"&gt;${label}&lt;/span&gt;`;
+}
+
+// ── Public: landing ──────────────────────────────────────────────────────────
+app.get('/', (_req, res) =&gt; {
+  res.send(layout({ title: 'NParks New Hire Introduction 🌿', body: `
+    &lt;p class="muted" style="font-size:16px;max-width:640px"&gt;Our warm welcome for every new member of the NParks family. Share a short introduction and it will be included in a friendly welcome email to your new colleagues.&lt;/p&gt;
+    &lt;div style="margin-top:18px"&gt;
+      &lt;div class="card" style="max-width:560px"&gt;&lt;h2 style="color:${C.green};margin-top:0"&gt;I'm a new joiner 🌱&lt;/h2&gt;&lt;p class="muted"&gt;Share a little about yourself so we can introduce you to your new colleagues. It only takes a couple of minutes.&lt;/p&gt;
+        &lt;div style="display:flex;flex-wrap:wrap;gap:10px"&gt;&lt;a class="btn" href="/submit"&gt;Start my introduction →&lt;/a&gt;&lt;a class="btn sec" href="/amend"&gt;Amend my introduction&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;/div&gt;` }));
+});
+
+// ── Public: submission form ──────────────────────────────────────────────────
+function submitPage({ error = '', values = {}, amend = false, photoUrl = null } = {}) {
+  const introBlurb = amend
+    ? `&lt;p class="muted"&gt;Update anything you'd like to change below, then save. Your amended introduction will go back to the HR team for a quick review. &lt;b&gt;Job title, division and start date are added by HR.&lt;/b&gt;&lt;/p&gt;`
+    : `&lt;p class="muted"&gt;Our bi-monthly new joiner announcement will include a self-introduction from each new joiner, shared with NParks colleagues via email. Take this opportunity to tell your new colleagues a little about yourself! Your introduction will be included in a warm welcome email after a quick review by HR.&lt;br&gt;Note that your job title, division, and start date will be added by HR, so you don't need to include those.&lt;/p&gt;
+       &lt;p class="muted" style="background:${C.sageLight};border-radius:10px;padding:10px 12px"&gt;&lt;b&gt;Already submitted before?&lt;/b&gt; You can &lt;a href="/amend"&gt;amend your existing introduction&lt;/a&gt; instead of starting again.&lt;/p&gt;`;
+  // Email is fixed to the signed-in (OTP-verified) address — it is the joiner's
+  // identity and cannot be changed in the form; the server ignores any value
+  // posted here and always uses the session email.
+  const emailField = `&lt;div class="field"&gt;&lt;label&gt;Email address&lt;/label&gt;&lt;input type="email" name="email" value="${esc(values.email)}" readonly style="background:#eef3ef"&gt;
+        &lt;p class="muted" style="margin-top:4px"&gt;You're signed in with this email (verified by your one-time code), and your introduction is saved under it. It won't be shared in the welcome email or shown to your colleagues. To use a different email, log out and sign in again with that address.&lt;/p&gt;&lt;/div&gt;`;
+  const photoField = amend
+    ? `&lt;div class="field"&gt;&lt;label&gt;Profile photo (JPG/PNG, max 5MB)&lt;/label&gt;
+        &lt;div class="row"&gt;
+          &lt;div style="flex:0 0 auto;text-align:center"&gt;
+            &lt;img id="pv" ${photoUrl ? `src="${photoUrl}"` : ''} alt="Photo preview" style="width:130px;height:auto;border-radius:10px;border:2px solid ${C.sage};background:${C.sageLight}${photoUrl ? '' : ';display:none'}"&gt;
+            &lt;p class="muted" id="pvcap" style="margin:5px 0 0;font-size:12px;font-weight:800;color:${C.green}${photoUrl ? '' : ';display:none'}"&gt;👀 Preview&lt;/p&gt;
+          &lt;/div&gt;
+          &lt;div style="flex:1"&gt;
+            &lt;input type="file" name="photo" accept="image/jpeg,image/png" onchange="gpPreview(this)"&gt;
+            &lt;p class="muted" style="margin-top:8px"&gt;Please upload a &lt;b&gt;clear, sharp photo&lt;/b&gt; of yourself for your staff introduction. Use a &lt;b&gt;head-and-shoulders shot (top half of your body only — not a full-body photo)&lt;/b&gt;, with your face clearly visible, no sunglasses or headgear, and dressed in suitable attire. The preview shows exactly how it will look. Leave this empty to keep your current photo.&lt;/p&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;&lt;/div&gt;`
+    : `&lt;div class="field"&gt;&lt;label&gt;Profile photo (JPG/PNG, max 5MB) &lt;span class="req"&gt;*&lt;/span&gt;&lt;/label&gt;
+        &lt;div class="row"&gt;
+          &lt;div style="flex:0 0 auto;text-align:center"&gt;
+            &lt;img id="pv" alt="Photo preview" style="display:none;width:130px;height:auto;border-radius:10px;border:2px solid ${C.sage};background:${C.sageLight}"&gt;
+            &lt;p class="muted" id="pvcap" style="display:none;margin:5px 0 0;font-size:12px;font-weight:800;color:${C.green}"&gt;👀 Preview&lt;/p&gt;
+          &lt;/div&gt;
+          &lt;div style="flex:1"&gt;
+            &lt;input type="file" name="photo" accept="image/jpeg,image/png" required onchange="gpPreview(this)"&gt;
+            &lt;p class="muted" style="margin-top:8px"&gt;Please upload a &lt;b&gt;clear, sharp photo&lt;/b&gt; of yourself for your staff introduction. Use a &lt;b&gt;head-and-shoulders shot (top half of your body only — not a full-body photo)&lt;/b&gt;, with your face clearly visible, no sunglasses or headgear, and dressed in suitable attire. Once you choose a photo, a preview appears here — not happy with it? Just choose another file.&lt;/p&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;&lt;/div&gt;`;
+  return layout({ title: amend ? 'Amend your introduction 🌱' : "We're so glad you're here 🌱", body: `
+    ${error ? `&lt;div class="err"&gt;${esc(error)}&lt;/div&gt;` : ''}
+    &lt;div class="card"&gt;
+      ${introBlurb}
+      &lt;form method="post" action="/submit" enctype="multipart/form-data"&gt;
+        ${amend ? '&lt;input type="hidden" name="amend" value="1"&gt;' : ''}
+        &lt;div class="field"&gt;&lt;label&gt;Full name (as per NRIC) &lt;span class="req"&gt;*&lt;/span&gt;&lt;/label&gt;&lt;input type="text" name="full_name" required value="${esc(values.full_name)}" placeholder="e.g. Amara Tan"&gt;&lt;/div&gt;
+        ${emailField}
+        ${photoField}
+        &lt;div class="field"&gt;&lt;label&gt;Personal introduction &lt;span class="req"&gt;*&lt;/span&gt;&lt;/label&gt;
+          &lt;p class="muted" style="margin:0 0 8px"&gt;We will appreciate it if you can provide a brief write-up (not more than 100 words), &lt;b&gt;written as a short paragraph — please do not use bullet points&lt;/b&gt;. Use the questions below as a guide, and include information you are comfortable to share with NParks colleagues. We may make slight changes where needed.&lt;/p&gt;
+          &lt;ul class="muted" style="margin:0 0 8px;padding-left:18px"&gt;&lt;li&gt;Which company/industry (e.g. public sector) you come from?&lt;/li&gt;&lt;li&gt;What hobbies do you have?&lt;/li&gt;&lt;li&gt;Why do you join NParks?&lt;/li&gt;&lt;/ul&gt;
+          &lt;textarea name="intro" required oninput="var w=this.value.trim()?this.value.trim().split(/\\s+/).length:0;var c=document.getElementById('wc');c.textContent=w+' / 100 words';c.style.color=w&gt;100?'#b45309':'';" placeholder="Share a short introduction about yourself for your NParks colleagues."&gt;${esc(values.intro)}&lt;/textarea&gt;
+          &lt;p class="muted" id="wc"&gt;0 / 100 words&lt;/p&gt;&lt;/div&gt;
+        &lt;button class="btn" type="submit"&gt;${amend ? 'Save my changes 🌿' : 'Send my introduction 🌿'}&lt;/button&gt;
+      &lt;/form&gt;
+    &lt;/div&gt;
+    &lt;script&gt;
+      function gpPreview(inp){var f=inp.files[0];var i=document.getElementById('pv'),c=document.getElementById('pvcap');if(f){i.src=URL.createObjectURL(f);i.style.display='';if(c)c.style.display='';}}
+      (function(){var t=document.querySelector('textarea[name=intro]');if(t)t.dispatchEvent(new Event('input'));})();
+    &lt;/script&gt;` });
+}
+// ── Shared one-time-code (OTP) page ──────────────────────────────────────────
+// Used by both the joiner gate and the HR login as the second factor.
+function otpPage({ action, email, next = '', resendAction, error = '' }) {
+  return layout({ title: 'Enter your code 🔑', body: `
+    ${error ? `&lt;div class="err"&gt;${esc(error)}&lt;/div&gt;` : ''}
+    &lt;div class="card" style="max-width:480px;margin:10px auto"&gt;
+      &lt;p class="muted"&gt;We've emailed a one-time code to &lt;b&gt;${esc(email)}&lt;/b&gt;. Enter it below to continue — the code expires shortly.&lt;/p&gt;
+      &lt;form method="post" action="${action}"&gt;
+        ${next ? `&lt;input type="hidden" name="next" value="${esc(next)}"&gt;` : ''}
+        &lt;div class="field"&gt;&lt;label&gt;One-time code&lt;/label&gt;&lt;input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" autofocus required placeholder="Enter the code"&gt;&lt;/div&gt;
+        &lt;button class="btn" type="submit"&gt;Verify &amp;amp; continue ✓&lt;/button&gt;
+      &lt;/form&gt;
+      &lt;form method="post" action="${resendAction}" style="margin-top:10px"&gt;
+        ${next ? `&lt;input type="hidden" name="next" value="${esc(next)}"&gt;` : ''}
+        &lt;button class="btn sec" type="submit"&gt;Resend code&lt;/button&gt;
+      &lt;/form&gt;
+    &lt;/div&gt;` });
+}
+
+// ── New-joiner access gate (shared password + emailed OTP) ───────────────────
+// New joiners enter the shared access password and their email; we email them a
+// one-time code; once verified they can open (and submit) the introduction
+// form. Not shown to HR, and the public landing page stays open.
+function joinerGatePage({ error = '', email = '', next = '/submit' } = {}) {
+  return layout({ title: 'New joiner access 🌱', body: `
+    ${error ? `&lt;div class="err"&gt;${esc(error)}&lt;/div&gt;` : ''}
+    &lt;div class="card" style="max-width:480px;margin:10px auto"&gt;
+      &lt;p class="muted"&gt;Welcome! To open your introduction form, enter the shared access password (from NParks HR) and your email address. We'll email you a one-time code to confirm it's you.&lt;/p&gt;
+      &lt;form method="post" action="/unlock"&gt;
+        &lt;input type="hidden" name="next" value="${esc(next)}"&gt;
+        &lt;div class="field"&gt;&lt;label&gt;Access password&lt;/label&gt;&lt;input type="password" name="password" autofocus required&gt;&lt;/div&gt;
+        &lt;div class="field"&gt;&lt;label&gt;Your email address&lt;/label&gt;&lt;input type="email" name="email" value="${esc(email)}" required placeholder="e.g. yourname@gmail.com"&gt;&lt;/div&gt;
+        &lt;button class="btn" type="submit"&gt;Send me a code 🌿&lt;/button&gt;
+      &lt;/form&gt;
+    &lt;/div&gt;` });
+}
+app.post('/unlock', async (req, res) =&gt; {
+  const next = (req.body.next || '/submit').startsWith('/') ? req.body.next : '/submit';
+  const email = (req.body.email || '').trim();
+  if ((req.body.password || '') !== JOINER_PASSWORD) return res.send(joinerGatePage({ error: 'Incorrect access password. Please try again, or check with NParks HR.', email, next }));
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.send(joinerGatePage({ error: 'Please enter a valid email address.', email, next }));
+  // OTP not configured yet → password-only (no lockout).
+  if (!otpEnabled) { setCookie(res, 'gp_joiner', signToken({ role: 'joiner', email }, 30 * 864e5), 30 * 86400); return res.redirect(next); }
+  let codeHash;
+  try { codeHash = await issueOtp(email); }
+  catch (e) { console.warn('[otp] joiner send:', e.message); return res.send(joinerGatePage({ error: 'Sorry, we could not send a code right now. Please try again in a moment.', email, next })); }
+  setCookie(res, 'gp_j_pending', signToken({ email, next, codeHash, attempts: 0 }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
+  res.send(otpPage({ action: '/verify-otp', email, next, resendAction: '/unlock-resend' }));
+});
+app.post('/verify-otp', (req, res) =&gt; {
+  const pend = verifyToken(cookieVal(req, 'gp_j_pending'));
+  if (!pend) return res.send(joinerGatePage({ error: 'Your session timed out. Please start again.', next: '/submit' }));
+  const next = (pend.next || '/submit').startsWith('/') ? pend.next : '/submit';
+  if (checkOtp(pend, req.body.code)) {
+    clearCookie(res, 'gp_j_pending');
+    setCookie(res, 'gp_joiner', signToken({ role: 'joiner', email: pend.email }, 30 * 864e5), 30 * 86400);
+    return res.redirect(next);
+  }
+  const attempts = (pend.attempts || 0) + 1;
+  if (attempts &gt;= OTP.maxAttempts) {
+    clearCookie(res, 'gp_j_pending');
+    return res.send(joinerGatePage({ error: 'Too many incorrect codes. Please start again to get a new code.', email: pend.email, next }));
+  }
+  setCookie(res, 'gp_j_pending', signToken({ email: pend.email, next, codeHash: pend.codeHash, attempts }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
+  res.send(otpPage({ action: '/verify-otp', email: pend.email, next, error: `That code was not correct. Please try again (${OTP.maxAttempts - attempts} attempt(s) left), or resend a new code.`, resendAction: '/unlock-resend' }));
+});
+app.post('/unlock-resend', async (req, res) =&gt; {
+  const pend = verifyToken(cookieVal(req, 'gp_j_pending'));
+  if (!pend) return res.send(joinerGatePage({ error: 'Your session timed out. Please start again.', next: '/submit' }));
+  let codeHash;
+  try { codeHash = await issueOtp(pend.email); } catch (e) { return res.send(otpPage({ action: '/verify-otp', email: pend.email, next: pend.next, error: 'Could not resend the code. Please try again shortly.', resendAction: '/unlock-resend' })); }
+  setCookie(res, 'gp_j_pending', signToken({ email: pend.email, next: pend.next, codeHash, attempts: 0 }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
+  res.send(otpPage({ action: '/verify-otp', email: pend.email, next: pend.next, resendAction: '/unlock-resend' }));
+});
+
+app.get('/submit', (req, res) =&gt; {
+  if (!hasJoiner(req)) return res.send(joinerGatePage({ next: '/submit' }));
+  res.send(submitPage({ values: { email: joinerEmail(req) } }));
+});
+
+app.post('/submit', (req, res) =&gt; {
+  if (!hasJoiner(req)) return res.send(joinerGatePage({ error: 'Please sign in with the access password and a one-time code first.', next: '/submit' }));
+  upload.single('photo')(req, res, async (err) =&gt; {
+    const amend = req.body.amend === '1';
+    // Identity is the OTP-verified email in the session — NEVER an email posted
+    // in the form. This stops a signed-in joiner from reading or amending anyone
+    // else's submission by typing a different address.
+    const mail = (joinerEmail(req) || '').trim();
+    // Re-render the form with an error message.
+    const fail = async (message, status = 400) =&gt; {
+      let photoUrl = null;
+      if (pool &amp;&amp; mail) {
+        const ex = await pool.query("select id from submissions where lower(email)=lower($1) and status &lt;&gt; 'approved' order by created_at desc limit 1", [mail]);
+        photoUrl = ex.rows.length ? `/api/photo/${ex.rows[0].id}` : null;
+      }
+      return res.status(status).send(submitPage({ error: message, values: { ...req.body, email: mail }, amend, photoUrl }));
+    };
+
+    if (err) return fail(err.message);
+    if (!pool) return fail('Database is not configured yet. Please try again shortly.', 503);
+    const { full_name, intro, fun_fact } = req.body;
+    if (!full_name || !intro) return fail('Full name and introduction are both required.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail('Your session is missing a valid email. Please sign in again.');
+
+    try {
+      const name = full_name.trim();
+
+      // Find THIS joiner's existing entry (their own session email) that HR has
+      // NOT yet approved. If found, we UPDATE it in place — a photo is optional
+      // here (leave it out to keep the current one). If not found, this is a
+      // brand-new submission and a photo is required. Approved entries untouched.
+      const existing = await pool.query(
+        `select id from submissions where lower(email) = lower($1) and status &lt;&gt; 'approved'
+         order by created_at desc limit 1`, [mail]);
+      const isEdit = existing.rows.length &gt; 0;
+      if (!req.file &amp;&amp; !isEdit) return fail('A profile photo is required.');
+
+      // Authoritative image check: trust the bytes, not the client Content-Type.
+      let photoMime = null;
+      if (req.file) {
+        photoMime = sniffImageType(req.file.buffer);
+        if (!photoMime) return fail('That file is not a valid JPG or PNG image. Please upload a real photo.');
+      }
+
+      const ai = await moderateText(intro);
+      const photo = req.file ? checkPhoto(req.file.buffer) : null;
+
+      if (isEdit) {
+        if (req.file) {
+          await pool.query(
+            `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
+               ai_status=$5, ai_confidence=$6, ai_reason=$7, photo_status=$8, photo_reason=$9,
+               photo_mime=$10, photo_data=$11, orig_photo_mime=null, orig_photo_data=null, updated_at=now() where id=$12`,
+            [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason,
+             photo.status, photo.reason, photoMime, req.file.buffer, existing.rows[0].id],
+          );
+        } else {
+          // No new photo — keep the existing one, update everything else.
+          await pool.query(
+            `update submissions set full_name=$1, email=$2, intro=$3, fun_fact=$4, status='awaiting-hr-review',
+               ai_status=$5, ai_confidence=$6, ai_reason=$7, updated_at=now() where id=$8`,
+            [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, existing.rows[0].id],
+          );
+        }
+        return res.redirect(`/submit/thanks?name=${encodeURIComponent(name)}&amp;updated=1`);
+      }
+
+      const { rows } = await pool.query(
+        `insert into submissions (full_name,email,intro,fun_fact,status,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,photo_mime,photo_data)
+         values ($1,$2,$3,$4,'awaiting-hr-review',$5,$6,$7,$8,$9,$10,$11) returning full_name`,
+        [name, mail, intro.trim(), (fun_fact || '').trim() || null, ai.status, ai.confidence, ai.reason, photo.status, photo.reason, photoMime, req.file.buffer],
+      );
+      res.redirect(`/submit/thanks?name=${encodeURIComponent(rows[0].full_name)}`);
+    } catch (e) {
+      console.error(e);
+      return fail('Something went wrong saving your submission. Please try again.', 500);
+    }
+  });
+});
+
+// ── Public: amend an existing submission ─────────────────────────────────────
+function amendLookupPage({ error = '', email = '' } = {}) {
+  return layout({ title: 'Amend your introduction 🌱', body: `
+    ${error ? `&lt;div class="err"&gt;${esc(error)}&lt;/div&gt;` : ''}
+    &lt;div class="card" style="max-width:520px;margin:0 auto"&gt;
+      &lt;p class="muted"&gt;We'll bring up the introduction saved under your signed-in email so you can make changes. You can amend any time before HR approves your entry.&lt;/p&gt;
+      &lt;form method="post" action="/amend"&gt;
+        &lt;div class="field"&gt;&lt;label&gt;Email address&lt;/label&gt;&lt;input type="email" name="email" value="${esc(email)}" readonly style="background:#eef3ef"&gt;&lt;/div&gt;
+        &lt;button class="btn" type="submit"&gt;Find my introduction&lt;/button&gt;
+        &lt;a class="btn sec" href="/submit" style="margin-left:8px"&gt;Start a new one instead&lt;/a&gt;
+      &lt;/form&gt;
+    &lt;/div&gt;` });
+}
+app.get('/amend', (req, res) =&gt; {
+  if (!hasJoiner(req)) return res.send(joinerGatePage({ next: '/amend' }));
+  res.send(amendLookupPage({ email: joinerEmail(req) }));
+});
+app.post('/amend', async (req, res) =&gt; {
+  if (!hasJoiner(req)) return res.send(joinerGatePage({ error: 'Please sign in with the access password and a one-time code first.', next: '/amend' }));
+  if (!pool) return res.status(503).send(amendLookupPage({ error: 'Database is not configured yet. Please try again shortly.', email: joinerEmail(req) }));
+  // Look up strictly by the signed-in (OTP-verified) email — never a posted one.
+  const mail = (joinerEmail(req) || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).send(amendLookupPage({ error: 'Your session is missing a valid email. Please sign in again.', email: mail }));
+  const { rows } = await pool.query(
+    `select id, full_name, email, intro, fun_fact, status from submissions where lower(email) = lower($1) order by created_at desc limit 1`, [mail]);
+  if (!rows.length) return res.status(404).send(amendLookupPage({ error: "We couldn't find a submission under your email address. If you haven't submitted yet, please start a new introduction.", email: mail }));
+  const s = rows[0];
+  if (s.status === 'approved') return res.status(400).send(amendLookupPage({ error: 'Your introduction has already been approved by HR, so it can no longer be edited here. Please contact HR if something needs to change.', email: mail }));
+  res.send(submitPage({ amend: true, values: { full_name: s.full_name, email: s.email, intro: s.intro, fun_fact: s.fun_fact || '' }, photoUrl: `/api/photo/${s.id}` }));
+});
+
+app.get('/submit/thanks', (req, res) =&gt; {
+  const name = esc(req.query.name || 'friend');
+  const updated = req.query.updated === '1';
+  res.send(layout({ title: `Thanks for sharing, ${name}! 🌱`, body: `
+    &lt;div class="card" style="text-align:center;max-width:560px;margin:20px auto"&gt;
+      &lt;div style="font-size:44px"&gt;🌿&lt;/div&gt;
+      &lt;h2 style="color:${C.green}"&gt;Welcome to NParks — we're so glad you're here.&lt;/h2&gt;
+      &lt;p class="muted"&gt;${updated ? 'Your entry has been updated and sent back to the team for review.' : 'Your introduction has been sent to the team.'} Keep an eye on your inbox for a warm welcome from your new colleagues.&lt;/p&gt;
+      &lt;a class="btn" href="/"&gt;Back to home&lt;/a&gt;
+    &lt;/div&gt;` }));
+});
+
+// ── Public: serve a stored photo ─────────────────────────────────────────────
+app.get('/api/photo/:id', async (req, res) =&gt; {
+  if (!pool) return res.status(503).send('No database');
+  try {
+    const { rows } = await pool.query('select email, photo_mime, photo_data from submissions where id=$1', [req.params.id]);
+    if (!rows.length || !rows[0].photo_data) return res.status(404).send('Not found');
+    const row = rows[0];
+    // Authorization: HR admins may view any photo; a signed-in joiner may view
+    // ONLY the photo on their own submission (matched to their OTP-verified
+    // email). Everyone else gets 404 — don't reveal that the row exists.
+    const owner = hasJoiner(req) &amp;&amp; row.email &amp;&amp; (joinerEmail(req) || '').toLowerCase() === String(row.email).toLowerCase();
+    if (!hasAdmin(req) &amp;&amp; !owner) return res.status(404).send('Not found');
+    res.set('Content-Type', row.photo_mime === 'image/png' ? 'image/png' : 'image/jpeg');
+    res.set('Cache-Control', 'private, no-store');
+    res.send(row.photo_data);
+  } catch { res.status(400).send('Bad request'); }
+});
+
+// ── Health ───────────────────────────────────────────────────────────────────
+app.get('/api/health', (_req, res) =&gt; res.json({ ok: true, db: Boolean(pool) }));
+
+// ── Serve the html2canvas library (installed via npm) so the eDM preview can
+//    export a PNG. Same-origin script — no external CDN required. ─────────────
+app.get('/vendor/html2canvas.js', (_req, res) =&gt; {
+  try {
+    const dir = path.dirname(require.resolve('html2canvas/package.json'));
+    res.type('application/javascript').sendFile(path.join(dir, 'dist', 'html2canvas.min.js'));
+  } catch {
+    res.status(404).type('application/javascript').send('/* html2canvas not installed */');
+  }
+});
+
+// ── Admin auth (shared password + emailed OTP, restricted to an allowlist) ───
+function adminLoginPage({ error = '', email = '' } = {}) {
+  return layout({ title: 'HR Admin Login', body: `
+    ${error ? `&lt;div class="err"&gt;${esc(error)}&lt;/div&gt;` : ''}
+    &lt;div class="card" style="max-width:440px;margin:10px auto"&gt;
+      &lt;p class="muted"&gt;Enter the shared HR password and your work email. We'll email you a one-time code to finish signing in.&lt;/p&gt;
+      &lt;form method="post" action="${ADMIN_PATH}/login"&gt;
+        &lt;div class="field"&gt;&lt;label&gt;Admin password&lt;/label&gt;&lt;input type="password" name="password" autofocus required&gt;&lt;/div&gt;
+        &lt;div class="field"&gt;&lt;label&gt;Your email address&lt;/label&gt;&lt;input type="email" name="email" value="${esc(email)}" required placeholder="you@nparks.gov.sg"&gt;&lt;/div&gt;
+        &lt;button class="btn" type="submit"&gt;Send me a code 🌿&lt;/button&gt;
+      &lt;/form&gt;
+    &lt;/div&gt;` });
+}
+app.post(ADMIN_PATH + '/login', async (req, res) =&gt; {
+  const email = (req.body.email || '').trim();
+  if ((req.body.password || '') !== ADMIN_PASSWORD) return res.send(adminLoginPage({ error: 'Incorrect password. Please try again.', email }));
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.send(adminLoginPage({ error: 'Please enter a valid email address.', email }));
+  if (ADMIN_EMAILS.length &amp;&amp; !ADMIN_EMAILS.includes(email.toLowerCase())) return res.send(adminLoginPage({ error: 'This email is not authorised for the HR console. Please contact the site administrator.', email }));
+  // OTP not configured yet → password-only (no lockout).
+  if (!otpEnabled) { setCookie(res, 'gp_admin', signToken({ role: 'admin', email }, 12 * 3600e3), 12 * 3600); return res.redirect(ADMIN_PATH); }
+  let codeHash;
+  try { codeHash = await issueOtp(email); }
+  catch (e) { console.warn('[otp] admin send:', e.message); return res.send(adminLoginPage({ error: 'Could not send a code right now. Please try again shortly.', email })); }
+  setCookie(res, 'gp_a_pending', signToken({ email, codeHash, attempts: 0 }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
+  res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email, resendAction: ADMIN_PATH + '/resend' }));
+});
+app.post(ADMIN_PATH + '/verify-otp', (req, res) =&gt; {
+  const pend = verifyToken(cookieVal(req, 'gp_a_pending'));
+  if (!pend) return res.send(adminLoginPage({ error: 'Your login timed out. Please sign in again.' }));
+  if (checkOtp(pend, req.body.code)) {
+    clearCookie(res, 'gp_a_pending');
+    setCookie(res, 'gp_admin', signToken({ role: 'admin', email: pend.email }, 12 * 3600e3), 12 * 3600);
+    return res.redirect(ADMIN_PATH);
+  }
+  const attempts = (pend.attempts || 0) + 1;
+  if (attempts &gt;= OTP.maxAttempts) {
+    clearCookie(res, 'gp_a_pending');
+    return res.send(adminLoginPage({ error: 'Too many incorrect codes. Please sign in again to get a new code.', email: pend.email }));
+  }
+  setCookie(res, 'gp_a_pending', signToken({ email: pend.email, codeHash: pend.codeHash, attempts }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
+  res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, error: `That code was not correct. Please try again (${OTP.maxAttempts - attempts} attempt(s) left), or resend a new code.`, resendAction: ADMIN_PATH + '/resend' }));
+});
+app.post(ADMIN_PATH + '/resend', async (req, res) =&gt; {
+  const pend = verifyToken(cookieVal(req, 'gp_a_pending'));
+  if (!pend) return res.send(adminLoginPage({ error: 'Your login timed out. Please sign in again.' }));
+  let codeHash;
+  try { codeHash = await issueOtp(pend.email); } catch { return res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, error: 'Could not resend the code. Please try again shortly.', resendAction: ADMIN_PATH + '/resend' })); }
+  setCookie(res, 'gp_a_pending', signToken({ email: pend.email, codeHash, attempts: 0 }, OTP.ttlMin * 60e3), OTP.ttlMin * 60);
+  res.send(otpPage({ action: ADMIN_PATH + '/verify-otp', email: pend.email, resendAction: ADMIN_PATH + '/resend' }));
+});
+app.get(ADMIN_PATH + '/logout', (_req, res) =&gt; {
+  clearCookie(res, 'gp_admin'); clearCookie(res, 'gp_a_pending');
+  res.redirect(ADMIN_PATH);
+});
+
+const AI_DISCLAIMER = `&lt;div class="banner"&gt;&lt;span&gt;🤝&lt;/span&gt;&lt;div&gt;&lt;b&gt;AI moderation is a first-pass check only.&lt;/b&gt; Please review all content — including each photo — before approving. The final decision always rests with you.&lt;/div&gt;&lt;/div&gt;`;
+
+// ── Admin: review submissions ────────────────────────────────────────────────
+app.get(ADMIN_PATH, async (req, res) =&gt; {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  if (!pool) return res.send(layout({ title: 'NParks New Hire Introduction — HR Console', adminNav: true, body: `${AI_DISCLAIMER}&lt;div class="card"&gt;No database connected.&lt;/div&gt;` }));
+  const { rows } = await pool.query(`select id,full_name,email,start_date,intro,fun_fact,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,updated_at,(orig_photo_data is not null) as has_orig from submissions order by created_at desc`);
+  const groups = [
+    ['awaiting-hr-review', 'Awaiting HR Review', 'Add job details and approve, or reject.'],
+    ['approved', 'Approved', 'Ready to include in an eDM.'],
+    ['archived', 'Archived', 'eDM already sent — kept for records, not offered for new eDMs.'],
+    ['rejected', 'Rejected', 'Not included in any eDM.'],
+  ];
+  const notice = req.query.msg ? `&lt;div class="banner" style="background:${C.sageLight};border-color:${C.sage};color:${C.greenDark}"&gt;&lt;span&gt;✓&lt;/span&gt;&lt;div&gt;${esc(req.query.msg)}&lt;/div&gt;&lt;/div&gt;` : '';
+  const err = req.query.err ? `&lt;div class="err"&gt;${esc(req.query.err)}&lt;/div&gt;` : '';
+  const counts = Object.fromEntries(groups.map(([key]) =&gt; [key, rows.filter((r) =&gt; r.status === key).length]));
+  // Left panel: jump straight to any category without scrolling.
+  const sidebar = `&lt;aside class="sidebar"&gt;&lt;div class="sbtitle"&gt;Jump to&lt;/div&gt;${
+    groups.map(([key, label]) =&gt; `&lt;a href="#g-${key}"&gt;&lt;span&gt;${label}&lt;/span&gt;&lt;span class="n"&gt;${counts[key]}&lt;/span&gt;&lt;/a&gt;`).join('')
+  }&lt;/aside&gt;`;
+  let content = AI_DISCLAIMER + notice + err;
+  for (const [key, label, hint] of groups) {
+    const items = rows.filter((r) =&gt; r.status === key);
+    const bulk = key === 'approved' &amp;&amp; items.length
+      ? `&lt;form method="post" action="${ADMIN_PATH}/archive-all-approved" style="margin-left:auto" onsubmit="return confirm('Archive all ${items.length} approved joiner(s)? They will move to the Archived list and won\\'t appear in future eDMs.')"&gt;&lt;button class="btn sec" type="submit"&gt;📦 Archive all approved&lt;/button&gt;&lt;/form&gt;`
+      : '';
+    content += `&lt;div class="section-h" id="g-${key}"&gt;&lt;h2&gt;${label}&lt;/h2&gt;&lt;span class="count"&gt;${items.length}&lt;/span&gt;&lt;span class="muted"&gt;${hint}&lt;/span&gt;${bulk}&lt;/div&gt;`;
+    if (!items.length) { content += `&lt;p class="muted card" style="text-align:center"&gt;Nothing here yet.&lt;/p&gt;`; continue; }
+    content += `&lt;div class="grid two"&gt;` + items.map(cardHtml).join('') + `&lt;/div&gt;`;
+  }
+  const body = `&lt;div class="adminwrap"&gt;${sidebar}&lt;div class="admincontent"&gt;${content}&lt;/div&gt;&lt;/div&gt;` + PHOTO_EDITOR_JS;
+  res.send(layout({ title: 'NParks New Hire Introduction — HR Console 🌿', adminNav: true, body }));
+});
+
+// Client-side canvas photo editor shared by every card on the review page.
+const PHOTO_EDITOR_JS = `&lt;script&gt;
+window.gpE = window.gpE || {};
+function gpInitEditor(id){
+  if(gpE[id] &amp;&amp; gpE[id].img){ gpDraw(id); return; }
+  var img = new Image();
+  img.onload = function(){ gpE[id] = { img: img, angle: 0 }; gpDraw(id); };
+  img.onerror = function(){ var m=document.getElementById('pe-'+id); if(m) m.textContent=' Could not load the photo to edit.'; };
+  img.src = '/api/photo/' + id + '?t=' + Date.now();
+}
+function gpDraw(id){
+  var st = gpE[id]; if(!st) return;
+  var cv = document.getElementById('cv-'+id), ctx = cv.getContext('2d');
+  var br = document.getElementById('br-'+id).value, co = document.getElementById('co-'+id).value, sa = document.getElementById('sa-'+id).value;
+  var img = st.img, a = st.angle;
+  var scale = Math.min(1, 800 / Math.max(img.naturalWidth, img.naturalHeight));
+  var w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+  if(a === 90 || a === 270){ cv.width = h; cv.height = w; } else { cv.width = w; cv.height = h; }
+  ctx.save();
+  ctx.filter = 'brightness('+br+'%) contrast('+co+'%) saturate('+sa+'%)';
+  ctx.translate(cv.width/2, cv.height/2);
+  ctx.rotate(a * Math.PI / 180);
+  ctx.drawImage(img, -w/2, -h/2, w, h);
+  ctx.restore();
+}
+function gpLoadFile(id, inp){
+  var f = inp.files[0]; if(!f) return;
+  var msg = document.getElementById('pe-'+id);
+  var url = URL.createObjectURL(f);
+  var img = new Image();
+  img.onload = function(){
+    gpE[id] = { img: img, angle: 0 };
+    document.getElementById('br-'+id).value = 100;
+    document.getElementById('co-'+id).value = 100;
+    document.getElementById('sa-'+id).value = 100;
+    gpDraw(id);
+    URL.revokeObjectURL(url);
+    if(msg) msg.textContent = ' New photo loaded — adjust if you like, then Save.';
+  };
+  img.onerror = function(){ if(msg) msg.textContent = ' Could not read that image — please try another file.'; URL.revokeObjectURL(url); };
+  img.src = url;
+}
+function gpRotate(id){ var st = gpE[id]; if(!st) return; st.angle = (st.angle + 90) % 360; gpDraw(id); }
+function gpResetPhoto(id){
+  document.getElementById('br-'+id).value = 100;
+  document.getElementById('co-'+id).value = 100;
+  document.getElementById('sa-'+id).value = 100;
+  if(gpE[id]) gpE[id].angle = 0;
+  gpDraw(id);
+}
+function gpSavePhoto(id, btn){
+  var cv = document.getElementById('cv-'+id), msg = document.getElementById('pe-'+id);
+  if(!gpE[id]){ msg.textContent = ' Open the editor first.'; return; }
+  btn.disabled = true; msg.textContent = ' Saving…';
+  cv.toBlob(function(blob){
+    var fd = new FormData(); fd.append('id', id); fd.append('photo', blob, 'photo.jpg');
+    fetch('${ADMIN_PATH}/photo', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.ok){ msg.textContent = ' ✓ Saved! Refreshing…'; setTimeout(function(){ location.reload(); }, 500); }
+        else { msg.textContent = ' ' + (d.error || 'Save failed.'); btn.disabled = false; }
+      })
+      .catch(function(e){ msg.textContent = ' ' + e.message; btn.disabled = false; });
+  }, 'image/jpeg', 0.92);
+}
+&lt;/script&gt;`;
+
+// In-app photo touch-up: HR can brighten / adjust / rotate the joiner's photo
+// and save the result straight back to the database. All done client-side on a
+// &lt;canvas&gt;; the adjusted image is posted to ${ADMIN_PATH}/photo. The &lt;details&gt; lazily
+// loads the photo into the editor only when opened (ontoggle).
+function photoEditor(s) {
+  const id = s.id;
+  return `&lt;details class="pe" ontoggle="if(this.open)gpInitEditor('${id}')"&gt;
+    &lt;summary&gt;✨ Adjust photo (brighten / rotate)&lt;/summary&gt;
+    &lt;div style="margin-top:10px"&gt;
+      &lt;p class="muted" style="margin:0 0 8px"&gt;Adjust the current photo below, &lt;b&gt;or&lt;/b&gt; load a completely different one. Rotate if needed, then &lt;b&gt;Save&lt;/b&gt; — the result replaces the stored photo for this joiner.&lt;/p&gt;
+      &lt;div class="field" style="margin:0 0 12px"&gt;
+        &lt;label&gt;Replace with a different photo (JPG/PNG)&lt;/label&gt;
+        &lt;input type="file" id="fu-${id}" accept="image/jpeg,image/png" onchange="gpLoadFile('${id}',this)"&gt;
+        &lt;p class="muted" style="margin:4px 0 0"&gt;Choose a new file to load it into the editor — then adjust it, or just Save to replace the photo as-is.&lt;/p&gt;
+      &lt;/div&gt;
+      &lt;div style="text-align:center"&gt;&lt;canvas id="cv-${id}" style="max-width:100%;border:1px solid ${C.sage};border-radius:8px;background:#fff"&gt;&lt;/canvas&gt;&lt;/div&gt;
+      &lt;div class="grid two" style="margin-top:10px"&gt;
+        &lt;div&gt;&lt;label&gt;Brightness&lt;/label&gt;&lt;input type="range" id="br-${id}" min="50" max="200" value="100" oninput="gpDraw('${id}')" style="width:100%"&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label&gt;Contrast&lt;/label&gt;&lt;input type="range" id="co-${id}" min="50" max="200" value="100" oninput="gpDraw('${id}')" style="width:100%"&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label&gt;Saturation&lt;/label&gt;&lt;input type="range" id="sa-${id}" min="0" max="200" value="100" oninput="gpDraw('${id}')" style="width:100%"&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label&gt;Rotate&lt;/label&gt;&lt;button type="button" class="btn sec" onclick="gpRotate('${id}')"&gt;⟳ Rotate 90°&lt;/button&gt;&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class="actions" style="border:0;padding-top:10px"&gt;
+        &lt;button type="button" class="btn" onclick="gpSavePhoto('${id}',this)"&gt;💾 Save adjusted photo&lt;/button&gt;
+        &lt;button type="button" class="btn sec" onclick="gpResetPhoto('${id}')"&gt;↺ Reset sliders&lt;/button&gt;
+        &lt;span class="muted" id="pe-${id}"&gt;&lt;/span&gt;
+      &lt;/div&gt;
+      ${s.has_orig ? `&lt;form method="post" action="${ADMIN_PATH}/update" style="margin-top:8px"&gt;
+        &lt;input type="hidden" name="id" value="${id}"&gt;&lt;input type="hidden" name="action" value="revert-photo"&gt;
+        &lt;button type="submit" class="btn sec"&gt;↩ Revert to joiner's original photo&lt;/button&gt;
+        &lt;span class="muted" style="margin-left:6px"&gt;Undo HR photo edits and restore the photo the joiner submitted.&lt;/span&gt;
+      &lt;/form&gt;` : ''}
+    &lt;/div&gt;
+  &lt;/details&gt;`;
+}
+
+function cardHtml(s) {
+  const photoNote = s.photo_status === 'manual-review' ? `&lt;p class="muted" style="margin:8px 0 0"&gt;📷 ${esc(s.photo_reason)}&lt;/p&gt;` : '';
+  const conf = s.ai_confidence ? ` · ${s.ai_confidence}% confidence` : '';
+  const jt = esc(s.job_title), dv = esc(s.division);
+
+  let hrFields, actions;
+  if (s.status === 'rejected' || s.status === 'archived') {
+    const details = `${jt || dv ? `${jt || '—'} · ${dv || '—'}` : 'No job details added.'}${s.start_date ? ` · 📅 Joined on ${esc(fmtDate(s.start_date))}` : ''}`;
+    hrFields = `&lt;div class="hrbox"&gt;&lt;span class="tag hr"&gt;✎ Added by HR&lt;/span&gt; &lt;span class="muted"&gt;Not submitted by the new joiner&lt;/span&gt;&lt;p class="muted" style="margin:8px 0 0"&gt;${details}&lt;/p&gt;&lt;/div&gt;`;
+    actions = s.status === 'archived'
+      ? `&lt;form method="post" action="${ADMIN_PATH}/update" class="actions"&gt;&lt;input type="hidden" name="id" value="${s.id}"&gt;
+          &lt;span class="muted"&gt;📦 Archived — kept for records, not offered for new eDMs.&lt;/span&gt;
+          &lt;button class="btn sec" name="action" value="unarchive"&gt;↩ Restore to Approved&lt;/button&gt;&lt;/form&gt;`
+      : `&lt;form method="post" action="${ADMIN_PATH}/update" class="actions"&gt;&lt;input type="hidden" name="id" value="${s.id}"&gt;
+          &lt;button class="btn sec" name="action" value="restore"&gt;↩ Restore to review&lt;/button&gt;&lt;/form&gt;`;
+  } else {
+    // Shared form: job title + division inputs, with save / approve / reject buttons.
+    const approveDisabledNote = `&lt;span class="muted" id="hint-${s.id}"&gt;&lt;/span&gt;`;
+    hrFields = `
+      &lt;form method="post" action="${ADMIN_PATH}/update"&gt;
+        &lt;input type="hidden" name="id" value="${s.id}"&gt;
+        &lt;div class="hrbox"&gt;
+          &lt;div style="margin-bottom:8px"&gt;&lt;span class="tag hr"&gt;✎ Added by HR&lt;/span&gt; &lt;span class="muted"&gt;Not submitted by the new joiner&lt;/span&gt;&lt;/div&gt;
+          &lt;div class="grid two"&gt;
+            &lt;div&gt;&lt;label&gt;Job Title&lt;/label&gt;&lt;input type="text" name="job_title" value="${jt}" placeholder="e.g. Park Manager"&gt;&lt;/div&gt;
+            &lt;div&gt;&lt;label&gt;Division / Branch&lt;/label&gt;&lt;input type="text" name="division" value="${dv}" placeholder="e.g. Parks Division"&gt;&lt;/div&gt;
+          &lt;/div&gt;
+          &lt;div class="field" style="margin:12px 0 0"&gt;&lt;label&gt;Joined on (start date)&lt;/label&gt;&lt;input type="date" name="start_date" value="${esc(s.start_date)}"&gt;&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class="actions"&gt;
+          ${s.status === 'awaiting-hr-review' ? `&lt;button class="btn" name="action" value="approve"&gt;✓ Approve&lt;/button&gt;` : ''}
+          &lt;button class="btn sec" name="action" value="save"&gt;Save HR details&lt;/button&gt;
+          ${s.status === 'approved' ? `&lt;button class="btn sec" name="action" value="archive"&gt;📦 Archive&lt;/button&gt;` : ''}
+          &lt;button class="btn danger" name="action" value="reject"&gt;Reject&lt;/button&gt;
+        &lt;/div&gt;
+      &lt;/form&gt;`;
+    actions = '';
+  }
+
+  // Edit form (all new-hire fields) inside a collapsible section.
+  const editForm = `&lt;details&gt;&lt;summary&gt;Edit new-joiner details&lt;/summary&gt;
+    &lt;form method="post" action="${ADMIN_PATH}/update" style="margin-top:10px"&gt;
+      &lt;input type="hidden" name="id" value="${s.id}"&gt;&lt;input type="hidden" name="action" value="edit"&gt;
+      &lt;div class="field"&gt;&lt;label&gt;Full name (as per NRIC)&lt;/label&gt;&lt;input type="text" name="full_name" value="${esc(s.full_name)}"&gt;&lt;/div&gt;
+      &lt;div class="field"&gt;&lt;label&gt;Email&lt;/label&gt;&lt;input type="email" name="email" value="${esc(s.email)}"&gt;&lt;/div&gt;
+      &lt;div class="field"&gt;&lt;label&gt;Introduction&lt;/label&gt;&lt;textarea name="intro"&gt;${esc(s.intro)}&lt;/textarea&gt;&lt;/div&gt;
+      &lt;button class="btn sec" type="submit"&gt;Save changes&lt;/button&gt;
+    &lt;/form&gt;&lt;/details&gt;`;
+
+  const ver = s.updated_at ? new Date(s.updated_at).getTime() : '';
+  return `&lt;div class="card"&gt;
+    &lt;div class="row"&gt;&lt;img class="thumb" src="/api/photo/${s.id}?v=${ver}" alt="${esc(s.full_name)}"&gt;
+      &lt;div&gt;&lt;h3 style="margin:0;color:${C.green}"&gt;${esc(s.full_name)}&lt;/h3&gt;&lt;p class="muted" style="margin:2px 0 0"&gt;${s.start_date ? 'Joined on ' + esc(fmtDate(s.start_date)) : '📅 Joining date — to be added by HR'}&lt;/p&gt;${s.email ? `&lt;p class="muted" style="margin:2px 0 0"&gt;📧 ${esc(s.email)}&lt;/p&gt;` : ''}&lt;/div&gt;&lt;/div&gt;
+    ${photoEditor(s)}
+    &lt;p style="margin:12px 0 0"&gt;${esc(s.intro)}&lt;/p&gt;
+    &lt;div class="modbox"&gt;${moderationTag(s.ai_status)} &lt;span class="muted"&gt;AI moderation${conf}&lt;/span&gt;&lt;p style="margin:6px 0 0"&gt;${esc(s.ai_reason)}&lt;/p&gt;${photoNote}&lt;/div&gt;
+    ${hrFields}${actions}${editForm}
+  &lt;/div&gt;`;
+}
+
+// ── Admin: update (save / approve / reject / restore / edit) ─────────────────
+app.post(ADMIN_PATH + '/update', async (req, res) =&gt; {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  if (!pool) return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('No database connected.'));
+  const { id, action } = req.body;
+  try {
+    const { rows } = await pool.query('select job_title,division from submissions where id=$1', [id]);
+    if (!rows.length) return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Submission not found.'));
+    const cur = rows[0];
+
+    if (action === 'reject') {
+      await pool.query('update submissions set status=$1,updated_at=now() where id=$2', ['rejected', id]);
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent('Entry rejected.'));
+    }
+    if (action === 'restore') {
+      await pool.query('update submissions set status=$1,updated_at=now() where id=$2', ['awaiting-hr-review', id]);
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent('Entry restored to review.'));
+    }
+    if (action === 'archive') {
+      await pool.query("update submissions set status='archived',updated_at=now() where id=$1 and status='approved'", [id]);
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent('Entry archived — it stays on record but won\'t appear when generating new eDMs.'));
+    }
+    if (action === 'unarchive') {
+      await pool.query("update submissions set status='approved',updated_at=now() where id=$1 and status='archived'", [id]);
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent('Entry restored to Approved.'));
+    }
+    if (action === 'revert-photo') {
+      // Restore the joiner's original photo and clear the snapshot (current == original again).
+      const { rowCount } = await pool.query(
+        `update submissions set photo_mime=orig_photo_mime, photo_data=orig_photo_data,
+           photo_status='manual-review', photo_reason='Reverted to the joiner''s original submitted photo — please verify before approving.',
+           orig_photo_mime=null, orig_photo_data=null, updated_at=now()
+         where id=$1 and orig_photo_data is not null`, [id]);
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent(rowCount ? 'Photo reverted to the joiner\'s original.' : 'There is no original photo to revert to.'));
+    }
+    if (action === 'edit') {
+      await pool.query('update submissions set full_name=$1,email=$2,intro=$3,fun_fact=$4,updated_at=now() where id=$5',
+        [(req.body.full_name || '').trim(), (req.body.email || '').trim() || null, (req.body.intro || '').trim(), (req.body.fun_fact || '').trim() || null, id]);
+      return res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent('Details updated.'));
+    }
+    // save or approve → persist HR fields (job title, division, start date)
+    const jobTitle = (req.body.job_title || '').trim();
+    const division = (req.body.division || '').trim();
+    const startDate = (req.body.start_date || '').trim();
+    if (action === 'approve' &amp;&amp; (!jobTitle || !division || !startDate)) {
+      return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Job Title, Division and Start Date must all be filled in before approving.'));
+    }
+    const status = action === 'approve' ? 'approved' : undefined;
+    if (status) await pool.query('update submissions set job_title=$1,division=$2,start_date=$3,status=$4,updated_at=now() where id=$5', [jobTitle, division, startDate || null, status, id]);
+    else await pool.query('update submissions set job_title=$1,division=$2,start_date=$3,updated_at=now() where id=$4', [jobTitle, division, startDate || null, id]);
+    res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent(action === 'approve' ? `Approved — ${jobTitle}, ${division}.` : 'HR details saved.'));
+  } catch (e) {
+    console.error(e);
+    res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Update failed. Please try again.'));
+  }
+});
+
+// ── Admin: save an HR-edited photo (from the in-app canvas editor) ───────────
+app.post(ADMIN_PATH + '/photo', (req, res) =&gt; {
+  upload.single('photo')(req, res, async (err) =&gt; {
+    if (!hasAdmin(req)) return res.status(403).json({ error: 'Not authorised.' });
+    if (!pool) return res.status(503).json({ error: 'No database connected.' });
+    if (err) return res.status(400).json({ error: err.message });
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: 'Missing submission id.' });
+    if (!req.file) return res.status(400).json({ error: 'No image was received.' });
+    // Trust the bytes, not the client Content-Type.
+    const photoMime = sniffImageType(req.file.buffer);
+    if (!photoMime) return res.status(400).json({ error: 'That file is not a valid JPG or PNG image.' });
+    try {
+      const photo = checkPhoto(req.file.buffer);
+      // Keep a one-time snapshot of the joiner's original photo (coalesce: only
+      // fills orig_* the first time HR edits) so it can be reverted later.
+      const { rowCount } = await pool.query(
+        `update submissions set
+           orig_photo_mime = coalesce(orig_photo_mime, photo_mime),
+           orig_photo_data = coalesce(orig_photo_data, photo_data),
+           photo_mime=$1, photo_data=$2, photo_status=$3, photo_reason=$4, updated_at=now()
+         where id=$5`,
+        [photoMime, req.file.buffer, photo.status, photo.reason, id]);
+      if (!rowCount) return res.status(404).json({ error: 'Submission not found.' });
+      res.json({ ok: true });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Could not save the photo. Please try again.' });
+    }
+  });
+});
+
+// ── Admin: generate eDM ──────────────────────────────────────────────────────
+app.get(ADMIN_PATH + '/edm', async (req, res) =&gt; {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  if (!pool) return res.send(layout({ title: 'Generate eDM', adminNav: true, body: '&lt;div class="card"&gt;No database connected.&lt;/div&gt;' }));
+  const { rows: approved } = await pool.query(`select id,full_name,job_title,division,start_date,updated_at from submissions where status='approved' order by start_date asc nulls last, full_name asc`);
+  res.send(renderEdmPage(approved));
+});
+
+function renderEdmPage(approved, generated = null, error = '', archiveIds = []) {
+  let body = AI_DISCLAIMER + (error ? `&lt;div class="err"&gt;${esc(error)}&lt;/div&gt;` : '');
+  if (!approved.length) {
+    body += `&lt;div class="card"&gt;&lt;p class="muted"&gt;No approved entries yet. Approve some submissions in the &lt;a href="${ADMIN_PATH}"&gt;Review&lt;/a&gt; tab first.&lt;/p&gt;&lt;/div&gt;`;
+    return layout({ title: 'Generate eDM 🌿', adminNav: true, body });
+  }
+  // Group the approved candidates into fortnight periods so HR can send one eDM
+  // for the 1st–15th joiners and a later one for the 16th–end joiners.
+  const buckets = new Map();
+  const undated = [];
+  for (const a of approved) {
+    const p = periodOf(a.start_date);
+    if (!p) { undated.push(a); continue; }
+    if (!buckets.has(p.key)) buckets.set(p.key, { key: p.key, label: p.label, sort: p.sort, items: [] });
+    buckets.get(p.key).items.push(a);
+  }
+  const periods = [...buckets.values()].sort((x, y) =&gt; (x.sort &lt; y.sort ? -1 : 1));
+  const candLabel = (a, key) =&gt; `&lt;label style="display:flex;gap:10px;align-items:center;border:1px solid ${C.sage};border-radius:12px;padding:8px 12px;margin-bottom:8px;font-weight:400"&gt;
+    &lt;input type="checkbox" name="ids" value="${a.id}" data-period="${key}" checked&gt; &lt;img class="avatar" style="width:36px;height:36px" src="/api/photo/${a.id}?v=${a.updated_at ? new Date(a.updated_at).getTime() : ''}"&gt; &lt;span&gt;&lt;b&gt;${esc(a.full_name)}&lt;/b&gt;&lt;br&gt;&lt;span class="muted"&gt;${esc(a.job_title)} · ${esc(a.division)}${a.start_date ? ' · 📅 ' + esc(fmtDate(a.start_date)) : ''}&lt;/span&gt;&lt;/span&gt;&lt;/label&gt;`;
+  let checks = '';
+  if (periods.length &gt; 1 || (periods.length === 1 &amp;&amp; undated.length)) {
+    checks += `&lt;div style="margin-bottom:10px"&gt;&lt;div class="muted" style="font-weight:800;color:${C.green};margin-bottom:6px"&gt;Quick-select by joining period&lt;/div&gt;`
+      + periods.map((p) =&gt; `&lt;button type="button" class="btn sec" style="margin:0 6px 6px 0" onclick="gpPickPeriod('${p.key}','${esc('New Joiners · ' + p.label)}')"&gt;📅 ${esc(p.label)} (${p.items.length})&lt;/button&gt;`).join('')
+      + `&lt;button type="button" class="btn sec" style="margin:0 6px 6px 0" onclick="gpPickAll()"&gt;Select all&lt;/button&gt;&lt;/div&gt;`;
+  }
+  for (const p of periods) {
+    checks += `&lt;div class="muted" style="font-weight:800;color:${C.green};margin:12px 0 6px"&gt;📅 Joined ${esc(p.label)}&lt;/div&gt;`;
+    checks += p.items.map((a) =&gt; candLabel(a, p.key)).join('');
+  }
+  if (undated.length) {
+    checks += `&lt;div class="muted" style="font-weight:800;margin:12px 0 6px"&gt;No joining date yet&lt;/div&gt;`;
+    checks += undated.map((a) =&gt; candLabel(a, '')).join('');
+  }
+  body += `&lt;div class="grid two"&gt;&lt;div class="card"&gt;&lt;h2 style="margin-top:0;color:${C.green}"&gt;1 · Choose &amp;amp; label&lt;/h2&gt;
+    &lt;form method="post" action="${ADMIN_PATH}/edm"&gt;
+      ${checks}
+      &lt;div class="field" style="margin-top:12px"&gt;&lt;label&gt;Occasion label&lt;/label&gt;&lt;input type="text" name="occasion" value="July 2025 New Joiners" required&gt;&lt;/div&gt;
+      &lt;div class="field"&gt;&lt;label&gt;Send date / label (optional)&lt;/label&gt;&lt;input type="text" name="send_date" placeholder="e.g. 1 August 2025"&gt;&lt;/div&gt;
+      &lt;button class="btn" type="submit"&gt;Generate eDM 🌿&lt;/button&gt;
+    &lt;/form&gt;&lt;/div&gt;
+    &lt;div class="card"&gt;&lt;h2 style="margin-top:0;color:${C.green}"&gt;Preview&lt;/h2&gt;`;
+  if (generated) {
+    body += `&lt;iframe class="preview" srcdoc="${esc(generated.html)}"&gt;&lt;/iframe&gt;
+      &lt;div style="margin:12px 0 2px 0"&gt;&lt;button class="btn" type="button" onclick="gpSavePng(this)"&gt;⬇ Save as PNG image&lt;/button&gt;
+        &lt;span class="muted" id="pngmsg"&gt;&lt;/span&gt;&lt;/div&gt;
+      &lt;p class="muted" style="margin-top:2px"&gt;Downloads the whole eDM as one wide single-column image so it fills the width of the reading pane. In Outlook: &lt;b&gt;maximise the compose window first&lt;/b&gt;, then &lt;b&gt;Insert → Pictures&lt;/b&gt;, and leave it at full size — don't drag the corner to shrink it. Recipients always receive the complete image at its proper size.&lt;/p&gt;
+      &lt;details&gt;&lt;summary&gt;Or copy the raw HTML&lt;/summary&gt;
+      &lt;textarea id="raw" readonly style="height:150px;font-family:monospace;font-size:12px;margin-top:8px" onfocus="this.select()"&gt;${esc(generated.html)}&lt;/textarea&gt;
+      &lt;button class="btn sec" type="button" onclick="navigator.clipboard.writeText(document.getElementById('raw').value);this.textContent='✓ Copied!'"&gt;Copy HTML to clipboard&lt;/button&gt;
+      &lt;p class="muted"&gt;Paste straight into Outlook — all styles are inlined and images embedded.&lt;/p&gt;&lt;/details&gt;
+      &lt;script src="/vendor/html2canvas.js"&gt;&lt;/script&gt;
+      &lt;script&gt;
+        function gpSavePng(btn){
+          var msg=document.getElementById('pngmsg');
+          if(!window.html2canvas){ msg.textContent=' — image library did not load; try the screenshot method instead.'; return; }
+          var html=document.getElementById('raw').value;
+          var holder=document.createElement('div');
+          holder.style.cssText='position:fixed;left:-10000px;top:0;width:1160px;background:#F8F4E3';
+          holder.innerHTML=html;
+          document.body.appendChild(holder);
+          btn.disabled=true; msg.textContent=' — generating image…';
+          window.html2canvas(holder,{backgroundColor:'#F8F4E3',scale:2,width:1160,windowWidth:1160,useCORS:true}).then(function(canvas){
+            canvas.toBlob(function(blob){
+              var a=document.createElement('a');
+              a.href=URL.createObjectURL(blob);
+              a.download='nparks-welcome-edm.png';
+              document.body.appendChild(a); a.click(); a.remove();
+              setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+              msg.textContent=' — done! Check your Downloads folder.';
+            },'image/png');
+          }).catch(function(e){ msg.textContent=' — could not create image: '+e.message; })
+          .then(function(){ holder.remove(); btn.disabled=false; });
+        }
+      &lt;/script&gt;`;
+    if (archiveIds.length) {
+      body += `&lt;div style="margin-top:16px;border-top:1px solid ${C.sage};padding-top:14px"&gt;
+        &lt;p class="muted" style="margin:0 0 8px"&gt;Done sending this eDM? Archive everyone included in it in one go — they move to the &lt;b&gt;Archived&lt;/b&gt; list and won't appear when you generate the next eDM.&lt;/p&gt;
+        &lt;form method="post" action="${ADMIN_PATH}/archive-batch" onsubmit="return confirm('Archive ${archiveIds.length} joiner(s) included in this eDM? They will move to the Archived list.')"&gt;
+          ${archiveIds.map((id) =&gt; `&lt;input type="hidden" name="ids" value="${id}"&gt;`).join('')}
+          &lt;button class="btn sec" type="submit"&gt;📦 Archive all ${archiveIds.length} joiner(s) in this eDM&lt;/button&gt;
+        &lt;/form&gt;&lt;/div&gt;`;
+    }
+  } else {
+    body += `&lt;p class="muted"&gt;Select joiners and click &lt;b&gt;Generate eDM&lt;/b&gt; — the formatted email will appear here.&lt;/p&gt;`;
+  }
+  body += `&lt;/div&gt;&lt;/div&gt;`;
+  body += `&lt;script&gt;
+    function gpPickPeriod(key, occasionLabel){
+      var boxes = document.querySelectorAll('input[name=ids]');
+      for(var i=0;i&lt;boxes.length;i++){ boxes[i].checked = (boxes[i].getAttribute('data-period') === key); }
+      var occ = document.querySelector('input[name=occasion]'); if(occ &amp;&amp; occasionLabel) occ.value = occasionLabel;
+    }
+    function gpPickAll(){ var boxes = document.querySelectorAll('input[name=ids]'); for(var i=0;i&lt;boxes.length;i++) boxes[i].checked = true; }
+  &lt;/script&gt;`;
+  return layout({ title: 'Generate eDM 🌿', adminNav: true, body });
+}
+
+app.post(ADMIN_PATH + '/edm', async (req, res) =&gt; {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  if (!pool) return res.redirect(ADMIN_PATH + '/edm');
+  let ids = req.body.ids || [];
+  if (!Array.isArray(ids)) ids = [ids];
+  const { rows: approved } = await pool.query(`select id,full_name,job_title,division,start_date,updated_at from submissions where status='approved' order by start_date asc nulls last, full_name asc`);
+  const occasion = (req.body.occasion || '').trim();
+  if (!ids.length) return res.send(renderEdmPage(approved, null, 'Select at least one approved entry.'));
+  if (!occasion) return res.send(renderEdmPage(approved, null, 'Please provide an occasion label.'));
+  const { rows: hires } = await pool.query(
+    `select id,full_name,start_date,intro,fun_fact,job_title,division,photo_mime,photo_data from submissions
+       where id = any($1::uuid[]) and status='approved'
+       order by start_date asc nulls last, full_name asc`, [ids]);
+  if (!hires.length) return res.send(renderEdmPage(approved, null, 'None of the selected entries are approved.'));
+  const html = buildEdmHtml(hires, occasion, (req.body.send_date || '').trim());
+  await pool.query('insert into edm_archive (occasion,send_date,hire_names,html) values ($1,$2,$3,$4)',
+    [occasion, (req.body.send_date || '').trim() || null, JSON.stringify(hires.map((h) =&gt; h.full_name)), html]);
+  res.send(renderEdmPage(approved, { html }, '', hires.map((h) =&gt; h.id)));
+});
+
+// ── Admin: bulk archive (e.g. everyone just included in a generated eDM) ──────
+app.post(ADMIN_PATH + '/archive-batch', async (req, res) =&gt; {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  if (!pool) return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('No database connected.'));
+  let ids = req.body.ids || [];
+  if (!Array.isArray(ids)) ids = [ids];
+  if (!ids.length) return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('No entries selected to archive.'));
+  try {
+    const { rowCount } = await pool.query(
+      "update submissions set status='archived',updated_at=now() where id = any($1::uuid[]) and status='approved'", [ids]);
+    res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent(`Archived ${rowCount} joiner(s) — they've moved to the Archived list.`));
+  } catch (e) {
+    console.error(e);
+    res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Bulk archive failed. Please try again.'));
+  }
+});
+
+// ── Admin: archive every approved entry at once ──────────────────────────────
+app.post(ADMIN_PATH + '/archive-all-approved', async (req, res) =&gt; {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  if (!pool) return res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('No database connected.'));
+  try {
+    const { rowCount } = await pool.query("update submissions set status='archived',updated_at=now() where status='approved'");
+    res.redirect(ADMIN_PATH + '?msg=' + encodeURIComponent(`Archived ${rowCount} approved joiner(s) — they've moved to the Archived list.`));
+  } catch (e) {
+    console.error(e);
+    res.redirect(ADMIN_PATH + '?err=' + encodeURIComponent('Archive all failed. Please try again.'));
+  }
+});
+
+// ── Admin: archive ───────────────────────────────────────────────────────────
+app.get(ADMIN_PATH + '/archive', async (req, res) =&gt; {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  if (!pool) return res.send(layout({ title: 'Archive', adminNav: true, body: '&lt;div class="card"&gt;No database connected.&lt;/div&gt;' }));
+  const { rows } = await pool.query('select id,occasion,send_date,hire_names,html,created_at from edm_archive order by created_at desc');
+  let body = `&lt;p class="muted"&gt;A read-only log of every eDM you've generated.&lt;/p&gt;`;
+  if (!rows.length) body += `&lt;div class="card"&gt;&lt;p class="muted"&gt;No eDMs generated yet. Create one in the &lt;a href="${ADMIN_PATH}/edm"&gt;Generate eDM&lt;/a&gt; tab.&lt;/p&gt;&lt;/div&gt;`;
+  else body += rows.map((e) =&gt; {
+    const names = Array.isArray(e.hire_names) ? e.hire_names : [];
+    return `&lt;div class="card"&gt;&lt;h3 style="margin:0;color:${C.green}"&gt;${esc(e.occasion)}&lt;/h3&gt;
+      &lt;p class="muted"&gt;Generated ${new Date(e.created_at).toLocaleString()}${e.send_date ? ' · ' + esc(e.send_date) : ''}&lt;/p&gt;
+      &lt;p&gt;&lt;b&gt;${names.length}&lt;/b&gt; staff: ${esc(names.join(', '))}&lt;/p&gt;
+      &lt;details&gt;&lt;summary&gt;View eDM&lt;/summary&gt;&lt;iframe class="preview" srcdoc="${esc(e.html)}"&gt;&lt;/iframe&gt;&lt;/details&gt;&lt;/div&gt;`;
+  }).join('');
+  res.send(layout({ title: 'eDM Archive', adminNav: true, body }));
+});
+
+// ── eDM HTML builder (Outlook-safe, table layout, all-inline CSS) ────────────
+function photoDataUri(row) {
+  try { if (!row.photo_data) return null; return `data:${row.photo_mime || 'image/jpeg'};base64,${Buffer.from(row.photo_data).toString('base64')}`; } catch { return null; }
+}
+// Engaging, park-noticeboard-style eDM: two-tone header with a nature emoji
+// band, a warm intro callout, and each new hire as a "spotlight" card with a
+// cycling accent colour (accent top bar + photo + role pill) and a highlighted
+// fun-fact callout. Cards stack ONE PER ROW as a single wide column so each
+// card is as wide as possible. 100% table-based, all-inline CSS for Outlook.
+function buildEdmHtml(hires, occasion, sendDate) {
+  const GREEN = '#2D6A4F', DARK = '#1B4332', SAGE = '#95D5B2', SAGE_BG = '#E8F5E9', CREAM = '#F8F4E3';
+  const ACCENTS = ['#2D6A4F', '#6B4226', '#40916C', '#1B4332'];
+  const FONT = 'Arial,Helvetica,sans-serif';
+  const WIDTH = 1120; // single wide column — one full-width card per row
+
+  // One joiner "spotlight" card (a full-width row in the single column).
+  const cardHtml = (h, i) =&gt; {
+    const accent = ACCENTS[i % ACCENTS.length];
+    const bg = i % 2 === 0 ? '#FFFFFF' : '#F3FAF4';
+    const img = photoDataUri(h);
+    // Whole photo shown as a left-hand rectangle (no circular crop), max
+    // dimensions capped with width/height auto so it always keeps its true
+    // proportions — never stretched or squashed whatever the uploaded ratio.
+    const photoCell = img
+      ? `&lt;img src="${img}" alt="${esc(h.full_name)}" style="max-width:140px;max-height:180px;width:auto;height:auto;display:block;border:3px solid ${accent};border-radius:8px;" /&gt;`
+      : `&lt;div style="width:140px;height:140px;background-color:${accent};border-radius:8px;"&gt;&lt;/div&gt;`;
+    return `
+      &lt;table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};border:1px solid #dcece2;border-radius:16px;"&gt;
+        &lt;tr&gt;&lt;td colspan="2" style="background-color:${accent};height:8px;line-height:8px;font-size:0;border-radius:16px 16px 0 0;"&gt;&amp;nbsp;&lt;/td&gt;&lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td valign="top" width="162" style="padding:18px 8px 18px 18px;"&gt;${photoCell}&lt;/td&gt;
+          &lt;td valign="top" style="padding:18px 18px 18px 8px;"&gt;
+            &lt;p style="margin:0;font-family:${FONT};font-size:23px;font-weight:bold;color:${GREEN};"&gt;${esc(h.full_name)}&lt;/p&gt;
+            &lt;table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0 0;"&gt;&lt;tr&gt;&lt;td style="background-color:${accent};color:#ffffff;padding:5px 14px;border-radius:14px;font-family:${FONT};font-size:14px;font-weight:bold;"&gt;${esc(h.job_title)}&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+            &lt;p style="margin:9px 0 0 0;font-family:${FONT};font-size:14px;color:#5b6b60;"&gt;🌳 ${esc(h.division)}&amp;nbsp;·&amp;nbsp;📅 Joined on ${esc(fmtDate(h.start_date))}&lt;/p&gt;
+            &lt;p style="margin:11px 0 0 0;font-family:${FONT};font-size:17px;line-height:1.5;color:#333333;"&gt;${esc(h.intro)}&lt;/p&gt;
+          &lt;/td&gt;
+        &lt;/tr&gt;
+      &lt;/table&gt;`;
+  };
+
+  // One card per row, each spanning the full width of the eDM (single column).
+  const cards = hires.map((h, i) =&gt; `&lt;tr&gt;&lt;td style="padding:9px 22px;"&gt;${cardHtml(h, i)}&lt;/td&gt;&lt;/tr&gt;`).join('');
+
+  const dateLine = sendDate ? `&lt;p style="margin:8px 0 0 0;font-family:${FONT};font-size:13px;color:#d8f3dc;"&gt;📅 ${esc(sendDate)}&lt;/p&gt;` : '';
+
+  return `&lt;!-- NParks New Hire Introduction eDM --&gt;
+&lt;table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};padding:24px 0;"&gt;&lt;tr&gt;&lt;td align="center"&gt;
+  &lt;!--[if mso]&gt;&lt;table role="presentation" align="center" width="${WIDTH}" cellpadding="0" cellspacing="0" border="0"&gt;&lt;tr&gt;&lt;td width="${WIDTH}"&gt;&lt;![endif]--&gt;
+  &lt;table role="presentation" width="${WIDTH}" cellpadding="0" cellspacing="0" border="0" style="width:${WIDTH}px;min-width:${WIDTH}px;max-width:${WIDTH}px;background-color:#ffffff;border-radius:18px;overflow:hidden;"&gt;
+    &lt;tr&gt;&lt;td style="padding:0;font-size:0;line-height:0;"&gt;&lt;img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="${WIDTH}" height="1" alt="" style="display:block;width:${WIDTH}px;height:1px;border:0;line-height:0;font-size:0;"&gt;&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style="background-color:${DARK};padding:10px 24px;text-align:center;font-size:17px;letter-spacing:7px;"&gt;🌿🌸🦋🌳☀️🍃&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style="background-color:${GREEN};padding:28px 24px 30px 24px;text-align:center;"&gt;
+      &lt;p style="margin:0;font-family:${FONT};font-size:13px;letter-spacing:2px;color:#95d5b2;text-transform:uppercase;"&gt;National Parks Board&lt;/p&gt;
+      &lt;h1 style="margin:8px 0 0 0;font-family:${FONT};font-size:30px;color:#ffffff;"&gt;Welcome to the NParks Family 🌿&lt;/h1&gt;
+      &lt;table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:14px auto 0 auto;"&gt;&lt;tr&gt;&lt;td style="background-color:${SAGE};color:${DARK};padding:7px 20px;border-radius:20px;font-family:${FONT};font-size:15px;font-weight:bold;"&gt;🌱 ${esc(occasion)}&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+      ${dateLine}&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style="background-color:${SAGE};height:10px;line-height:10px;font-size:0;"&gt;&amp;nbsp;&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style="padding:24px 22px 4px 22px;"&gt;
+      &lt;table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};border:1px solid #ece3c3;border-radius:14px;"&gt;
+        &lt;tr&gt;&lt;td valign="middle" width="58" style="padding:14px 0 14px 16px;font-size:30px;"&gt;🌳&lt;/td&gt;
+        &lt;td style="padding:14px 18px;font-family:${FONT};font-size:17px;line-height:1.6;color:#3a4a40;"&gt;We're delighted to welcome our newest colleagues to the NParks family! Take a moment to say hello and get to know them below — let's give them a warm, leafy welcome. 🌿&lt;/td&gt;&lt;/tr&gt;
+      &lt;/table&gt;&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style="padding:18px 24px 2px 24px;text-align:center;"&gt;&lt;p style="margin:0;font-family:${FONT};font-size:24px;font-weight:bold;color:${GREEN};"&gt;🌱 Meet our newest colleagues 🌱&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;
+    ${cards}
+    &lt;tr&gt;&lt;td style="height:12px;line-height:12px;font-size:0;"&gt;&amp;nbsp;&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style="background-color:${SAGE};height:10px;line-height:10px;font-size:0;"&gt;&amp;nbsp;&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td style="background-color:${GREEN};padding:26px 24px;text-align:center;"&gt;
+      &lt;p style="margin:0 0 12px 0;font-size:18px;letter-spacing:5px;"&gt;🌻🌿🦋🌳🍃🌷&lt;/p&gt;
+      &lt;p style="margin:0;font-family:${FONT};font-size:13px;color:#95d5b2;"&gt;National Parks Board (NParks), Singapore &amp;middot; Making Singapore our City in Nature&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;
+  &lt;/table&gt;
+  &lt;!--[if mso]&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;![endif]--&gt;
+  &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;`;
+}
+
+// ── Demo seed (solid-colour avatar PNGs, no dependencies) ────────────────────
+function crc32(buf) { let c = ~0; for (let i = 0; i &lt; buf.length; i++) { c ^= buf[i]; for (let j = 0; j &lt; 8; j++) c = (c &gt;&gt;&gt; 1) ^ (0xedb88320 &amp; -(c &amp; 1)); } return (~c) &gt;&gt;&gt; 0; }
+function makeSeedPng(w, h, [r, g, b]) {
+  const raw = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y &lt; h; y++) { const rs = y * (w * 3 + 1); raw[rs] = 0; for (let x = 0; x &lt; w; x++) { const p = rs + 1 + x * 3; raw[p] = r; raw[p + 1] = g; raw[p + 2] = b; } }
+  const idat = zlib.deflateSync(raw);
+  const chunk = (t, d) =&gt; { const l = Buffer.alloc(4); l.writeUInt32BE(d.length, 0); const tb = Buffer.from(t, 'ascii'); const cb = Buffer.alloc(4); cb.writeUInt32BE(crc32(Buffer.concat([tb, d])), 0); return Buffer.concat([l, tb, d, cb]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', Buffer.alloc(0))]);
+}
+async function seedIfEmpty() {
+  if (!pool) return;
+  const { rows } = await pool.query('select count(*)::int n from submissions');
+  if (rows[0].n &gt; 0) { console.log(`[seed] skipped (already has ${rows[0].n} rows)`); return; }
+  const demo = [
+    { full_name: 'Amara Tan', start_date: null, rgb: [45, 106, 79], intro: "Hello everyone! I'm Amara, joining NParks after five years in urban landscape design. I'm passionate about pollinator gardens and can't wait to help make our parks even more welcoming for people and wildlife alike. Looking forward to meeting you all on the trails!", fun_fact: 'I once cycled the entire Round Island Route in a single day.', status: 'awaiting-hr-review', job_title: null, division: null, ai_status: 'clear', ai_confidence: 96, ai_reason: 'The introduction is warm, professional, and free of sensitive personal information.' },
+    { full_name: 'Wei Jie Lim', start_date: null, rgb: [107, 66, 38], intro: "Hi team! I'm Wei Jie. I live at 42 Sunbird Avenue and you can always reach me on my mobile at 9123 4567. I'm currently managing a chronic back condition so I may need to sit during long outdoor events, but I'm thrilled to be here and love birdwatching at Sungei Buloh!", fun_fact: 'I have spotted over 200 bird species across Singapore.', status: 'awaiting-hr-review', job_title: null, division: null, ai_status: 'flagged', ai_confidence: 92, ai_reason: 'The text discloses a home address, a personal mobile number, and a medical condition that should not appear in a mass email.' },
+    { full_name: 'Priya Nair', start_date: '2025-06-30', rgb: [149, 213, 178], intro: "Hello NParks family! I'm Priya, and I'm delighted to be joining the conservation team. My background is in freshwater ecology, and I'm especially excited about our habitat restoration work. I believe every small green space makes a difference — see you out in the field!", fun_fact: 'I keep a balcony full of native ferns at home.', status: 'approved', job_title: 'Senior Conservation Officer', division: 'National Biodiversity Centre', ai_status: 'clear', ai_confidence: 98, ai_reason: 'A professional, enthusiastic introduction with no sensitive or off-topic content.' },
+  ];
+  for (const d of demo) {
+    await pool.query(`insert into submissions (full_name,start_date,intro,fun_fact,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,photo_mime,photo_data)
+      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'manual-review','Photo is a valid 240x240px image. Please visually verify it is appropriate before approving.','image/png',$11)`,
+      [d.full_name, d.start_date, d.intro, d.fun_fact, d.status, d.job_title, d.division, d.ai_status, d.ai_confidence, d.ai_reason, makeSeedPng(240, 240, d.rgb)]);
+  }
+  console.log('[seed] inserted 3 demo submissions');
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+// Start listening IMMEDIATELY so the platform's health checks and the Cloudflare
+// tunnel can always reach us — even if the database is slow to connect. Schema
+// setup (and optional seeding) runs in the background afterwards; if the DB is
+// briefly unreachable it retries on the next request instead of blocking boot.
+app.listen(PORT, () =&gt; {
+  console.log(`🌿 NParks New Hire Introduction (single-file) running on http://localhost:${PORT}`);
+  if (!DATABASE_URL) console.log('   ⚠  DATABASE_URL not set — attach a database to persist data.');
+  if (!process.env.ANTHROPIC_API_KEY) console.log('   ⚠  ANTHROPIC_API_KEY not set — AI moderation marks entries for manual review.');
+});
+ensureSchema()
+  .then(() =&gt; (process.env.SEED_DEMO === '1' ? seedIfEmpty() : null))
+  .catch((err) =&gt; console.error('[server] schema/seed error (will retry on next request):', err.message));
+</pre>
+
+<h2 id="annexB">Annex B — <code>package.json</code></h2>
+<pre class="code-annex">{
+  "name": "nparks-new-hire-introduction",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "express": "^4.21.2",
+    "html2canvas": "^1.4.1",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.13.1"
+  }
+}
+</pre>
+
+</div><div class="footer">NParks New Hire Introduction · National Parks Board, Singapore 🌿 · Internal document — handle in line with NParks information-management policy.</div></div></body></html>
