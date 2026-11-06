@@ -333,7 +333,7 @@ const upload = multer({
 function layout({ title, body, adminNav = false }) {
   const leaf = `<svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true"><path d="M56 8C24 8 8 26 8 52c0 2 1 4 4 4 26 0 44-16 44-48z" fill="${C.sage}"/><path d="M14 50C26 38 40 24 52 12" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2.5" stroke-linecap="round"/></svg>`;
   const nav = adminNav
-    ? `<nav class="nav"><a href="${ADMIN_PATH}">Review</a><a href="${ADMIN_PATH}/edm">Generate eDM</a><a href="${ADMIN_PATH}/archive">Archive</a><a href="${ADMIN_PATH}/logout">Log out</a></nav>`
+    ? `<nav class="nav"><a href="${ADMIN_PATH}">Review</a><a href="${ADMIN_PATH}/add">➕ Add joiner</a><a href="${ADMIN_PATH}/edm">Generate eDM</a><a href="${ADMIN_PATH}/archive">Archive</a><a href="${ADMIN_PATH}/logout">Log out</a></nav>`
     : `<nav class="nav"><a href="/">Home</a><a href="/submit">New joiner</a></nav>`;
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · NParks New Hire Introduction</title>
@@ -764,6 +764,85 @@ app.post(ADMIN_PATH + '/resend', async (req, res) => {
 app.get(ADMIN_PATH + '/logout', (_req, res) => {
   clearCookie(res, 'gp_admin'); clearCookie(res, 'gp_a_pending');
   res.redirect(ADMIN_PATH);
+});
+
+// ── Admin: add a new joiner on their behalf ──────────────────────────────────
+// Lets a signed-in HR officer key in an introduction directly (e.g. for a
+// newcomer who hasn't used the portal). Admin-only; the entry is created under
+// the NEW JOINER's email (not HR's), goes into "Awaiting HR Review" like any
+// other, and the form clears so HR can add several in a row.
+function addJoinerPage({ error = '', msg = '', values = {} } = {}) {
+  const v = values;
+  return layout({ title: 'Add a new joiner 🌱', adminNav: true, body: `
+    ${msg ? `<div class="banner" style="background:${C.sageLight};border-color:${C.sage};color:${C.greenDark}"><span>✓</span><div>${esc(msg)}</div></div>` : ''}
+    ${error ? `<div class="err">${esc(error)}</div>` : ''}
+    <div class="card" style="max-width:700px">
+      <h2 style="margin-top:0;color:${C.green}">Add a new joiner on their behalf</h2>
+      <p class="muted">Key in an introduction yourself — for example for a newcomer who hasn't used the portal. The entry goes into <b>Awaiting HR Review</b> like any other, so you can add any missing details and approve it there. After saving, this form clears so you can add the next person.</p>
+      <form method="post" action="${ADMIN_PATH}/add" enctype="multipart/form-data">
+        <div class="grid two">
+          <div class="field"><label>Full name (as per NRIC) <span class="req">*</span></label><input type="text" name="full_name" required value="${esc(v.full_name)}" placeholder="e.g. Amara Tan"></div>
+          <div class="field"><label>New joiner's email <span class="req">*</span></label><input type="email" name="email" required value="${esc(v.email)}" placeholder="e.g. amara@nparks.gov.sg"></div>
+        </div>
+        <div class="field"><label>Introduction</label><textarea name="intro" placeholder="Paste or type the new joiner's short introduction (a paragraph).">${esc(v.intro)}</textarea>
+          <p class="muted" style="margin:4px 0 0">Optional here — you can also add or edit it later from the Review tab.</p></div>
+        <div class="grid two">
+          <div class="field"><label>Job Title</label><input type="text" name="job_title" value="${esc(v.job_title)}" placeholder="e.g. Park Manager"></div>
+          <div class="field"><label>Division / Branch</label><input type="text" name="division" value="${esc(v.division)}" placeholder="e.g. Parks Division"></div>
+        </div>
+        <div class="field"><label>Joined on (start date)</label><input type="date" name="start_date" value="${esc(v.start_date)}"></div>
+        <div class="field"><label>Profile photo (JPG/PNG, max 5MB)</label>
+          <input type="file" name="photo" accept="image/jpeg,image/png">
+          <p class="muted" style="margin:4px 0 0">Optional — if you leave it blank, a placeholder is used and you can add the real photo later with "✨ Adjust photo" on the review card.</p></div>
+        <div class="actions" style="border:0;padding-top:4px">
+          <button class="btn" type="submit">Save new joiner 🌿</button>
+          <a class="btn sec" href="${ADMIN_PATH}">Back to Review</a>
+        </div>
+      </form>
+    </div>` });
+}
+app.get(ADMIN_PATH + '/add', (req, res) => {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  res.send(addJoinerPage());
+});
+app.post(ADMIN_PATH + '/add', (req, res) => {
+  if (!hasAdmin(req)) return res.send(adminLoginPage());
+  upload.single('photo')(req, res, async (err) => {
+    const vals = { full_name: req.body.full_name, email: req.body.email, intro: req.body.intro, job_title: req.body.job_title, division: req.body.division, start_date: req.body.start_date };
+    const fail = (message) => res.status(400).send(addJoinerPage({ error: message, values: vals }));
+    if (err) return fail(err.message);
+    if (!pool) return fail('No database connected.');
+    const name = (req.body.full_name || '').trim();
+    const mail = (req.body.email || '').trim();
+    const intro = (req.body.intro || '').trim();
+    if (!name || !mail) return fail("Full name and the new joiner's email are both required.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail('Please enter a valid email address for the new joiner.');
+    // Photo (optional). If supplied, trust the bytes, not the client Content-Type;
+    // if omitted, store a neutral placeholder so the card isn't a broken image.
+    let photoBuf, photoMime, photoStatus, photoReason;
+    if (req.file) {
+      photoMime = sniffImageType(req.file.buffer);
+      if (!photoMime) return fail('That file is not a valid JPG or PNG image. Please upload a real photo, or leave it blank.');
+      photoBuf = req.file.buffer;
+      const pc = checkPhoto(photoBuf); photoStatus = pc.status; photoReason = pc.reason;
+    } else {
+      photoMime = 'image/png';
+      photoBuf = makeSeedPng(240, 240, [149, 213, 178]);
+      photoStatus = 'manual-review';
+      photoReason = 'Placeholder photo — added by HR. Replace it with the joiner\'s real photo using "Adjust photo" before approving.';
+    }
+    try {
+      const ai = intro ? await moderateText(intro) : { status: 'review', confidence: 0, reason: 'Entered by HR — no introduction text to moderate yet.' };
+      await pool.query(
+        `insert into submissions (full_name,email,start_date,intro,status,job_title,division,ai_status,ai_confidence,ai_reason,photo_status,photo_reason,photo_mime,photo_data)
+         values ($1,$2,$3,$4,'awaiting-hr-review',$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        [name, mail, (req.body.start_date || '').trim() || null, intro, (req.body.job_title || '').trim() || null, (req.body.division || '').trim() || null, ai.status, ai.confidence, ai.reason, photoStatus, photoReason, photoMime, photoBuf]);
+      res.send(addJoinerPage({ msg: `Added ${name}. They're now in "Awaiting HR Review" — add the next joiner below, or open the Review tab to approve.` }));
+    } catch (e) {
+      console.error(e);
+      return fail('Could not save the new joiner. Please try again.');
+    }
+  });
 });
 
 const AI_DISCLAIMER = `<div class="banner"><span>🤝</span><div><b>AI moderation is a first-pass check only.</b> Please review all content — including each photo — before approving. The final decision always rests with you.</div></div>`;
